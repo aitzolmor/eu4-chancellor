@@ -28,8 +28,8 @@ flowchart LR
 
 | Phase | Deliverable | Status |
 | --- | --- | --- |
-| 0 | Understand and document the save format | In progress |
-| 1 | CLI that copies a campaign summary to the clipboard | Planned |
+| 0 | Understand and document the save format | Mostly done |
+| 1 | CLI that copies a campaign summary to the clipboard | Working MVP |
 | 2 | Chat workspace docked beside the game, auto-attaching the summary | Planned |
 | 3 | Tool-using agent that can query any country, province or war | Planned |
 | 4 | Charts and trends across your saves | Planned |
@@ -52,12 +52,31 @@ pip install -e ".[dev]"
 cp .env.example .env            # then fill in your values
 ```
 
-## Planned usage
+## Usage
 
 ```bash
-chancellor summary              # Phase 1: summarize the latest save to the clipboard
-chancellor chat                 # Phase 2: open the chat window
+chancellor summary              # print a briefing of your current campaign
+chancellor summary --copy       # ...and copy it to the clipboard, ready to paste into a chat
+chancellor summary --save "path/to/save.eu4" --output briefing.md
 ```
+
+The briefing is a compact Markdown document (about 1k tokens) covering ruler, stability,
+economy, military, territory, technology and ideas, estates, diplomacy, ongoing wars and
+a table of key countries, with names in your game's language.
+
+```text
+# Campaign briefing: Castilla (CAS), 1525.6.30
+
+## Economy
+- Treasury: 187.3 ducats
+- Last month balance: +121.5 ducats
+- Loans: 4 totalling 572.0 ducats
+...
+| Country | Relation | Development | Regiments | Mil tech | Their opinion of us |
+| Francia (FRA) | our rival, rivals us, neighbour | 714 | 64 | 10 | -46 (Rivalidad) |
+```
+
+Coming next: `chancellor chat`, a chat window docked beside the game (Phase 2).
 
 ## Limitations
 

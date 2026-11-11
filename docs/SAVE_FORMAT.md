@@ -75,10 +75,58 @@ Other notable top-level keys: `players_countries`, `start_date`, `great_powers`,
 | Development | `development`, `raw_development`, `num_of_cities`, `owned_provinces`, `core_provinces`, `claim_provinces` |
 | Diplomacy | `allies`, `subjects`, `rival` (repeated), `enemy` (repeated), `neighbours`, `friend_tags`, `coalition_against_us` (repeated), `active_relations` |
 | Progress | `technology` (`adm_tech`/`dip_tech`/`mil_tech`), `active_idea_groups`, `government` (reforms), `estate` (repeated), `completed_missions`, `innovativeness`, `splendor` |
-| Ruler | `monarch` and `heir` hold only `{ id type }` references; details must be resolved elsewhere (to investigate) |
+| Ruler | `monarch` and `heir` hold only `{ id type }` references (see below) |
 
-Values such as `manpower=33.343` are in thousands; `overextension_percentage=0.312` is a
-ratio (31.2 %).
+Values such as `manpower=33.343` are in thousands; `overextension_percentage=0.312` and
+`army_professionalism=0.445` are ratios. `sailors` is an absolute number.
+
+#### Resolving references
+
+- **Ruler and heir.** `monarch={ id=15670 type=48 }` points into the country's own
+  `history`. Dated entries contain `monarch`, `heir` or `monarch_heir` blocks with the full
+  person: `name`, `dynasty`, `ADM`/`DIP`/`MIL`, `birth_date`, `personalities`, … Match on
+  `id.id` and keep the latest record. A date key can repeat, so read it with `get_all`.
+- **Leaders and advisors.** `leader` / `advisor` are also `{ id type }` references.
+  Leader details appear in `history` dated entries (`leader={ name type fire shock … }`).
+  Advisor details are not resolved yet.
+
+#### Armies and navies
+
+`army` (repeated): `name`, `location` (province id), `leader` reference, and `regiment`
+(repeated) with `type`, `morale`, `home`. Strength per regiment is not stored when full.
+`navy` has the same shape with `ship`. Totals by unit category are cached in
+`num_subunits_type_and_cat={ infantry={ normal=28 } cavalry={…} … }`.
+
+#### Estates, relations and money
+
+- `estate` (repeated): `type` (`estate_church`, …), `loyalty`, `territory` (land share %),
+  `granted_privileges`, `influence_modifier`. Total influence is computed, not stored.
+- `active_relations.<TAG>`: this country's view of another: `cached_sum` (opinion),
+  `attitude` (`attitude_rivalry`, …), and the `opinion` modifiers. To get "their opinion
+  of us", read the *other* country's `active_relations.<player tag>`.
+- `ledger`: `lastmonthincome` / `lastmonthexpense` totals and per-category arrays
+  (`lastmonthincometable`, …). The index → category mapping is not documented yet.
+- `loan` (repeated): `amount`, `interest`, `expiry_date`, `lender`.
+
+#### Wars (`active_war`, repeated)
+
+`name` (often with a leading space), `attackers` / `defenders` (current tags),
+`original_attacker` / `original_defender`, `participants` (each with `tag`, participation
+`value` and `losses.members`, a 21-slot array), `take_province` (war goal: `type`,
+`province`, `casus_belli`), `action` (start date), and `history` (dated join/leave
+events). **War score is not stored** in the save; it must be estimated or left to the
+player.
+
+#### Diplomacy block
+
+`dependency` entries have `first` (overlord), `second` (subject) and `subject_type`
+(`personal_union`, `march`, `vassal`, …). `royal_marriage`, `alliance` and `guarantee`
+use the same `first`/`second` shape.
+
+#### Dynamic countries
+
+Colonial nations and other generated tags (`C00`, `D01`, …) have no localisation entry;
+their display name is stored in the country block as `name`.
 
 ### Clausewitz syntax summary
 
@@ -128,6 +176,11 @@ autosaves rotate and may belong to a different playthrough.
 
 `<game_dir>/localisation/*_l_<language>.yml` maps tags and keys to display names
 (e.g. `countries_l_spanish.yml`: `ADE:1 "Adén"`). Files are UTF-8 with a BOM.
+Province names use `PROV<id>` keys (`PROV219` → "Toledo"). The full Spanish set is
+~129k entries and loads in ~2.3 s.
+
+The player's game language is in the user data folder's `settings.txt`:
+`language="l_spanish"`.
 
 ## Ironman
 

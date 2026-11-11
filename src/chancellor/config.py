@@ -19,12 +19,15 @@ class Settings:
             ``localisation/``). Used for readable names and game mechanics data.
         api_key: API key for the LLM provider. Only required from Phase 2 onwards.
         model: Model identifier used by the LLM client.
+        language: Localisation language (e.g. ``"spanish"``). ``None`` means detect it
+            from the game's ``settings.txt``.
     """
 
     save_dir: Path | None
     game_dir: Path | None
     api_key: str | None
     model: str = DEFAULT_MODEL
+    language: str | None = None
 
 
 def _read_dotenv(path: Path) -> dict[str, str]:
@@ -66,4 +69,5 @@ def load_settings(dotenv_path: Path | None = None) -> Settings:
         game_dir=get_path("EU4_GAME_DIR"),
         api_key=get("ANTHROPIC_API_KEY"),
         model=get("CHANCELLOR_MODEL") or DEFAULT_MODEL,
+        language=get("EU4_LANGUAGE"),
     )

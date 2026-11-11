@@ -15,11 +15,14 @@ class Settings:
 
     Attributes:
         save_dir: Folder where EU4 writes its ``.eu4`` save files.
+        game_dir: EU4 installation folder (contains ``eu4.exe``, ``common/``,
+            ``localisation/``). Used for readable names and game mechanics data.
         api_key: API key for the LLM provider. Only required from Phase 2 onwards.
         model: Model identifier used by the LLM client.
     """
 
     save_dir: Path | None
+    game_dir: Path | None
     api_key: str | None
     model: str = DEFAULT_MODEL
 
@@ -54,9 +57,13 @@ def load_settings(dotenv_path: Path | None = None) -> Settings:
     def get(key: str) -> str | None:
         return os.environ.get(key) or file_values.get(key) or None
 
-    save_dir = get("EU4_SAVE_DIR")
+    def get_path(key: str) -> Path | None:
+        value = get(key)
+        return Path(value).expanduser() if value else None
+
     return Settings(
-        save_dir=Path(save_dir).expanduser() if save_dir else None,
+        save_dir=get_path("EU4_SAVE_DIR"),
+        game_dir=get_path("EU4_GAME_DIR"),
         api_key=get("ANTHROPIC_API_KEY"),
         model=get("CHANCELLOR_MODEL") or DEFAULT_MODEL,
     )

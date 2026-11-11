@@ -8,6 +8,7 @@ Goal: know exactly where every piece of data we need lives in a `.eu4` file.
 
 - [x] Confirm local saves are non-ironman text (`EU4txt` header) — game 1.37
 - [x] Identify the two on-disk layouts: zip archive (manual saves) and raw text (autosaves)
+- [x] Locate game install, user data folder, `continue_game.json` and localisation files
 - [ ] Extract a real save and map the top-level keys of `meta` and `gamestate`
 - [ ] Locate the player country block and list the fields needed for a summary
 - [ ] Locate wars, diplomacy (alliances, rivals, subjects), armies and provinces
@@ -20,7 +21,8 @@ Goal: know exactly where every piece of data we need lives in a `.eu4` file.
 Goal: `chancellor summary` prints a compact briefing of the player's situation and copies
 it to the clipboard, ready to paste into any chat.
 
-- [ ] `save.loader`: find the newest save, open zip or raw text, return `meta` + `gamestate` text
+- [ ] `save.loader`: find the current save (prefer `continue_game.json`, fall back to newest
+  file), open zip or raw text, return `meta` + `gamestate` text
 - [ ] `save.parser`: parse Clausewitz text into Python structures (streaming-friendly)
 - [ ] `context.summarizer`: economy, military, stability/legitimacy, overextension
 - [ ] `context.summarizer`: active wars with war score and participants

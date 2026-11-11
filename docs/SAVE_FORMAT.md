@@ -49,6 +49,32 @@ _To be documented in Phase 0._
 - Strings are quoted; numbers, dates and tags are unquoted.
 - Encoding is believed to be Windows-1252, not UTF-8 (to verify against names with accents).
 
+## Related files outside the save
+
+### Locating the user data folder
+
+The install folder's `launcher-settings.json` declares
+`"gameDataPath": "%USER_DOCUMENTS%/Paradox Interactive/Europa Universalis IV"`.
+`%USER_DOCUMENTS%` is the Windows *Documents* known folder, which may be redirected
+(e.g. to OneDrive). Resolve it via the OS rather than assuming `~/Documents`.
+
+### `continue_game.json`
+
+Lives in the user data folder and points at the save the game would resume:
+
+```json
+{ "title": "Austria 1475.06.21", "date": "Tue Nov 10 21:23:34 2026\n",
+  "filename": "save games/Austria1475_06_21.eu4" }
+```
+
+A better signal of "the current campaign" than file modification time, because
+autosaves rotate and may belong to a different playthrough.
+
+### Localisation
+
+`<game_dir>/localisation/*_l_<language>.yml` maps tags and keys to display names
+(e.g. `countries_l_spanish.yml`: `ADE:1 "Adén"`). Files are UTF-8 with a BOM.
+
 ## Ironman
 
 Binary format (`EU4bin`) with tokens that map to field names. The token list is not

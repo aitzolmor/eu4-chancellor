@@ -35,9 +35,13 @@ Update those docs in the same change that makes them stale.
 
 ## Environment facts (developer machine)
 
-- OS: Windows 11. Saves live under OneDrive:
+- OS: Windows 11. Paths are set in the local `.env` (git-ignored).
+- **Game install (authoritative):** `C:\Games\Europa Universalis IV`. Other EU4 folders may
+  exist on this machine from old installs — ignore them.
+- **User data / saves:** Documents is redirected to OneDrive, so the game writes to
   `C:\Users\aitzo\OneDrive\Documentos\Paradox Interactive\Europa Universalis IV\save games`
-- Game version 1.37 ("Inca"). The user plays **non-ironman**, so saves are plain text.
+- Game version 1.37 ("Inca"), played in Spanish. The user plays **non-ironman**, so saves
+  are plain text.
 - Real saves are 5–60 MB. Read them by streaming or with `python -I` scripts; never paste a
   whole gamestate into context.
 

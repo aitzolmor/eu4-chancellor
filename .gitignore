@@ -1,0 +1,31 @@
+# --- Project-specific ---------------------------------------------------------
+# Save files: large and personal. Only trimmed fixtures in tests/fixtures/ are allowed.
+*.eu4
+!tests/fixtures/**/*.eu4
+# Secrets
+.env
+# Private notes (Spanish / personal working docs, never published)
+notes/
+# Claude Code per-user settings
+.claude/settings.local.json
+
+# --- Python -------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- Editors / OS -------------------------------------------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

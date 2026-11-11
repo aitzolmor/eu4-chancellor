@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "eu4-chancellor"
+version = "0.1.0"
+description = "AI assistant for Europa Universalis IV that reads your save files and answers questions with the real context of your campaign."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Aitzol Moreno" }]
+requires-python = ">=3.11"
+keywords = ["europa-universalis", "eu4", "paradox", "llm", "assistant", "claude"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Games/Entertainment :: Turn Based Strategy",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.6"]
+
+[project.scripts]
+chancellor = "chancellor.app.cli:main"
+
+[project.urls]
+Repository = "https://github.com/aitzolmor/eu4-chancellor"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/chancellor"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "D"]
+ignore = ["D105", "D107"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]

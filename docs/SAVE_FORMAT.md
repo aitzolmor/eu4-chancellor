@@ -13,6 +13,18 @@ Living document. Record verified facts here, with the game version they were obs
 
 Every text entry starts with the magic header `EU4txt`. Ironman saves use `EU4bin` instead.
 
+**Plain-text layout details.** The file is `EU4txt`, then the meta keys, then the
+gamestate keys starting at `players_countries=`, then an `ai={...}` block, and a single
+`checksum="..."` at the very end. There is no explicit separator: the loader splits at the
+first top-level `players_countries=` line. In the zip layout, each entry ends with its own
+`checksum` line.
+
+**Encoding.** Verified Windows-1252 (`0xE1` → `á` in `"Náinnas Yugra"`). Strict UTF-8
+decoding fails. All 23 local saves decode with zero replacement characters.
+
+**Load performance** (`save.loader.load_save`, 1.37, 38–57 MB gamestates): 0.24–0.41 s
+per save, both layouts.
+
 ### `meta`
 
 Small header, useful for picking a save without parsing the gamestate:
@@ -47,7 +59,7 @@ _To be documented in Phase 0._
 - `key=value`, `key={ ... }`, and bare-value lists `{ a b c }`.
 - Keys can repeat (e.g. multiple `active_war` blocks) — the parser must keep all occurrences.
 - Strings are quoted; numbers, dates and tags are unquoted.
-- Encoding is believed to be Windows-1252, not UTF-8 (to verify against names with accents).
+- Encoding is Windows-1252, not UTF-8 (see above).
 
 ## Related files outside the save
 

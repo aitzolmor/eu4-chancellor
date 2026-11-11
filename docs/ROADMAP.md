@@ -21,7 +21,7 @@ Goal: know exactly where every piece of data we need lives in a `.eu4` file.
 Goal: `chancellor summary` prints a compact briefing of the player's situation and copies
 it to the clipboard, ready to paste into any chat.
 
-- [ ] `save.loader`: find the current save (prefer `continue_game.json`, fall back to newest
+- [x] `save.loader`: find the current save (prefer `continue_game.json`, fall back to newest
   file), open zip or raw text, return `meta` + `gamestate` text
 - [ ] `save.parser`: parse Clausewitz text into Python structures (streaming-friendly)
 - [ ] `context.summarizer`: economy, military, stability/legitimacy, overextension

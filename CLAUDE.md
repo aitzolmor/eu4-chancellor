@@ -8,6 +8,8 @@ Longer material lives in `docs/` and is read on demand.
 **eu4-chancellor** — an AI assistant for Europa Universalis IV. It reads the player's
 save files (`.eu4`), extracts the relevant state of the campaign, and lets an LLM answer
 questions with that real context. Personal project, built to portfolio quality.
+Primary goal: automatic campaign context. Secondary: game + chat in one docked workspace,
+charts (PDX Tools-style), and — long term — Claude acting in-game via computer use.
 
 ## Conventions (non-negotiable)
 
@@ -23,6 +25,7 @@ questions with that real context. Personal project, built to portfolio quality.
 
 | Need | Read |
 | --- | --- |
+| Goals and priorities | `docs/VISION.md` |
 | Phases and current task list | `docs/ROADMAP.md` |
 | How modules fit together | `docs/ARCHITECTURE.md` |
 | Facts about the `.eu4` save format | `docs/SAVE_FORMAT.md` |

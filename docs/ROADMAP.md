@@ -29,15 +29,17 @@ it to the clipboard, ready to paste into any chat.
 - [ ] `app.cli`: `summary` command with `--save` and `--copy` options
 - [ ] Unit tests against fixtures; performance check on a 50 MB autosave
 
-## Phase 2 — Chat window
+## Phase 2 — Chat workspace
 
-Goal: a small always-on-top window next to the game that answers questions using the
-latest save as context.
+Goal: a desktop app docked beside the game that answers questions using the latest save
+as context. See [VISION.md](VISION.md) for the comfort goal.
 
-- [ ] `config`: load API key, save dir and model from `.env`
+- [x] `config`: load API key, save dir and model from `.env`
 - [ ] `llm.client`: Claude API wrapper with streaming and prompt caching of the summary
 - [ ] `watcher`: detect new saves and refresh the cached summary
-- [ ] `app.ui`: always-on-top chat window with a global hotkey
+- [ ] `app.ui`: web-based desktop window (pywebview or similar) with a chat view
+- [ ] Docked layout: position EU4 as a borderless window and dock the panel beside it
+- [ ] Overlay mode toggled by a global hotkey
 - [ ] Show which save/date the answer is based on
 - [ ] Conversation history within a session
 
@@ -50,8 +52,24 @@ Goal: the model decides what to look up instead of receiving a fixed summary.
 - [ ] Mechanics reference: EU4 wiki and/or game files (`common/`) as a retrieval source
 - [ ] Evaluation set of real questions with expected reasoning
 
+## Phase 4 — Charts and insight
+
+Goal: visual analysis of the campaign inside the workspace.
+
+- [ ] Evaluate PDX Tools: link, embed in a tab, or reuse its open-source parsing libraries
+- [ ] Charts view: income/expense breakdown, army strength, development
+- [ ] Save history: index past saves and chart trends over time
+- [ ] Let the model reference charts in its answers
+
+## Phase 5 — Claude plays (experimental)
+
+Goal: explore how far the assistant can act, not just advise.
+
+- [ ] Advise: structured action recommendations
+- [ ] Guide: exact UI steps for each recommendation
+- [ ] Act: computer-use prototype that performs approved actions while the game is paused
+
 ## Ideas / later
 
 - Ironman support via a token file
-- Historical comparison between saves ("how has my economy changed since 1500?")
 - Package as a single executable

@@ -30,10 +30,13 @@ flowchart LR
 | --- | --- | --- |
 | 0 | Understand and document the save format | In progress |
 | 1 | CLI that copies a campaign summary to the clipboard | Planned |
-| 2 | Always-on-top chat window that auto-attaches the summary | Planned |
+| 2 | Chat workspace docked beside the game, auto-attaching the summary | Planned |
 | 3 | Tool-using agent that can query any country, province or war | Planned |
+| 4 | Charts and trends across your saves | Planned |
+| 5 | Experimental: Claude acts in-game through computer use | Idea |
 
-See [docs/ROADMAP.md](docs/ROADMAP.md) for the detailed task list.
+See [docs/VISION.md](docs/VISION.md) for the goals and [docs/ROADMAP.md](docs/ROADMAP.md)
+for the detailed task list.
 
 ## Installation (development)
 
@@ -65,6 +68,7 @@ chancellor chat                 # Phase 2: open the chat window
 
 ## Documentation
 
+- [Vision](docs/VISION.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Save format notes](docs/SAVE_FORMAT.md)
 - [Design decisions](docs/DECISIONS.md)

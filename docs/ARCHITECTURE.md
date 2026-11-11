@@ -35,6 +35,10 @@ flowchart LR
 | `app.ui` | Always-on-top chat window | 2 |
 | `context.tools` | Query functions exposed to the model as tools | 3 |
 
+Planned later (not yet scaffolded): a window-layout module that docks EU4 beside the app
+(Phase 2), a charts/history module (Phase 4), and a computer-use actor (Phase 5).
+See [VISION.md](VISION.md).
+
 ## Design principles
 
 - **Layers only depend downward.** `save` knows nothing about LLMs; `context` knows nothing

@@ -9,12 +9,13 @@ Goal: know exactly where every piece of data we need lives in a `.eu4` file.
 - [x] Confirm local saves are non-ironman text (`EU4txt` header) — game 1.37
 - [x] Identify the two on-disk layouts: zip archive (manual saves) and raw text (autosaves)
 - [x] Locate game install, user data folder, `continue_game.json` and localisation files
-- [ ] Extract a real save and map the top-level keys of `meta` and `gamestate`
-- [ ] Locate the player country block and list the fields needed for a summary
-- [ ] Locate wars, diplomacy (alliances, rivals, subjects), armies and provinces
-- [ ] Document findings in [SAVE_FORMAT.md](SAVE_FORMAT.md)
-- [ ] Decide parsing strategy (own parser vs. existing library) — record in [DECISIONS.md](DECISIONS.md)
-- [ ] Trim small anonymized fixtures into `tests/fixtures/`
+- [x] Extract a real save and map the top-level keys of `meta` and `gamestate`
+- [x] Locate the player country block and list the fields needed for a summary
+- [x] Locate wars and diplomacy blocks
+- [ ] Map war internals (participants, war score), armies, provinces and ruler references
+- [x] Document findings in [SAVE_FORMAT.md](SAVE_FORMAT.md)
+- [x] Decide parsing strategy (own parser vs. existing library) — D-003, D-008
+- [ ] Trim small fixtures from a real save into `tests/fixtures/`
 
 ## Phase 1 — Summary to clipboard (MVP)
 
@@ -23,7 +24,7 @@ it to the clipboard, ready to paste into any chat.
 
 - [x] `save.loader`: find the current save (prefer `continue_game.json`, fall back to newest
   file), open zip or raw text, return `meta` + `gamestate` text
-- [ ] `save.parser`: parse Clausewitz text into Python structures (streaming-friendly)
+- [x] `save.parser`: parse Clausewitz text into Python structures, with lazy parsing
 - [ ] `context.summarizer`: economy, military, stability/legitimacy, overextension
 - [ ] `context.summarizer`: active wars with war score and participants
 - [ ] `context.summarizer`: allies, rivals, subjects, neighbours with relative strength

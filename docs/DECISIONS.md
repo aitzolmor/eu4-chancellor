@@ -22,10 +22,13 @@ always-on-top window, toggled with a hotkey, gives a near-integrated experience.
 
 ## D-003 — Parsing strategy
 
-**Date:** — · **Status:** Open (Phase 0)
+**Date:** 2026-11-11 · **Status:** Accepted (see D-008)
 
-Options: a hand-written Clausewitz parser in Python, an existing Python package, or
-bindings to the Rust `eu4save` / `jomini` crates. Decide after measuring on real saves.
+Options were a hand-written Clausewitz parser in Python, an existing Python package, or
+bindings to the Rust `eu4save` / `jomini` crates. Chosen: a hand-written Python parser.
+It has no native build step, handles the quirks seen in real saves, and is fast enough
+when combined with lazy parsing (D-008). Native bindings stay an option if full-world
+analysis (Phase 4 charts) needs it.
 
 ## D-004 — Non-ironman only, initially
 
@@ -58,3 +61,13 @@ as a borderless window and docks its own panel beside it, with an optional hotke
 Mods cannot communicate with external processes, so any "Claude plays" feature must act
 through screen-level control (screenshots and input). It is scoped as an experimental
 final phase, with explicit player approval for every action.
+
+## D-008 — Lazy parsing of the gamestate
+
+**Date:** 2026-11-11 · **Status:** Accepted
+
+A full parse of a late-game gamestate takes ~19 s in pure Python, mostly in the
+per-token loop. A brace-counting pre-pass (regex, C speed) can locate every block without
+building it. `parse_lazy` parses one level and leaves nested blocks as `LazyBlock`
+objects that parse on demand. Reaching the player's country costs ~2.4 s in the worst
+local save, instead of 19 s, and the result is identical to a full parse.

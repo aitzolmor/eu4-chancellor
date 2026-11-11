@@ -27,7 +27,7 @@ flowchart LR
 | --- | --- | --- |
 | `config` | Load settings from environment / `.env` | 1 |
 | `save.loader` | Locate the newest save; open zip or raw text; detect ironman | 1 |
-| `save.parser` | Turn Clausewitz text into nested Python data | 1 |
+| `save.parser` | Turn Clausewitz text into nested Python data; `parse_lazy` defers nested blocks so only what is needed gets parsed | 1 |
 | `context.summarizer` | Build a compact, LLM-friendly briefing of the player's situation | 1 |
 | `app.cli` | Command-line entry point (`chancellor`) | 1 |
 | `llm.client` | Talk to the LLM API: streaming, caching, tool-use loop | 2–3 |

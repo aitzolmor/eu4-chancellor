@@ -45,21 +45,63 @@ dlc_enabled={ "Conquest of Paradise" "Wealth of Nations" ... }
 
 ### `gamestate`
 
-_To be documented in Phase 0._
+About 11 million tokens and 59 top-level keys (Castilla, 1525). Almost all the weight is in
+two blocks:
 
-- [ ] Top-level keys and their approximate sizes
-- [ ] `countries` → player block: treasury, manpower, stability, legitimacy, ideas, estates
-- [ ] `active_war` / `previous_war`
-- [ ] `diplomacy` (alliances, royal marriages, subjects)
-- [ ] `provinces`
-- [ ] Armies and navies
+| Key | Size | Contents |
+| --- | --- | --- |
+| `countries` | ~40 MB | One block per tag (~1,380, including dead/dynamic tags such as `---`) |
+| `provinces` | ~12.5 MB | One block per province id; ids are negative (`-1`, `-2`, …) |
+| `trade` | ~1.4 MB | Trade nodes |
+| `income_statistics`, `nation_size_statistics`, `inflation_statistics`, `score_statistics` | <0.4 MB each | Yearly ledgers per country |
+| `diplomacy` | ~0.3 MB | `alliance`, `guarantee`, `dependency` (subjects), `royal_marriage`, `casus_belli`, `war_reparations`, … |
+| `active_war` (repeated) | small | Every ongoing war in the world, not just the player's |
+| `previous_war` (repeated) | ~0.5 MB | Finished wars |
+| `map_area_data` | ~0.1 MB | Written as `map_area_data{` with no `=` |
+
+Other notable top-level keys: `players_countries`, `start_date`, `great_powers`, `empire`
+(HRE), `celestial_empire`, `religions`, `institutions`, `trade_league`, `rebel_faction`.
+
+#### Player country (`countries.<TAG>`)
+
+~213 keys. The ones most useful for a briefing:
+
+| Area | Keys |
+| --- | --- |
+| Identity | `government_name`, `government_rank`, `primary_culture`, `accepted_culture` (repeated), `religion`, `technology_group`, `capital`, `is_great_power` |
+| Economy | `treasury`, `estimated_monthly_income`, `ledger`, `inflation`, `corruption`, `loan` (repeated), `estimated_loan`, `mercantilism` |
+| Stability | `stability`, `legitimacy`, `prestige`, `war_exhaustion`, `overextension_percentage`, `average_unrest`, `religious_unity` |
+| Military | `manpower`/`max_manpower` (thousands), `sailors`/`max_sailors`, `army` and `navy` (repeated), `army_tradition`, `navy_tradition`, `army_professionalism`, `leader` (repeated), `mercenary_company` (repeated) |
+| Development | `development`, `raw_development`, `num_of_cities`, `owned_provinces`, `core_provinces`, `claim_provinces` |
+| Diplomacy | `allies`, `subjects`, `rival` (repeated), `enemy` (repeated), `neighbours`, `friend_tags`, `coalition_against_us` (repeated), `active_relations` |
+| Progress | `technology` (`adm_tech`/`dip_tech`/`mil_tech`), `active_idea_groups`, `government` (reforms), `estate` (repeated), `completed_missions`, `innovativeness`, `splendor` |
+| Ruler | `monarch` and `heir` hold only `{ id type }` references; details must be resolved elsewhere (to investigate) |
+
+Values such as `manpower=33.343` are in thousands; `overextension_percentage=0.312` is a
+ratio (31.2 %).
 
 ### Clausewitz syntax summary
 
 - `key=value`, `key={ ... }`, and bare-value lists `{ a b c }`.
+- `key{ ... }` without `=` also occurs (`map_area_data`).
 - Keys can repeat (e.g. multiple `active_war` blocks) — the parser must keep all occurrences.
-- Strings are quoted; numbers, dates and tags are unquoted.
+- Strings are quoted; numbers, dates and tags are unquoted. Booleans are `yes`/`no`.
+- **Indentation is not reliable**: some nested blocks are written at column 0, so section
+  boundaries must be found by counting braces, never by indentation.
+- No comments or escaped quotes appear in saves (they do in game data files).
 - Encoding is Windows-1252, not UTF-8 (see above).
+
+### Parsing performance (pure Python, 57 MB gamestate)
+
+| Operation | Time |
+| --- | --- |
+| Tokenise whole gamestate (11.3 M tokens) | 4.8 s |
+| Full parse | 19 s |
+| `parse_lazy` top level | 1.4 s |
+| `countries` one level deep | 0.9 s |
+| Full parse of one country | 0.02 s |
+
+Hence D-008: parse lazily and only what is needed.
 
 ## Related files outside the save
 

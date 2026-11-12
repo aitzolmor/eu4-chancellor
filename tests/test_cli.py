@@ -179,3 +179,19 @@ def test_world(configured, capsys):
     out = capsys.readouterr().out
     assert out.startswith("# World overview, 1471.10.2")
     assert "## Largest countries" in out
+
+
+# --- missions --------------------------------------------------------------------------
+
+
+def test_missions_need_game_dir(monkeypatch, tmp_path: Path, capsys):
+    monkeypatch.setenv("EU4_SAVE_DIR", str(make_save_dir(tmp_path)))
+    assert main(["missions"]) == 1
+    assert "EU4_GAME_DIR" in capsys.readouterr().err
+
+
+def test_missions_without_tree(configured, capsys):
+    assert main(["missions", "--brief"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("# Missions: Austria (HAB)")
+    assert "records no mission tree" in out

@@ -56,6 +56,7 @@ chancellor summary          # briefing of the current campaign (uses .env paths)
 chancellor country Borgoña  # briefing of any country (tag or name)
 chancellor war-check Venecia  # who would fight on each side
 chancellor world            # great powers, rankings, alliances, wars
+chancellor missions         # mission tree with progress (reads game files)
 ```
 
 Exploring real saves: load with `chancellor.save.loader.load_save`, then `parse_lazy` and

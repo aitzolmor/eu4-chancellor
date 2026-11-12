@@ -11,10 +11,12 @@ from chancellor import __version__
 from chancellor.app.clipboard import ClipboardError, copy_to_clipboard
 from chancellor.config import Settings, load_settings
 from chancellor.context.campaign import Campaign, CountryLookupError
+from chancellor.context.missions import mission_tree, render_missions
 from chancellor.context.summarizer import summarize
 from chancellor.context.war_check import check_war, render_war_check
 from chancellor.context.world import render_world, world_overview
 from chancellor.game.localisation import Localisation, detect_language
+from chancellor.game.missions import MissionLibrary
 from chancellor.save.loader import SaveFormatError, find_current_save, load_save
 
 
@@ -86,6 +88,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     world.add_argument("--top", type=int, default=10, help="Countries per ranking (default 10).")
 
+    missions = sub.add_parser(
+        "missions",
+        parents=[common],
+        help="Mission tree of a country with progress, requirements and rewards.",
+        description=(
+            "Show a country's mission tree (default: yours) from the game files, marking "
+            "what is completed, available now and locked, with requirements and rewards."
+        ),
+    )
+    missions.add_argument("name", nargs="*", help="Country tag or name (default: you).")
+    missions.add_argument(
+        "--brief", action="store_true", help="Only titles and status, no requirements/rewards."
+    )
+
     sub.add_parser("chat", help="Open the chat window (Phase 4, not implemented yet).")
     return parser
 
@@ -123,6 +139,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             campaign, save_path = _load_campaign(args, load_settings())
             overview = world_overview(campaign, top=max(1, args.top))
             return _emit(args, render_world(campaign, overview), "World overview")
+        if args.command == "missions":
+            settings = load_settings()
+            if settings.game_dir is None:
+                raise CliError("Missions are read from the game files; set EU4_GAME_DIR.")
+            campaign, _ = _load_campaign(args, settings)
+            tag = campaign.resolve_country(" ".join(args.name)) if args.name else campaign.player
+            tree = mission_tree(campaign, MissionLibrary.load(settings.game_dir), tag)
+            text = render_missions(campaign, tree, brief=args.brief)
+            return _emit(args, text, f"Missions of {campaign.label(tag)}")
     except ValueError as exc:  # e.g. a country attacking itself
         return _fail(str(exc))
     except (CliError, CountryLookupError) as exc:

@@ -17,9 +17,12 @@ precise, and the LLM reading the briefing knows them.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from typing import Any
 
 from chancellor.context.campaign import DYNAMIC_TAG, Campaign
+from chancellor.game.localisation import Localisation
+from chancellor.game.modifiers import ModifierLibrary, format_effect
 from chancellor.save.parser import Repeated, parse
 
 _SKIPPED_KEYS = {
@@ -36,6 +39,7 @@ _GEOGRAPHY = re.compile(r"_(area|region|superregion|continent)$")
 _FORMATTING = re.compile(r"§.|£\w+£?")
 _GET_NAME = re.compile(r"\[(\w{3})\.Get\w*Name\w*\]")
 _OTHER_PLACEHOLDERS = re.compile(r"\[[^\]]*\]")
+_TRIGGERED_MODIFIER_EFFECTS = {"add_province_triggered_modifier", "add_triggered_modifier"}
 _MODIFIER_EFFECTS = {
     "add_country_modifier",
     "add_province_modifier",
@@ -59,24 +63,30 @@ _PROVINCE_KEYS = {
 _PROVINCE_SCOPED = {"area", "region", "superregion", "province_id"}
 
 
-def describe(script: dict[str, Any], campaign: Campaign, max_lines: int = 12) -> list[str]:
+def describe(
+    script: dict[str, Any],
+    campaign: Campaign,
+    max_lines: int = 12,
+    modifiers: ModifierLibrary | None = None,
+) -> list[str]:
     """Describe a trigger or effect block as indented Markdown list lines.
 
     Args:
         script: Parsed trigger or effect.
         campaign: Supplies names (localisation and save).
         max_lines: Truncate after this many lines; a final ``…`` line marks the cut.
+        modifiers: Modifier definitions; when given, granted modifiers list their bonuses.
 
     Returns:
         Lines such as ``"- owns_core_province: Praga (#266)"`` (two spaces per level).
     """
-    lines = _block(script, campaign, 0)
+    lines = _block(script, _Ctx(campaign, modifiers), 0)
     if len(lines) > max_lines:
         lines = [*lines[:max_lines], "- …"]
     return lines
 
 
-def clean_text(text: str, campaign: Campaign) -> str:
+def clean_text(text: str, campaign: Campaign | _Ctx) -> str:
     """Strip colour codes and resolve ``[TAG.GetName]`` in localised text."""
     text = _GET_NAME.sub(lambda m: campaign.name(m.group(1)), text)
     text = _OTHER_PLACEHOLDERS.sub("", text)
@@ -88,7 +98,25 @@ def clean_text(text: str, campaign: Campaign) -> str:
 # --- internals -------------------------------------------------------------------------
 
 
-def _block(script: dict[str, Any], campaign: Campaign, depth: int) -> list[str]:
+@dataclass
+class _Ctx:
+    """What the describers need: names from the campaign and modifier definitions."""
+
+    campaign: Campaign
+    modifiers: ModifierLibrary | None
+
+    @property
+    def loc(self) -> Localisation:
+        return self.campaign.loc
+
+    def name(self, tag: str) -> str:
+        return self.campaign.name(tag)
+
+    def label(self, tag: str) -> str:
+        return self.campaign.label(tag)
+
+
+def _block(script: dict[str, Any], campaign: _Ctx, depth: int) -> list[str]:
     lines: list[str] = []
     branches: dict[str, dict[str, Any]] = {}
     for key, value in script.items():
@@ -106,7 +134,7 @@ def _block(script: dict[str, Any], campaign: Campaign, depth: int) -> list[str]:
     return lines
 
 
-def _entry(key: str, value: Any, campaign: Campaign, depth: int) -> list[str]:
+def _entry(key: str, value: Any, campaign: _Ctx, depth: int) -> list[str]:
     pad = "  " * depth
     if key == "custom_tooltip":
         if isinstance(value, str) and value not in _SEPARATORS:
@@ -128,6 +156,8 @@ def _entry(key: str, value: Any, campaign: Campaign, depth: int) -> list[str]:
         return [f"{pad}- Otherwise:", *_block(value, campaign, depth + 1)]
     if key in _MODIFIER_EFFECTS and isinstance(value, dict) and "name" in value:
         return [f"{pad}- {key}: {_modifier(value, campaign)}"]
+    if key in _TRIGGERED_MODIFIER_EFFECTS and isinstance(value, str):
+        return [f"{pad}- {key}: {_modifier({'name': value}, campaign)}"]
     if key == "complex_dynamic_effect" and isinstance(value, dict):
         return _block(value, campaign, depth)
     if isinstance(value, str) and _looks_like_script(value):
@@ -145,7 +175,7 @@ def _entry(key: str, value: Any, campaign: Campaign, depth: int) -> list[str]:
     return [f"{pad}- {_key(key, campaign)}: {_value(key, value, campaign)}"]
 
 
-def _branch(parts: dict[str, Any], campaign: Campaign, depth: int) -> list[str]:
+def _branch(parts: dict[str, Any], campaign: _Ctx, depth: int) -> list[str]:
     pad = "  " * depth
     tooltip = parts.get("custom_tooltip")
     if isinstance(tooltip, str):
@@ -156,7 +186,7 @@ def _branch(parts: dict[str, Any], campaign: Campaign, depth: int) -> list[str]:
     return [f"{pad}- {title}:", *_block(effect, campaign, depth + 1)]
 
 
-def _modifier(block: dict[str, Any], campaign: Campaign) -> str:
+def _modifier(block: dict[str, Any], campaign: _Ctx) -> str:
     """``Corona de Bohemia (hab_union_with_bohemia, 15 years)``."""
     name = str(block["name"])
     title = clean_text(campaign.loc.get(name, ""), campaign)
@@ -170,10 +200,14 @@ def _modifier(block: dict[str, Any], campaign: Campaign) -> str:
         span = ""
     details = ", ".join(filter(None, [name if title else "", span]))
     shown = title or name
-    return f"{shown} ({details})" if details else shown
+    text = f"{shown} ({details})" if details else shown
+    effects = campaign.modifiers.effects(name) if campaign.modifiers else []
+    if effects:
+        text += ": " + ", ".join(format_effect(s, v, campaign.loc) for s, v in effects)
+    return text
 
 
-def _inline(limit: Any, campaign: Campaign) -> str:
+def _inline(limit: Any, campaign: _Ctx) -> str:
     """A condition on one line, e.g. ``(senior_union_with: Bohemia (BOH))``."""
     if not isinstance(limit, dict):
         return "(condition)"
@@ -193,7 +227,7 @@ def _looks_like_script(text: str) -> bool:
     return "=" in text and ("\n" in text or "{" in text)
 
 
-def _key(key: str, campaign: Campaign) -> str:
+def _key(key: str, campaign: _Ctx) -> str:
     if _is_tag(key):
         return campaign.label(key)
     if key.lstrip("-").isdigit():
@@ -203,7 +237,7 @@ def _key(key: str, campaign: Campaign) -> str:
     return key
 
 
-def _value(key: str, value: Any, campaign: Campaign) -> str:
+def _value(key: str, value: Any, campaign: _Ctx) -> str:
     if value is True:
         return "yes"
     if value is False:
@@ -218,12 +252,12 @@ def _value(key: str, value: Any, campaign: Campaign) -> str:
     return str(value)
 
 
-def _province(province_id: int | str, campaign: Campaign) -> str:
+def _province(province_id: int | str, campaign: _Ctx) -> str:
     number = str(province_id).lstrip("-")
     return f"{campaign.loc.province(number)} (#{number})"
 
 
-def _localised(key: str, campaign: Campaign) -> str:
+def _localised(key: str, campaign: _Ctx) -> str:
     text = campaign.loc.get(key, "")
     return clean_text(text, campaign) if text else key.replace("_", " ")
 

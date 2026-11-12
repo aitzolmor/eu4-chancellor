@@ -64,7 +64,8 @@ Goal: the assistant knows the game's content and can cross it with the campaign 
 - [ ] Index events and idea groups from `events/` and `common/`
 - [x] `chancellor missions [<country>]`: mission tree with completion status from the save
 - [x] Readable trigger/effect descriptions (`context.script`), localised names and tooltips
-- [ ] Resolve modifier effects (`common/event_modifiers`) so rewards show their real bonuses
+- [x] Resolve modifier effects (`common/event_modifiers`, triggered modifiers) so rewards show
+  their real bonuses (99.9% of mission modifier grants)
 - [ ] "Expansion targets" view: mission/claim targets combined with `war-check` results
 - [ ] Wiki lookup as a complementary source for strategy and mechanics
 

@@ -14,6 +14,7 @@ from typing import Literal
 from chancellor.context.campaign import Campaign, as_list
 from chancellor.context.script import clean_text, describe
 from chancellor.game.missions import Mission, MissionLibrary
+from chancellor.game.modifiers import ModifierLibrary
 
 Status = Literal["completed", "available", "locked"]
 
@@ -105,12 +106,18 @@ def mission_tree(campaign: Campaign, library: MissionLibrary, tag: str) -> Missi
     return MissionTree(tag=tag, columns=columns, unknown_series=unknown)
 
 
-def render_missions(campaign: Campaign, tree: MissionTree, brief: bool = False) -> str:
+def render_missions(
+    campaign: Campaign,
+    tree: MissionTree,
+    brief: bool = False,
+    modifiers: ModifierLibrary | None = None,
+) -> str:
     """Render a mission tree as Markdown.
 
     Completed missions take one line each. Available missions show their requirements
     and rewards; locked ones show what unlocks them and their rewards. With ``brief``,
-    only titles and status are shown.
+    only titles and status are shown. With ``modifiers``, granted modifiers list their
+    bonuses.
     """
     lines = [
         f"# Missions: {campaign.label(tree.tag)}, {campaign.date}",
@@ -135,7 +142,7 @@ def render_missions(campaign: Campaign, tree: MissionTree, brief: bool = False) 
             lines.append("No missions.")
             continue
         for state in column.missions:
-            lines += _render_state(campaign, state, titles, brief)
+            lines += _render_state(campaign, state, titles, brief, modifiers)
 
     if tree.unknown_series:
         lines += [
@@ -173,7 +180,11 @@ def _state(campaign: Campaign, mission: Mission, completed: set[str]) -> Mission
 
 
 def _render_state(
-    campaign: Campaign, state: MissionState, titles: dict[str, str], brief: bool
+    campaign: Campaign,
+    state: MissionState,
+    titles: dict[str, str],
+    brief: bool,
+    modifiers: ModifierLibrary | None,
 ) -> list[str]:
     mark = {"completed": "[x]", "available": "[ ]", "locked": "[-]"}[state.status]
     name = f"{state.title} (`{state.mission.name}`)"
@@ -190,9 +201,13 @@ def _render_state(
     lines = [header]
     if state.status == "available" and state.mission.trigger:
         lines.append("  - Requires:")
-        lines += ["    " + line for line in describe(state.mission.trigger, campaign)]
+        lines += [
+            "    " + line for line in describe(state.mission.trigger, campaign, 12, modifiers)
+        ]
     if state.mission.effect:
         lines.append("  - Rewards:")
         limit = 12 if state.status == "available" else 6
-        lines += ["    " + line for line in describe(state.mission.effect, campaign, limit)]
+        lines += [
+            "    " + line for line in describe(state.mission.effect, campaign, limit, modifiers)
+        ]
     return lines

@@ -17,6 +17,7 @@ from chancellor.context.war_check import check_war, render_war_check
 from chancellor.context.world import render_world, world_overview
 from chancellor.game.localisation import Localisation, detect_language
 from chancellor.game.missions import MissionLibrary
+from chancellor.game.modifiers import ModifierLibrary
 from chancellor.save.loader import SaveFormatError, find_current_save, load_save
 
 
@@ -146,7 +147,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             campaign, _ = _load_campaign(args, settings)
             tag = campaign.resolve_country(" ".join(args.name)) if args.name else campaign.player
             tree = mission_tree(campaign, MissionLibrary.load(settings.game_dir), tag)
-            text = render_missions(campaign, tree, brief=args.brief)
+            modifiers = ModifierLibrary.load(settings.game_dir)
+            text = render_missions(campaign, tree, brief=args.brief, modifiers=modifiers)
             return _emit(args, text, f"Missions of {campaign.label(tag)}")
     except ValueError as exc:  # e.g. a country attacking itself
         return _fail(str(exc))

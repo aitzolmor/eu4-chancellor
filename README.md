@@ -30,10 +30,11 @@ flowchart LR
 | --- | --- | --- |
 | 0 | Understand and document the save format | Mostly done |
 | 1 | CLI that copies a campaign summary to the clipboard | Working MVP |
-| 2 | Chat workspace docked beside the game, auto-attaching the summary | Planned |
-| 3 | Tool-using agent that can query any country, province or war | Planned |
-| 4 | Charts and trends across your saves | Planned |
-| 5 | Experimental: Claude acts in-game through computer use | Idea |
+| 2 | Query tools: any country's briefing, war feasibility, world overview | In progress |
+| 3 | Game knowledge: missions, decisions and events crossed with the campaign | Planned |
+| 4 | Chat workspace docked beside the game, with an agent that uses the tools | Planned |
+| 5 | Charts and trends across your saves | Planned |
+| 6 | Experimental: Claude acts in-game through computer use | Idea |
 
 See [docs/VISION.md](docs/VISION.md) for the goals and [docs/ROADMAP.md](docs/ROADMAP.md)
 for the detailed task list.
@@ -58,11 +59,15 @@ cp .env.example .env            # then fill in your values
 chancellor summary              # print a briefing of your current campaign
 chancellor summary --copy       # ...and copy it to the clipboard, ready to paste into a chat
 chancellor summary --save "path/to/save.eu4" --output briefing.md
+chancellor country Borgoña      # the same briefing for any country, plus its relation to you
+chancellor country BUR --copy   # tags work too; names are accent- and case-insensitive
 ```
 
 The briefing is a compact Markdown document (about 1k tokens) covering ruler, stability,
 economy, military, territory, technology and ideas, estates, diplomacy, ongoing wars and
-a table of key countries, with names in your game's language.
+a table of key countries, with names in your game's language. Briefings of other countries
+add how they relate to you (alliances, rivalries, wars, borders, opinions) and a side-by-side
+strength comparison.
 
 ```text
 # Campaign briefing: Castilla (CAS), 1525.6.30
@@ -76,7 +81,8 @@ a table of key countries, with names in your game's language.
 | Francia (FRA) | our rival, rivals us, neighbour | 714 | 64 | 10 | -46 (Rivalidad) |
 ```
 
-Coming next: `chancellor chat`, a chat window docked beside the game (Phase 2).
+Coming next: queries about any country and possible wars (Phase 2), then game knowledge
+and a chat window docked beside the game.
 
 ## Limitations
 

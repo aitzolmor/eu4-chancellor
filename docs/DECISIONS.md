@@ -71,3 +71,23 @@ per-token loop. A brace-counting pre-pass (regex, C speed) can locate every bloc
 building it. `parse_lazy` parses one level and leaves nested blocks as `LazyBlock`
 objects that parse on demand. Reaching the player's country costs ~2.4 s in the worst
 local save, instead of 19 s, and the result is identical to a full parse.
+
+## D-009 — Query tools before the chat; one implementation for CLI and agent
+
+**Date:** 2026-11-12 · **Status:** Accepted
+
+Real questions are about any country, possible wars and the wider world, not only the
+player's own realm. Each kind of question becomes a query function returning structured
+data (dataclasses). The CLI renders the data as Markdown for copy-paste use now. The chat
+agent (Phase 4) calls the same functions as tools, so the player never supplies context
+by hand. Building the tools first means the chat is useful from its first version.
+Phases were reordered: query tools (2), game knowledge (3), chat with agent (4).
+
+## D-010 — Game files as the primary knowledge source
+
+**Date:** 2026-11-12 · **Status:** Accepted
+
+Long-term planning needs game content: missions, events, decisions and formables. The
+player's own installation provides it in the exact installed version, and in the
+Clausewitz syntax the existing parser reads. The EU4 wiki can lag behind patches, so it
+is a secondary source, used for strategy and mechanics explanations.

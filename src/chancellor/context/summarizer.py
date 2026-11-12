@@ -1,107 +1,99 @@
-"""Build a compact, LLM-friendly briefing of the player's situation (Phase 1).
+"""Build a compact, LLM-friendly briefing of a country's situation.
 
 The briefing is Markdown: short sections of key facts plus a table of the countries that
-matter most to the player (allies, rivals, subjects, enemies at war, neighbours). It is
-designed to fit comfortably in a prompt (a few thousand tokens), never raw save data.
+matter most to the subject country (allies, rivals, subjects, enemies at war, neighbours).
+It can be written from any country's perspective; when the subject is not the player, a
+section on its relation to the player is added. It is designed to fit comfortably in a
+prompt (a few thousand tokens), never raw save data.
 """
 
 from __future__ import annotations
 
-import re
 from collections.abc import Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
+from chancellor.context.campaign import Campaign, as_list
 from chancellor.game.localisation import Localisation
 from chancellor.save.loader import RawSave
-from chancellor.save.parser import LazyBlock, get_all, parse, parse_lazy
+from chancellor.save.parser import get_all
 
-_MONARCH_KEYS = ("monarch", "heir", "monarch_heir", "queen", "monarch_consort")
-_DYNAMIC_TAG = re.compile(r"^[A-Z]\d\d$")
+_MONARCH_KEYS = (
+    "monarch",
+    "heir",
+    "monarch_heir",
+    "foreign_heir",  # elective monarchies such as Poland and Lithuania
+    "queen",
+    "monarch_consort",
+)
 
 
 @dataclass
 class _Context:
-    """Everything the section builders need."""
+    """The campaign plus the country the briefing is about."""
 
+    campaign: Campaign
     tag: str
-    date: str
     country: dict[str, Any]
-    countries: dict[str, Any]
-    gamestate: dict[str, Any]
-    loc: Localisation
-    _cache: dict[str, dict[str, Any] | None] = field(default_factory=dict)
+
+    @property
+    def date(self) -> str:
+        return self.campaign.date
+
+    @property
+    def loc(self) -> Localisation:
+        return self.campaign.loc
+
+    @property
+    def is_player(self) -> bool:
+        return self.tag == self.campaign.player
 
     def other(self, tag: str) -> dict[str, Any] | None:
-        """Fully parse another country, with caching."""
-        if tag not in self._cache:
-            block = self.countries.get(tag)
-            if isinstance(block, LazyBlock):
-                block = block.parse()
-            self._cache[tag] = block if isinstance(block, dict) else None
-        return self._cache[tag]
+        return self.campaign.country(tag)
 
     def name(self, tag: str) -> str:
-        """Display name of a country, including custom names of dynamic tags."""
-        if _DYNAMIC_TAG.match(tag):  # colonial nations etc. store their name in the save
-            self.other(tag)
-        data = self._cache.get(tag)
-        if data and isinstance(data.get("name"), str):
-            return data["name"]
-        return self.loc.country(tag)
+        return self.campaign.name(tag)
 
     def text(self, key: str) -> str:
-        """Localised text for a game key, humanised if no translation exists."""
-        return self.loc.get(key, key.replace("_", " "))
+        return self.campaign.text(key)
 
 
-def summarize_save(raw: RawSave, loc: Localisation | None = None) -> str:
+def summarize_save(raw: RawSave, loc: Localisation | None = None, tag: str | None = None) -> str:
     """Produce a briefing from a loaded save.
 
     Args:
         raw: Save sections returned by :func:`chancellor.save.loader.load_save`.
         loc: Localisation for readable names. Without it, game keys are shown.
+        tag: Country to describe. Defaults to the player.
 
     Returns:
         Markdown briefing.
     """
-    meta = parse(raw.meta)
-    return summarize(meta, parse_lazy(raw.gamestate), loc or Localisation())
+    return summarize(Campaign.from_raw(raw, loc), tag)
 
 
-def summarize(meta: dict[str, Any], gamestate: dict[str, Any], loc: Localisation) -> str:
-    """Produce a briefing of the player's country and its surroundings.
+def summarize(campaign: Campaign, tag: str | None = None) -> str:
+    """Produce a briefing of a country and its surroundings.
 
     Args:
-        meta: Parsed ``meta`` section (provides ``player`` and ``date``).
-        gamestate: Gamestate parsed with :func:`chancellor.save.parser.parse_lazy`.
-        loc: Localisation for readable names.
+        campaign: The loaded save.
+        tag: Country to describe. Defaults to the player.
 
     Returns:
         Markdown briefing.
 
     Raises:
-        KeyError: If the save has no player country.
+        KeyError: If the country is not in the save.
     """
-    tag = meta["player"]
-    countries_block = gamestate["countries"]
-    countries = (
-        countries_block.lazy() if isinstance(countries_block, LazyBlock) else countries_block
-    )
-    player_block = countries[tag]
-    country = player_block.parse() if isinstance(player_block, LazyBlock) else player_block
-    ctx = _Context(
-        tag=tag,
-        date=str(meta.get("date", "?")),
-        country=country,
-        countries=countries,
-        gamestate=gamestate,
-        loc=loc,
-    )
-    ctx._cache[tag] = country
+    tag = tag or campaign.player
+    country = campaign.country(tag)
+    if country is None:
+        raise KeyError(f"Country {tag} is not in the save")
+    ctx = _Context(campaign=campaign, tag=tag, country=country)
 
     sections = [
         _header(ctx),
+        _relation_to_player(ctx),
         _government(ctx),
         _economy(ctx),
         _military(ctx),
@@ -127,7 +119,10 @@ def _header(ctx: _Context) -> str:
     if c.get("score_place"):
         flags.append(f"rank #{c['score_place']} in score")
     lines = [
-        f"# Campaign briefing: {ctx.name(ctx.tag)} ({ctx.tag}), {ctx.date}",
+        f"# {'Campaign' if ctx.is_player else 'Country'} briefing: "
+        f"{ctx.name(ctx.tag)} ({ctx.tag}), {ctx.date}",
+        "",
+        "Played by the user." if ctx.is_player else _ai_note(ctx),
         "",
         _bullets(
             [
@@ -247,11 +242,11 @@ def _estates(ctx: _Context) -> str:
     for estate in get_all(ctx.country, "estate"):
         if not isinstance(estate, dict) or "type" not in estate:
             continue
+        land = _num(estate.get("territory"))
         rows.append(
             (
                 ctx.text(estate["type"]),
-                f"loyalty {_num(estate.get('loyalty'))}, "
-                f"land share {_num(estate.get('territory'))}%",
+                f"loyalty {_num(estate.get('loyalty'))}, land share {land or '0'}%",
             )
         )
     return _section("Estates", rows) if rows else ""
@@ -259,30 +254,25 @@ def _estates(ctx: _Context) -> str:
 
 def _diplomacy(ctx: _Context) -> str:
     c = ctx.country
-    rivals = [r["country"] for r in get_all(c, "rival") if isinstance(r, dict) and "country" in r]
+    rivals = _rivals(c)
     return _section(
         "Diplomacy",
         [
             ("Allies", _tags(ctx, c.get("allies"))),
             ("Subjects", _tags(ctx, c.get("subjects"))),
-            ("Our rivals", _tags(ctx, rivals)),
-            ("Countries rivalling us", _tags(ctx, get_all(c, "enemy"))),
-            ("Coalition against us", _tags(ctx, get_all(c, "coalition_against_us"))),
-            ("Trade embargoes against us", _tags(ctx, c.get("trade_embargoed_by"))),
+            ("Rivals", _tags(ctx, rivals)),
+            ("Rivalled by", _tags(ctx, get_all(c, "enemy"))),
+            ("Coalition against it", _tags(ctx, get_all(c, "coalition_against_us"))),
+            ("Trade embargoes against it", _tags(ctx, c.get("trade_embargoed_by"))),
         ],
     )
 
 
 def _wars(ctx: _Context) -> str:
     lines = []
-    for war_block in get_all(ctx.gamestate, "active_war"):
-        war = war_block.parse() if isinstance(war_block, LazyBlock) else war_block
-        if not isinstance(war, dict):
-            continue
-        attackers = _as_list(war.get("attackers"))
-        defenders = _as_list(war.get("defenders"))
-        if ctx.tag not in attackers and ctx.tag not in defenders:
-            continue
+    for war in ctx.campaign.wars_of(ctx.tag):
+        attackers = as_list(war.get("attackers"))
+        defenders = as_list(war.get("defenders"))
         side = "attacker" if ctx.tag in attackers else "defender"
         goal = war.get("take_province") or {}
         goal_text = ""
@@ -291,7 +281,7 @@ def _wars(ctx: _Context) -> str:
             target = ctx.loc.province(goal["province"]) if "province" in goal else ""
             goal_text = f"; war goal: {cb} {target}".rstrip()
         lines.append(
-            f"- **{str(war.get('name', '?')).strip()}** (we are {side}; started "
+            f"- **{str(war.get('name', '?')).strip()}** ({ctx.tag} is {side}; started "
             f"{war.get('action', '?')}{goal_text})\n"
             f"  - Attackers: {_tags(ctx, attackers)}\n"
             f"  - Defenders: {_tags(ctx, defenders)}"
@@ -309,45 +299,129 @@ def _key_countries(ctx: _Context) -> str:
             if t != ctx.tag:
                 relations.setdefault(t, []).append(label)
 
-    rivals = [r["country"] for r in get_all(c, "rival") if isinstance(r, dict) and "country" in r]
-    add(_as_list(c.get("allies")), "ally")
-    add(_as_list(c.get("subjects")), "subject")
-    add(rivals, "our rival")
-    add(get_all(c, "enemy"), "rivals us")
-    for war_block in get_all(ctx.gamestate, "active_war"):
-        war = war_block.parse() if isinstance(war_block, LazyBlock) else war_block
-        attackers = _as_list(war.get("attackers"))
-        defenders = _as_list(war.get("defenders"))
-        if ctx.tag in attackers:
-            add(defenders, "at war")
-        elif ctx.tag in defenders:
-            add(attackers, "at war")
-    add(_as_list(c.get("neighbours")), "neighbour")
+    if not ctx.is_player:
+        add([ctx.campaign.player], "player")
+    add(as_list(c.get("allies")), "ally")
+    add(as_list(c.get("subjects")), "subject")
+    add(_rivals(c), "rival")
+    add(get_all(c, "enemy"), "rivals it")
+    for war in ctx.campaign.wars_of(ctx.tag):
+        attackers = as_list(war.get("attackers"))
+        defenders = as_list(war.get("defenders"))
+        add(defenders if ctx.tag in attackers else attackers, "at war")
+    add(as_list(c.get("neighbours")), "neighbour")
 
     rows = [
-        "| Country | Relation | Development | Regiments | Mil tech | Their opinion of us |",
+        f"| Country | Relation | Development | Regiments | Mil tech | Their opinion of {ctx.tag} |",
         "| --- | --- | --- | --- | --- | --- |",
     ]
     for t, labels in relations.items():
         other = ctx.other(t)
         if other is None:
             continue
-        armies = [a for a in get_all(other, "army") if isinstance(a, dict)]
-        regiments = sum(len(get_all(a, "regiment")) for a in armies)
-        relation = (other.get("active_relations") or {}).get(ctx.tag) or {}
-        opinion = relation.get("cached_sum") if isinstance(relation, dict) else None
-        attitude = relation.get("attitude") if isinstance(relation, dict) else None
-        opinion_text = _signed(opinion) if opinion is not None else "?"
-        if attitude:
-            opinion_text += f" ({ctx.text(attitude)})"
         rows.append(
             f"| {ctx.name(t)} ({t}) | {', '.join(dict.fromkeys(labels))} "
-            f"| {_num(other.get('raw_development'), 0)} | {regiments} "
-            f"| {(other.get('technology') or {}).get('mil_tech', '?')} | {opinion_text} |"
+            f"| {_num(other.get('raw_development'), 0)} | {_regiments(other)} "
+            f"| {_mil_tech(other)} | {_opinion(ctx, other, ctx.tag)} |"
         )
     if len(rows) == 2:
         return ""
     return "## Key countries\n\n" + "\n".join(rows)
+
+
+def _ai_note(ctx: _Context) -> str:
+    note = (
+        f"AI-controlled country, described from its own perspective. "
+        f"The user plays {ctx.campaign.label(ctx.campaign.player)}."
+    )
+    if not ctx.country.get("owned_provinces"):
+        note += " **This country no longer exists (it owns no provinces).**"
+    return note
+
+
+def _relation_to_player(ctx: _Context) -> str:
+    """How the subject country and the player relate, plus a strength comparison."""
+    if ctx.is_player:
+        return ""
+    player_tag = ctx.campaign.player
+    player = ctx.other(player_tag)
+    if player is None:
+        return ""
+    c = ctx.country
+    links = []
+    if player_tag in as_list(c.get("allies")):
+        links.append("allied with the player")
+    if ctx.tag in as_list(player.get("subjects")):
+        links.append("subject of the player")
+    if player_tag in as_list(c.get("subjects")):
+        links.append("overlord of the player")
+    if player_tag in _rivals(c):
+        links.append("rivals the player")
+    if ctx.tag in _rivals(player):
+        links.append("rivalled by the player")
+    if ctx.tag in get_all(player, "coalition_against_us"):
+        links.append("in a coalition against the player")
+    if player_tag in get_all(c, "coalition_against_us"):
+        links.append("the player is in a coalition against it")
+    if player_tag in as_list(c.get("neighbours")):
+        links.append("borders the player")
+    for war in ctx.campaign.wars_of(ctx.tag):
+        attackers = as_list(war.get("attackers"))
+        defenders = as_list(war.get("defenders"))
+        same_side = {ctx.tag, player_tag} <= set(attackers) or {ctx.tag, player_tag} <= set(
+            defenders
+        )
+        if player_tag in attackers + defenders:
+            relation = "fighting alongside" if same_side else "at war with"
+            links.append(f"{relation} the player ({str(war.get('name', '')).strip()})")
+    shared_allies = sorted(set(as_list(c.get("allies"))) & set(as_list(player.get("allies"))))
+
+    rows = [
+        ("Status", "; ".join(links) or "no direct ties"),
+        (f"Its opinion of {player_tag}", _opinion(ctx, c, player_tag)),
+        (f"{player_tag}'s opinion of it", _opinion(ctx, player, ctx.tag)),
+        ("Allies shared with the player", _tags(ctx, shared_allies) if shared_allies else None),
+    ]
+    table = [
+        f"| | {ctx.name(ctx.tag)} | {ctx.name(player_tag)} (player) |",
+        "| --- | --- | --- |",
+        f"| Development | {_num(c.get('raw_development'), 0)} "
+        f"| {_num(player.get('raw_development'), 0)} |",
+        f"| Regiments | {_regiments(c)} | {_regiments(player)} |",
+        f"| Manpower | {_thousands(c.get('manpower'), c.get('max_manpower'))} "
+        f"| {_thousands(player.get('manpower'), player.get('max_manpower'))} |",
+        f"| Mil tech | {_mil_tech(c)} | {_mil_tech(player)} |",
+        f"| Treasury | {_ducats(c.get('treasury'))} | {_ducats(player.get('treasury'))} |",
+        f"| Allies | {len(as_list(c.get('allies')))} | {len(as_list(player.get('allies')))} |",
+    ]
+    return _section("Relation to the player", rows) + "\n\n" + "\n".join(table)
+
+
+def _rivals(country: dict[str, Any]) -> list[str]:
+    rivals = get_all(country, "rival")
+    return [r["country"] for r in rivals if isinstance(r, dict) and "country" in r]
+
+
+def _regiments(country: dict[str, Any]) -> int:
+    armies = [a for a in get_all(country, "army") if isinstance(a, dict)]
+    return sum(len(get_all(a, "regiment")) for a in armies)
+
+
+def _mil_tech(country: dict[str, Any]) -> str:
+    return str((country.get("technology") or {}).get("mil_tech", "?"))
+
+
+def _opinion(ctx: _Context, holder: dict[str, Any], target: str) -> str:
+    """``holder``'s opinion of ``target`` with its AI attitude, e.g. ``-46 (Rivalry)``."""
+    relation = (holder.get("active_relations") or {}).get(target)
+    if not isinstance(relation, dict):
+        return "?"
+    opinion = relation.get("cached_sum")
+    text = _signed(opinion) if opinion is not None else "?"
+    attitude = relation.get("attitude")
+    if isinstance(attitude, str):
+        text += f" ({ctx.text(attitude)})"
+    return text
 
 
 # --- helpers ---------------------------------------------------------------------------
@@ -413,14 +487,8 @@ def _composition(country: dict[str, Any]) -> str | None:
     return ", ".join(parts)
 
 
-def _as_list(value: Any) -> list[Any]:
-    if value is None:
-        return []
-    return list(value) if isinstance(value, list) else [value]
-
-
 def _tags(ctx: _Context, tags: Any) -> str:
-    items = _as_list(tags)
+    items = as_list(tags)
     return ", ".join(f"{ctx.name(t)} ({t})" for t in items) if items else "none"
 
 

@@ -3,11 +3,19 @@ from pathlib import Path
 
 import pytest
 
-from chancellor.context.summarizer import summarize_save
+from chancellor.context.campaign import Campaign
+from chancellor.context.summarizer import summarize, summarize_save
 from chancellor.game.localisation import Localisation
 from chancellor.save.loader import load_save
 
 FIXTURE = Path(__file__).parent / "fixtures" / "mini_save.txt"
+NAMES = {
+    "HAB": "Austria",
+    "TUR": "Ottomans",
+    "BOH": "Bohemia",
+    "PROV134": "Wien",
+    "PROV150": "Nikopol",
+}
 
 
 @pytest.fixture
@@ -18,15 +26,21 @@ def raw(tmp_path: Path):
 
 
 @pytest.fixture
-def briefing(raw) -> str:
-    loc = Localisation(
-        {"HAB": "Austria", "TUR": "Ottomans", "PROV134": "Wien", "PROV150": "Nikopol"}
-    )
-    return summarize_save(raw, loc)
+def campaign(raw) -> Campaign:
+    return Campaign.from_raw(raw, Localisation(NAMES))
+
+
+@pytest.fixture
+def briefing(campaign: Campaign) -> str:
+    return summarize(campaign)
+
+
+# --- player briefing -------------------------------------------------------------------
 
 
 def test_header(briefing: str):
     assert briefing.startswith("# Campaign briefing: Austria (HAB), 1471.10.2")
+    assert "Played by the user." in briefing
     assert "- Capital: Wien" in briefing
     assert "Great Power, rank #7 in score" in briefing
 
@@ -48,37 +62,32 @@ def test_military(briefing: str):
     assert "- Navy: 1 ships in 1 fleets" in briefing
 
 
-def test_only_player_wars_are_listed(briefing: str):
-    assert "Austrian Conquest of Nikopol" in briefing
-    assert "we are attacker" in briefing
-    assert "Nikopol" in briefing
+def test_diplomacy_uses_neutral_wording(briefing: str):
+    assert "- Rivals: Ottomans (TUR)" in briefing
+    assert "- Rivalled by: Ottomans (TUR)" in briefing
+
+
+def test_only_own_wars_are_listed(briefing: str):
+    assert "Austrian Conquest of Nikopol** (HAB is attacker" in briefing
+    assert "war goal: cb conquest Nikopol" in briefing
     assert "Unrelated war" not in briefing
 
 
 def test_key_countries_table(briefing: str):
-    assert "| Ottomans (TUR) | our rival, rivals us, at war | 498 | 2 | 6 | -25" in briefing
-    assert "| BOH (BOH) | ally, neighbour | 170 | 1 | 5 | +150" in briefing
+    header = "| Country | Relation | Development | Regiments | Mil tech | Their opinion of HAB |"
+    assert header in briefing
+    assert "| Ottomans (TUR) | rival, rivals it, at war | 498 | 2 | 6 | -25" in briefing
+    assert "| Bohemia (BOH) | ally, neighbour | 170 | 1 | 5 | +150" in briefing
     assert "| HUN (HUN) | subject, neighbour | 298 | 0 | 5 | +42" in briefing
 
 
-def test_dynamic_country_uses_name_from_save(raw):
-    from chancellor.context.summarizer import _Context
-
-    ctx = _Context(
-        tag="HAB",
-        date="1471.10.2",
-        country={},
-        countries={"C00": {"name": "Austrian Antilles"}},
-        gamestate={},
-        loc=Localisation(),
-    )
-    assert ctx.name("C00") == "Austrian Antilles"
-    assert ctx.name("HAB") == "HAB"
+def test_player_briefing_has_no_relation_section(briefing: str):
+    assert "Relation to the player" not in briefing
 
 
-def test_works_without_localisation(raw):
-    text = summarize_save(raw)
-    assert "# Campaign briefing: HAB (HAB)" in text
+def test_summarize_save_wrapper(raw):
+    assert summarize_save(raw).startswith("# Campaign briefing: HAB (HAB)")
+    assert summarize_save(raw, tag="TUR").startswith("# Country briefing: TUR (TUR)")
 
 
 def test_peace_when_no_wars(tmp_path: Path):
@@ -86,3 +95,63 @@ def test_peace_when_no_wars(tmp_path: Path):
     text = FIXTURE.read_text(encoding="cp1252").split("active_war=")[0]
     path.write_bytes(text.encode("cp1252"))
     assert "At peace." in summarize_save(load_save(path))
+
+
+# --- other countries -------------------------------------------------------------------
+
+
+@pytest.fixture
+def ottoman(campaign: Campaign) -> str:
+    return summarize(campaign, "TUR")
+
+
+def test_other_country_header(ottoman: str):
+    assert ottoman.startswith("# Country briefing: Ottomans (TUR), 1471.10.2")
+    assert "AI-controlled country" in ottoman
+    assert "The user plays Austria (HAB)." in ottoman
+
+
+def test_relation_to_player(ottoman: str):
+    assert "## Relation to the player" in ottoman
+    assert "rivals the player" in ottoman
+    assert "rivalled by the player" in ottoman
+    assert "borders the player" in ottoman
+    assert "at war with the player (Austrian Conquest of Nikopol)" in ottoman
+    assert "- Its opinion of HAB: -25" in ottoman
+
+
+def test_strength_comparison(ottoman: str):
+    assert "| | Ottomans | Austria (player) |" in ottoman
+    assert "| Development | 498 | 185 |" in ottoman
+    assert "| Regiments | 2 | 3 |" in ottoman
+    assert "| Treasury | 250.0 ducats | 36.1 ducats |" in ottoman
+
+
+def test_other_country_lists_player_first_in_key_countries(ottoman: str):
+    table = ottoman.split("## Key countries")[1]
+    first_row = table.strip().splitlines()[2]
+    assert first_row.startswith("| Austria (HAB) | player, rival, at war, neighbour")
+
+
+def test_ally_of_player_is_reported(campaign: Campaign):
+    assert "allied with the player" in summarize(campaign, "BOH")
+
+
+def test_unknown_tag_raises(campaign: Campaign):
+    with pytest.raises(KeyError):
+        summarize(campaign, "XXX")
+
+
+def test_dead_country_is_flagged(campaign: Campaign):
+    assert "no longer exists" in summarize(campaign, "OLD")
+    assert "no longer exists" not in summarize(campaign, "TUR")
+
+
+def test_foreign_heir_is_resolved():
+    from chancellor.context.summarizer import _find_person
+
+    country = {
+        "monarch": {"id": 7, "type": 48},
+        "history": {"1514.8.2": {"foreign_heir": {"id": {"id": 7, "type": 48}, "name": "August"}}},
+    }
+    assert _find_person(country, country["monarch"])["name"] == "August"

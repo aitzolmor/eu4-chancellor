@@ -53,6 +53,7 @@ pip install -e ".[dev]"
 ruff check . && ruff format --check .
 pytest
 chancellor summary          # briefing of the current campaign (uses .env paths)
+chancellor country Borgoña  # briefing of any country (tag or name)
 ```
 
 Exploring real saves: load with `chancellor.save.loader.load_save`, then `parse_lazy` and

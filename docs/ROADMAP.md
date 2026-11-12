@@ -60,7 +60,13 @@ the chat agent as a tool (D-009).
 Goal: the assistant knows the game's content and can cross it with the campaign state.
 
 - [x] Parse mission trees from `missions/` (requirements, rewards, claims granted)
-- [ ] Parse decisions and formable nations from `decisions/`
+- [x] Parse decisions and formable nations from `decisions/`
+- [x] Condition evaluator with three-valued logic (`context.conditions`): ~60 country and
+  province conditions, scripted triggers, geography, culture/religion groups
+- [x] `chancellor decisions [<country>] [--formables]`: visible decisions with a met / not
+  met / unchecked requirement checklist
+- [ ] Cache parsed game files on disk (game data parsing dominates the ~10 s run time)
+- [ ] Evaluate mission triggers to tell "available" from "completable now"
 - [ ] Index events and idea groups from `events/` and `common/`
 - [x] `chancellor missions [<country>]`: mission tree with completion status from the save
 - [x] Readable trigger/effect descriptions (`context.script`), localised names and tooltips

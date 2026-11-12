@@ -64,6 +64,7 @@ class Campaign:
         self.gamestate = gamestate
         self.loc = loc or Localisation()
         self._countries: dict[str, dict[str, Any] | None] = {}
+        self._province_cache: dict[str, dict[str, Any] | None] = {}
 
     @classmethod
     def from_raw(cls, raw: RawSave, loc: Localisation | None = None) -> Campaign:
@@ -99,9 +100,18 @@ class Campaign:
         return self._countries[tag]
 
     def exists(self, tag: str) -> bool:
-        """Whether the country currently owns land (dead tags stay in the save)."""
-        data = self.country(tag)
-        return bool(data and data.get("owned_provinces"))
+        """Whether the country currently owns land (dead tags stay in the save).
+
+        Checked with a regular expression on the raw block, so asking about many
+        countries does not parse them all.
+        """
+        if tag in self._countries:
+            data = self._countries[tag]
+            return bool(data and data.get("owned_provinces"))
+        block = self.country_blocks.get(tag)
+        if isinstance(block, LazyBlock):
+            return bool(_OWNS_LAND.search(block.text, block.start, block.end))
+        return bool(isinstance(block, dict) and block.get("owned_provinces"))
 
     @cached_property
     def wars(self) -> list[dict[str, Any]]:
@@ -145,6 +155,13 @@ class Campaign:
                 regiments = sum(len(get_all(a, "regiment")) for a in armies)
                 stats[tag] = (float(block.get("raw_development") or 0.0), regiments)
         return stats
+
+    @cached_property
+    def global_flags(self) -> dict[str, Any]:
+        """World-wide flags set by events and decisions."""
+        block = self.gamestate.get("flags", {})
+        result = block.parse() if isinstance(block, LazyBlock) else block
+        return result if isinstance(result, dict) else {}
 
     @cached_property
     def diplomacy(self) -> dict[str, Any]:
@@ -191,12 +208,14 @@ class Campaign:
         return result if isinstance(result, dict) else {}
 
     def province(self, province_id: int | str) -> dict[str, Any] | None:
-        """Fully parsed province (ids are stored negated, e.g. ``-219``)."""
+        """Fully parsed province (ids are stored negated, e.g. ``-219``), cached."""
         number = str(province_id).lstrip("-")
-        block = self._provinces.get(f"-{number}")
-        if isinstance(block, LazyBlock):
-            block = block.parse()
-        return block if isinstance(block, dict) else None
+        if number not in self._province_cache:
+            block = self._provinces.get(f"-{number}")
+            if isinstance(block, LazyBlock):
+                block = block.parse()
+            self._province_cache[number] = block if isinstance(block, dict) else None
+        return self._province_cache[number]
 
     @property
     def emperor(self) -> str | None:

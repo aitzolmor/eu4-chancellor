@@ -195,3 +195,26 @@ def test_missions_without_tree(configured, capsys):
     out = capsys.readouterr().out
     assert out.startswith("# Missions: Austria (HAB)")
     assert "records no mission tree" in out
+
+
+# --- decisions -------------------------------------------------------------------------
+
+
+def test_decisions_need_game_dir(monkeypatch, tmp_path: Path, capsys):
+    monkeypatch.setenv("EU4_SAVE_DIR", str(make_save_dir(tmp_path)))
+    assert main(["decisions"]) == 1
+    assert "EU4_GAME_DIR" in capsys.readouterr().err
+
+
+def test_decisions(configured, tmp_path: Path, capsys):
+    folder = tmp_path / "game" / "decisions"
+    folder.mkdir()
+    (folder / "d.txt").write_text(
+        "country_decisions = { form_x = { major = yes potential = { tag = HAB } "
+        "allow = { adm_tech = 1 } effect = { change_tag = XXX } } }",
+        encoding="utf-8",
+    )
+    assert main(["decisions", "--formables"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("# Decisions: Austria (HAB)")
+    assert "forms XXX (XXX)" in out

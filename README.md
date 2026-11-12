@@ -65,6 +65,7 @@ chancellor war-check Venecia    # who would defend the target and who would join
 chancellor world                # great powers, rankings, alliance networks and major wars
 chancellor missions             # your mission tree: done, available now, locked, with rewards
 chancellor missions Francia --brief
+chancellor decisions --formables # nations you can form and what you are missing
 ```
 
 The briefing is a compact Markdown document (about 1k tokens) covering ruler, stability,
@@ -88,6 +89,11 @@ open mission shows its rewards, translated from game script into readable lines 
 localised province, area and country names. Granted modifiers list their actual bonuses,
 e.g. *La corona de hierro de Lombardía (permanent): Mejorar relaciones +15%, Tiempo de
 viaje -20%*.
+
+`decisions` lists the formable nations and decisions a country can see, each with a
+checklist: requirements met `[x]`, not met `[ ]` and not checkable automatically `[?]`.
+For example, Austria in 1475 sees *Austria-Hungary* with 13 of 15 requirements met:
+Hungary has over 40 cities and the administrative technology is too low.
 
 ```text
 # Campaign briefing: Castilla (CAS), 1525.6.30

@@ -11,13 +11,16 @@ from chancellor import __version__
 from chancellor.app.clipboard import ClipboardError, copy_to_clipboard
 from chancellor.config import Settings, load_settings
 from chancellor.context.campaign import Campaign, CountryLookupError
+from chancellor.context.decisions import check_decisions, render_decisions
 from chancellor.context.missions import mission_tree, render_missions
 from chancellor.context.summarizer import summarize
 from chancellor.context.war_check import check_war, render_war_check
 from chancellor.context.world import render_world, world_overview
+from chancellor.game.decisions import DecisionLibrary
 from chancellor.game.localisation import Localisation, detect_language
 from chancellor.game.missions import MissionLibrary
 from chancellor.game.modifiers import ModifierLibrary
+from chancellor.game.rules import GameRules
 from chancellor.save.loader import SaveFormatError, find_current_save, load_save
 
 
@@ -103,6 +106,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--brief", action="store_true", help="Only titles and status, no requirements/rewards."
     )
 
+    decisions = sub.add_parser(
+        "decisions",
+        parents=[common],
+        help="Formable nations and decisions a country can take, with a checklist.",
+        description=(
+            "List the formable nations and decisions a country (default: you) can see, "
+            "each with its requirements marked met, not met or unchecked."
+        ),
+    )
+    decisions.add_argument("name", nargs="*", help="Country tag or name (default: you).")
+    decisions.add_argument("--formables", action="store_true", help="Only formable nations.")
+
     sub.add_parser("chat", help="Open the chat window (Phase 4, not implemented yet).")
     return parser
 
@@ -150,6 +165,23 @@ def main(argv: Sequence[str] | None = None) -> int:
             modifiers = ModifierLibrary.load(settings.game_dir)
             text = render_missions(campaign, tree, brief=args.brief, modifiers=modifiers)
             return _emit(args, text, f"Missions of {campaign.label(tag)}")
+        if args.command == "decisions":
+            settings = load_settings()
+            if settings.game_dir is None:
+                raise CliError("Decisions are read from the game files; set EU4_GAME_DIR.")
+            campaign, _ = _load_campaign(args, settings)
+            tag = campaign.resolve_country(" ".join(args.name)) if args.name else campaign.player
+            checks = check_decisions(
+                campaign,
+                GameRules.load(settings.game_dir),
+                DecisionLibrary.load(settings.game_dir),
+                tag,
+                missions=MissionLibrary.load(settings.game_dir),
+                formables_only=args.formables,
+            )
+            modifiers = ModifierLibrary.load(settings.game_dir)
+            text = render_decisions(campaign, tag, checks, modifiers)
+            return _emit(args, text, f"Decisions of {campaign.label(tag)}")
     except ValueError as exc:  # e.g. a country attacking itself
         return _fail(str(exc))
     except (CliError, CountryLookupError) as exc:

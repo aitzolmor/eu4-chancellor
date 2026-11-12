@@ -101,3 +101,18 @@ Chaining alliances transitively merged rivals such as France and Austria into a 
 instead shows each major power's direct network: the power, its fighting subjects, its
 allies and their fighting subjects. Roughly, that is who shows up when the power goes to
 war. Major powers are the player, the great powers and the largest armies.
+
+## D-012 — Three-valued condition evaluation instead of a full trigger engine
+
+**Date:** 2026-11-12 · **Status:** Accepted
+
+Formable nations and decisions are gated by game conditions, and EU4 has hundreds of
+trigger types. Re-implementing all of them is not realistic. `context.conditions`
+evaluates the ~60 that matter for planning (tags, cultures, religions, technology,
+provinces and cores, subjects, HRE, flags, geography, province counts, scripted
+triggers…). Everything else returns `None` ("unknown"), and unknowns propagate with
+proper three-valued logic, so a missing core province is still reported with certainty.
+Checklists mark unknown requirements `[?]` for the player to verify in game.
+
+Measured on the local saves, 6% of formable-nation requirements end up unknown, and
+37% across all decisions (mostly estate and parliament conditions).

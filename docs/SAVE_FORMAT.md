@@ -165,6 +165,24 @@ and `cultural_sphere_of_influence_subject` override it to `no`.
   values below 1 are percentages, except yearly/monthly gains and a list of flat stats
   (prestige, legitimacy, war exhaustion, traditions, …).
 
+#### Decisions (game files)
+
+- `decisions/*.txt` (196 files, 516 decisions, 153 formables in 1.37):
+  `country_decisions = { <name> = { major potential allow effect ai_will_do } }`.
+  Formables are decisions whose `effect` contains `change_tag`, sometimes nested in `if`.
+- Titles: `<name>_title` in localisation; some titles are pure placeholders
+  (`[Root.GetActsOfUnionDecisionTitle]`).
+- Conditions also use `common/scripted_triggers` (2,500 named triggers, some with `$param$`),
+  `common/colonial_regions` (`provinces = { … }`) and the map files.
+
+#### Province fields used by conditions
+
+`owner`, `controller`, `cores` (list of tags), `culture`, `religion`, `hre`, `trade_goods`,
+`base_tax`/`base_production`/`base_manpower`, `discovered_by` (list of tags) and
+`modifier` (repeated `{ modifier="name" date=… }`). The gamestate also has `flags`
+(global flags) and `current_age`. Country modifiers use the same repeated
+`modifier={ modifier="…" }` shape.
+
 #### Great powers
 
 `great_powers={ original={ rank=1 country="CAS" value=1073.5 } … }` lists the eight great

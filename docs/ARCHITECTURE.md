@@ -39,6 +39,10 @@ flowchart LR
 | `game.modifiers` | Named modifiers and the stats they change (`ModifierLibrary`, `format_effect`) | 3 |
 | `context.script` | Readable, localised descriptions of trigger and effect script | 3 |
 | `context.missions` | A country's mission tree with completed / available / locked status | 3 |
+| `game.rules` | Culture/religion groups, geography (areas, regions, colonial regions…), scripted triggers | 3 |
+| `game.decisions` | Decisions and formable nations from `decisions/` (`DecisionLibrary`) | 3 |
+| `context.conditions` | Three-valued evaluator for game conditions (true / false / unknown) | 3 |
+| `context.decisions` | Decisions a country can see, with a requirement checklist | 3 |
 | `context.tools` | Registry of query functions exposed to the agent as tools | 4 |
 | `llm.client` | Talk to the LLM API: streaming, caching, tool-use loop | 4 |
 | `watcher` | Watch the save folder and trigger reloads | 4 |

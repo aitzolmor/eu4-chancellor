@@ -218,3 +218,11 @@ def test_decisions(configured, tmp_path: Path, capsys):
     out = capsys.readouterr().out
     assert out.startswith("# Decisions: Austria (HAB)")
     assert "forms XXX (XXX)" in out
+
+
+def test_clear_cache_command(isolated_cache: Path, capsys):
+    isolated_cache.mkdir()
+    (isolated_cache / "x-123.pickle").write_bytes(b"x")
+    assert main(["clear-cache"]) == 0
+    assert "Removed 1 cached file(s)" in capsys.readouterr().err
+    assert not list(isolated_cache.glob("*.pickle"))

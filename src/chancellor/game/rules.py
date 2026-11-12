@@ -15,8 +15,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from chancellor.game.cache import cached
 from chancellor.save.parser import parse
 
+# Folders under common/ read by GameRules (the map/ folder is read too).
+_RULE_FOLDERS = ("cultures", "religions", "scripted_triggers", "colonial_regions")
 # Keys inside a culture or religion group that are not cultures/religions.
 _GROUP_SETTINGS = {"country", "province", "flags_with_emblem_percentage", "flag_emblem_index_range"}
 
@@ -39,6 +42,15 @@ class GameRules:
 
     @classmethod
     def load(cls, game_dir: Path) -> GameRules:
+        """Load from the game installation, reusing the on-disk cache when possible."""
+        return cached(
+            "rules",
+            [game_dir / "common" / d for d in _RULE_FOLDERS] + [game_dir / "map"],
+            lambda: cls.parse_game(game_dir),
+        )
+
+    @classmethod
+    def parse_game(cls, game_dir: Path) -> GameRules:
         """Read every table from the game installation."""
         rules = cls()
         for path in _files(game_dir / "common" / "cultures"):

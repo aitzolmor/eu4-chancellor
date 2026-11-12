@@ -19,6 +19,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from chancellor.game.cache import cached
 from chancellor.game.localisation import Localisation
 from chancellor.save.parser import parse
 
@@ -69,6 +70,15 @@ class ModifierLibrary:
 
     @classmethod
     def load(cls, game_dir: Path) -> ModifierLibrary:
+        """Load from the game installation, reusing the on-disk cache when possible."""
+        return cached(
+            "modifiers",
+            [game_dir / "common" / f for f in _FOLDERS],
+            lambda: cls.parse_game(game_dir),
+        )
+
+    @classmethod
+    def parse_game(cls, game_dir: Path) -> ModifierLibrary:
         """Parse the modifier folders of the game installation."""
         modifiers: dict[str, Effects] = {}
         for folder in _FOLDERS:

@@ -116,3 +116,20 @@ Checklists mark unknown requirements `[?]` for the player to verify in game.
 
 Measured on the local saves, 6% of formable-nation requirements end up unknown, and
 37% across all decisions (mostly estate and parliament conditions).
+
+## D-013 — Cache parsed game data on disk; keep the save uncached
+
+**Date:** 2026-11-12 · **Status:** Accepted
+
+Localisation, missions, decisions, modifiers and rules take ~5 s to parse on every run, but
+they only change when the game is patched. Their parsed form is pickled in the user's
+cache folder. The cache key is a fingerprint of every source file's path, size and mtime,
+plus the package version, so any patch or upgrade rebuilds it automatically.
+`chancellor clear-cache` or `CHANCELLOR_NO_CACHE=1` are the escape hatches. Pickle is
+acceptable because only this program writes those files, for the same user.
+
+The save itself is not cached: it changes every time the player saves. Instead, the lazy
+parser records the first two levels of blocks in a single pass, so opening `countries`
+no longer rescans 70% of the file. That halves save preparation (4.2 s → 2.3 s). A
+"C-level" brace scanner (split, accumulate, bytes.find) was tried and measured: it was no
+faster than the token scan, so it was dropped.

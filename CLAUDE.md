@@ -58,6 +58,7 @@ chancellor war-check Venecia  # who would fight on each side
 chancellor world            # great powers, rankings, alliances, wars
 chancellor missions         # mission tree with progress (reads game files)
 chancellor decisions --formables  # formable nations with a requirement checklist
+chancellor clear-cache      # drop cached game data (tests use a temp cache via conftest)
 ```
 
 Exploring real saves: load with `chancellor.save.loader.load_save`, then `parse_lazy` and

@@ -65,7 +65,8 @@ Goal: the assistant knows the game's content and can cross it with the campaign 
   province conditions, scripted triggers, geography, culture/religion groups
 - [x] `chancellor decisions [<country>] [--formables]`: visible decisions with a met / not
   met / unchecked requirement checklist
-- [ ] Cache parsed game files on disk (game data parsing dominates the ~10 s run time)
+- [x] Cache parsed game files on disk, and scan two levels of the save in one pass
+  (`decisions` 10.3 s → 6.2 s; other commands 4–5 s, now dominated by the save scan)
 - [ ] Evaluate mission triggers to tell "available" from "completable now"
 - [ ] Index events and idea groups from `events/` and `common/`
 - [x] `chancellor missions [<country>]`: mission tree with completion status from the save

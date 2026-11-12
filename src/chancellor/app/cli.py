@@ -16,6 +16,7 @@ from chancellor.context.missions import mission_tree, render_missions
 from chancellor.context.summarizer import summarize
 from chancellor.context.war_check import check_war, render_war_check
 from chancellor.context.world import render_world, world_overview
+from chancellor.game.cache import cache_dir, clear_cache
 from chancellor.game.decisions import DecisionLibrary
 from chancellor.game.localisation import Localisation, detect_language
 from chancellor.game.missions import MissionLibrary
@@ -118,6 +119,11 @@ def build_parser() -> argparse.ArgumentParser:
     decisions.add_argument("name", nargs="*", help="Country tag or name (default: you).")
     decisions.add_argument("--formables", action="store_true", help="Only formable nations.")
 
+    sub.add_parser(
+        "clear-cache",
+        help="Delete cached game data (it is rebuilt automatically when needed).",
+    )
+
     sub.add_parser("chat", help="Open the chat window (Phase 4, not implemented yet).")
     return parser
 
@@ -133,6 +139,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     """
     args = build_parser().parse_args(argv)
     _use_utf8()
+    if args.command == "clear-cache":
+        removed = clear_cache()
+        print(f"Removed {removed} cached file(s) from {cache_dir()}.", file=sys.stderr)
+        return 0
     try:
         if args.command == "summary":
             campaign, save_path = _load_campaign(args, load_settings())

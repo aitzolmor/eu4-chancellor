@@ -136,14 +136,23 @@ class LazyBlock:
         text: The source document (shared, not copied).
         start: Index just after the opening brace.
         end: Index of the matching closing brace.
+        children: Spans of the block's own first-level blocks, when already known from
+            the scan that found this block; saves rescanning it in :meth:`lazy`.
     """
 
-    __slots__ = ("end", "start", "text")
+    __slots__ = ("children", "end", "start", "text")
 
-    def __init__(self, text: str, start: int, end: int) -> None:
+    def __init__(
+        self,
+        text: str,
+        start: int,
+        end: int,
+        children: list[tuple[int, int]] | None = None,
+    ) -> None:
         self.text = text
         self.start = start
         self.end = end
+        self.children = children
 
     @property
     def raw(self) -> str:
@@ -159,7 +168,7 @@ class LazyBlock:
 
     def lazy(self) -> dict[str, Any] | list[Any]:
         """Parse one level of the block, leaving nested blocks as :class:`LazyBlock`."""
-        result = _parse_lazy(self.text, self.start, self.end)
+        result = _parse_lazy(self.text, self.start, self.end, self.children)
         if set(result) == {""} and isinstance(result[""], list):
             return result[""]
         return result
@@ -201,40 +210,31 @@ _BRACE_OR_STRING = re.compile(r'"(?:[^"\\]|\\.)*"|#[^\n]*|[{}]')
 _LAZY_MARKER = "\x00lazy"
 
 
-def _parse_lazy(text: str, start: int, end: int) -> dict[str, Any]:
+def _parse_lazy(
+    text: str, start: int, end: int, known: list[tuple[int, int]] | None = None
+) -> dict[str, Any]:
     """Parse ``text[start:end]`` one level deep.
 
     Each first-level ``{ ... }`` is replaced by ``{<marker>}`` in a small skeleton
-    document, which is parsed normally; markers are then swapped for lazy blocks.
+    document, which is parsed normally; markers are then swapped for lazy blocks. The
+    same scan also records each block's own first-level spans, so opening a block later
+    (e.g. ``countries``, 70% of a save) does not scan its text again.
     """
-    spans: list[tuple[int, int]] = []
-    pieces: list[str] = []
-    depth = 0
-    cursor = start
-    block_start = start
-    for match in _BRACE_OR_STRING.finditer(text, start, end):
-        char = match.group()
-        if char == "{":
-            if depth == 0:
-                block_start = match.end()
-            depth += 1
-        elif char == "}":
-            if depth == 0:
-                continue  # stray closing brace
-            depth -= 1
-            if depth == 0:
-                pieces.append(text[cursor:block_start])
-                pieces.append(f"{_LAZY_MARKER}{len(spans)}}}")
-                spans.append((block_start, match.start()))
-                cursor = match.end()
-    if depth:  # unterminated block: let it run to the end
-        pieces.append(text[cursor:block_start])
-        pieces.append(f"{_LAZY_MARKER}{len(spans)}}}")
-        spans.append((block_start, end))
+    if known is not None:
+        spans = [(s, e, None) for s, e in known]
     else:
+        spans = _scan_two_levels(text, start, end)
+
+    pieces: list[str] = []
+    cursor = start
+    for index, (block_start, block_end, _) in enumerate(spans):
+        pieces.append(text[cursor:block_start])
+        pieces.append(f"{_LAZY_MARKER}{index}}}")
+        cursor = block_end + 1
+    if cursor <= end:
         pieces.append(text[cursor:end])
 
-    blocks = [LazyBlock(text, s, e) for s, e in spans]
+    blocks = [LazyBlock(text, s, e, children) for s, e, children in spans]
 
     def resolve(value: Any) -> Any:
         if (
@@ -312,3 +312,40 @@ def _unescape(quoted: str) -> str:
     if "\\" not in quoted:
         return quoted
     return re.sub(r"\\(.)", r"\1", quoted)
+
+
+def _scan_two_levels(
+    text: str, start: int, end: int
+) -> list[tuple[int, int, list[tuple[int, int]]]]:
+    """Spans of the first-level blocks, each with the spans of its own first-level blocks.
+
+    One pass over the tokens that matter (braces, strings, comments), so braces inside
+    quoted strings or comments are never counted. Stray closing braces are ignored and
+    unterminated blocks run to the end, mirroring :func:`parse`.
+    """
+    spans: list[tuple[int, int, list[tuple[int, int]]]] = []
+    children: list[tuple[int, int]] = []
+    depth = 0
+    block_start = child_start = start
+    for match in _BRACE_OR_STRING.finditer(text, start, end):
+        char = match.group()
+        if char == "{":
+            depth += 1
+            if depth == 1:
+                block_start = match.end()
+                children = []
+            elif depth == 2:
+                child_start = match.end()
+        elif char == "}":
+            if depth == 0:
+                continue  # stray closing brace
+            depth -= 1
+            if depth == 0:
+                spans.append((block_start, match.start(), children))
+            elif depth == 1:
+                children.append((child_start, match.start()))
+    if depth >= 2:  # unterminated inner block
+        children.append((child_start, end))
+    if depth >= 1:  # unterminated block: let it run to the end
+        spans.append((block_start, end, children))
+    return spans

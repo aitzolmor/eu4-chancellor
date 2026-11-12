@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from chancellor.game.cache import cached
 from chancellor.save.parser import parse
 
 # Keys of a series block that are settings, not missions.
@@ -83,6 +84,11 @@ class MissionLibrary:
 
     @classmethod
     def load(cls, game_dir: Path) -> MissionLibrary:
+        """Load from the game installation, reusing the on-disk cache when possible."""
+        return cached("missions", [game_dir / "missions"], lambda: cls.parse_game(game_dir))
+
+    @classmethod
+    def parse_game(cls, game_dir: Path) -> MissionLibrary:
         """Parse every file in ``<game_dir>/missions`` (about 1 s for the full game)."""
         series: dict[str, MissionSeries] = {}
         folder = game_dir / "missions"

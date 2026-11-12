@@ -228,7 +228,7 @@ their display name is stored in the country block as `name`.
 | Tokenise whole gamestate (11.3 M tokens) | 4.8 s |
 | Full parse | 19 s |
 | `parse_lazy` top level | 1.4 s |
-| `countries` one level deep | 0.9 s |
+| `countries` one level deep | 0.9 s (now free: recorded during the top-level scan) |
 | Full parse of one country | 0.02 s |
 
 Hence D-008: parse lazily and only what is needed.

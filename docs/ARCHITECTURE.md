@@ -39,6 +39,7 @@ flowchart LR
 | `game.modifiers` | Named modifiers and the stats they change (`ModifierLibrary`, `format_effect`) | 3 |
 | `context.script` | Readable, localised descriptions of trigger and effect script | 3 |
 | `context.missions` | A country's mission tree with completed / available / locked status | 3 |
+| `game.cache` | On-disk cache of parsed game data, invalidated by file size/mtime and package version | 3 |
 | `game.rules` | Culture/religion groups, geography (areas, regions, colonial regions…), scripted triggers | 3 |
 | `game.decisions` | Decisions and formable nations from `decisions/` (`DecisionLibrary`) | 3 |
 | `context.conditions` | Three-valued evaluator for game conditions (true / false / unknown) | 3 |

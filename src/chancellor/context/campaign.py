@@ -1,0 +1,229 @@
+"""Shared, cached view of one loaded save (D-009).
+
+Every query (briefings, war checks, world overview, and later agent tools) works on a
+:class:`Campaign`. It parses the gamestate lazily and caches whatever it has parsed, so
+running several queries against the same save stays fast.
+"""
+
+from __future__ import annotations
+
+import re
+import unicodedata
+from functools import cached_property
+from typing import Any
+
+from chancellor.game.localisation import Localisation
+from chancellor.save.loader import RawSave
+from chancellor.save.parser import LazyBlock, get_all, parse, parse_lazy
+
+DYNAMIC_TAG = re.compile(r"^[A-Z]\d\d$")
+_MAX_CANDIDATES = 25
+
+
+class CountryLookupError(LookupError):
+    """Raised when a country query matches no country or several equally well.
+
+    Attributes:
+        query: The text that was searched for.
+        candidates: ``(tag, name)`` pairs that partially matched, best first.
+    """
+
+    def __init__(self, query: str, candidates: list[tuple[str, str]], ambiguous: bool) -> None:
+        self.query = query
+        self.candidates = candidates
+        self.ambiguous = ambiguous
+        if ambiguous:
+            options = ", ".join(f"{name} ({tag})" for tag, name in candidates[:8])
+            message = f"'{query}' matches several countries: {options}. Use the tag instead."
+        elif candidates:
+            options = ", ".join(f"{name} ({tag})" for tag, name in candidates[:8])
+            message = f"No country named '{query}'. Did you mean: {options}?"
+        else:
+            message = f"No country named '{query}'."
+        super().__init__(message)
+
+
+class Campaign:
+    """A loaded save plus localisation, with cached lazy access to its data."""
+
+    def __init__(
+        self, meta: dict[str, Any], gamestate: dict[str, Any], loc: Localisation | None = None
+    ) -> None:
+        """Wrap already parsed save sections.
+
+        Args:
+            meta: Parsed ``meta`` section.
+            gamestate: Gamestate from :func:`chancellor.save.parser.parse_lazy` (or a fully
+                parsed dict, which is also accepted).
+            loc: Localisation for readable names. Without it, game keys are shown.
+        """
+        self.meta = meta
+        self.gamestate = gamestate
+        self.loc = loc or Localisation()
+        self._countries: dict[str, dict[str, Any] | None] = {}
+
+    @classmethod
+    def from_raw(cls, raw: RawSave, loc: Localisation | None = None) -> Campaign:
+        """Build a campaign from the text sections returned by the loader."""
+        return cls(parse(raw.meta), parse_lazy(raw.gamestate), loc)
+
+    # --- basic facts --------------------------------------------------------------------
+
+    @property
+    def player(self) -> str:
+        """The player's country tag."""
+        return str(self.meta["player"])
+
+    @property
+    def date(self) -> str:
+        """In-game date of the save, ``YYYY.M.D``."""
+        return str(self.meta.get("date", "?"))
+
+    @cached_property
+    def country_blocks(self) -> dict[str, Any]:
+        """Every country in the save, keyed by tag, as lazy (unparsed) blocks."""
+        block = self.gamestate.get("countries", {})
+        result = block.lazy() if isinstance(block, LazyBlock) else block
+        return result if isinstance(result, dict) else {}
+
+    def country(self, tag: str) -> dict[str, Any] | None:
+        """Fully parsed country block, or ``None`` if the tag is not in the save."""
+        if tag not in self._countries:
+            block = self.country_blocks.get(tag)
+            if isinstance(block, LazyBlock):
+                block = block.parse()
+            self._countries[tag] = block if isinstance(block, dict) else None
+        return self._countries[tag]
+
+    def exists(self, tag: str) -> bool:
+        """Whether the country currently owns land (dead tags stay in the save)."""
+        data = self.country(tag)
+        return bool(data and data.get("owned_provinces"))
+
+    @cached_property
+    def wars(self) -> list[dict[str, Any]]:
+        """Every ongoing war in the world, fully parsed."""
+        wars = []
+        for block in get_all(self.gamestate, "active_war"):
+            war = block.parse() if isinstance(block, LazyBlock) else block
+            if isinstance(war, dict):
+                wars.append(war)
+        return wars
+
+    def wars_of(self, tag: str) -> list[dict[str, Any]]:
+        """Ongoing wars in which ``tag`` is an attacker or defender."""
+        return [
+            w
+            for w in self.wars
+            if tag in as_list(w.get("attackers")) or tag in as_list(w.get("defenders"))
+        ]
+
+    # --- names --------------------------------------------------------------------------
+
+    def name(self, tag: str) -> str:
+        """Display name of a country, including custom names of dynamic tags."""
+        if DYNAMIC_TAG.match(tag):  # colonial nations etc. store their name in the save
+            data = self.country(tag)
+            if data and isinstance(data.get("name"), str):
+                return data["name"]
+        return self.loc.country(tag)
+
+    def label(self, tag: str) -> str:
+        """``"Name (TAG)"``, the standard way to mention a country in output."""
+        return f"{self.name(tag)} ({tag})"
+
+    def text(self, key: str) -> str:
+        """Localised text for a game key, humanised if no translation exists."""
+        return self.loc.get(key, key.replace("_", " "))
+
+    # --- lookup -------------------------------------------------------------------------
+
+    def resolve_country(self, query: str) -> str:
+        """Find a country tag from a tag or a (partial) display name.
+
+        Matching is case- and accent-insensitive. Exact matches beat prefix matches,
+        which beat substring matches. Within a tier, countries that still exist are
+        preferred over dead tags.
+
+        Args:
+            query: A tag such as ``"BUR"`` or a name such as ``"borgona"``.
+
+        Returns:
+            The matching tag.
+
+        Raises:
+            CountryLookupError: If nothing matches or several countries match equally.
+        """
+        text = query.strip()
+        if text.upper() in self.country_blocks:
+            return text.upper()
+
+        wanted = normalize(text)
+        if not wanted:
+            raise CountryLookupError(query, [], ambiguous=False)
+
+        names = self._names_index(include_dynamic=False)
+        tiers = _match_tiers(wanted, names)
+        if not any(tiers):
+            tiers = _match_tiers(wanted, self._names_index(include_dynamic=True))
+
+        for tier in tiers:
+            if not tier:
+                continue
+            if len(tier) > _MAX_CANDIDATES:  # too vague to inspect every candidate
+                ranked = sorted(tier, key=lambda t: len(self.name(t)))
+                pairs = [(t, self.name(t)) for t in ranked]
+                raise CountryLookupError(query, pairs, ambiguous=True)
+            alive = [t for t in tier if self.exists(t)]
+            pool = alive or tier
+            if len(pool) == 1:
+                return pool[0]
+            ranked = sorted(pool, key=lambda t: len(self.name(t)))
+            raise CountryLookupError(query, [(t, self.name(t)) for t in ranked], ambiguous=True)
+
+        raise CountryLookupError(query, self._suggestions(wanted), ambiguous=False)
+
+    def _names_index(self, include_dynamic: bool) -> dict[str, str]:
+        """Map tags to normalized display names."""
+        index = {}
+        for tag in self.country_blocks:
+            if DYNAMIC_TAG.match(tag) and not include_dynamic:
+                continue
+            index[tag] = normalize(self.name(tag))
+        return index
+
+    def _suggestions(self, wanted: str) -> list[tuple[str, str]]:
+        """Existing countries whose names share the query's first letters."""
+        prefix = wanted[:3]
+        found = [
+            tag
+            for tag, name in self._names_index(include_dynamic=False).items()
+            if any(word.startswith(prefix) for word in name.split())
+        ]
+        alive = [t for t in found[:_MAX_CANDIDATES] if self.exists(t)]
+        return [(t, self.name(t)) for t in alive[:8]]
+
+
+def normalize(text: str) -> str:
+    """Lowercase and strip accents, so that ``"Borgoña"`` matches ``"borgona"``."""
+    decomposed = unicodedata.normalize("NFKD", text.casefold())
+    return " ".join("".join(c for c in decomposed if not unicodedata.combining(c)).split())
+
+
+def as_list(value: Any) -> list[Any]:
+    """Treat a missing value as empty and a single value as a one-item list."""
+    if value is None:
+        return []
+    return list(value) if isinstance(value, list) else [value]
+
+
+def _match_tiers(wanted: str, names: dict[str, str]) -> list[list[str]]:
+    exact = [t for t, n in names.items() if n == wanted]
+    prefix = [t for t, n in names.items() if n.startswith(wanted) and t not in exact]
+    words = [
+        t
+        for t, n in names.items()
+        if t not in exact and t not in prefix and any(w.startswith(wanted) for w in n.split())
+    ]
+    inner = [t for t, n in names.items() if wanted in n and t not in exact + prefix + words]
+    return [exact, prefix, words, inner]

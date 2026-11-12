@@ -12,6 +12,39 @@ the model automatically. Every other goal builds on this one.
 Success looks like: save the game, ask "can I afford to declare war on Burgundy?", and get
 an answer grounded in the actual treasury, armies, allies and war score.
 
+### Context is not only "my country"
+
+Players ask about the whole world, not just their own realm:
+
+- **Any country.** "Is it worth attacking a country on the other side of Europe?" needs
+  that country's strength, allies and situation, not only the player's.
+- **War feasibility.** Who would defend the target (allies, guarantors, overlord, the
+  Emperor), how strong that coalition is, and whose side shared allies would take.
+- **The world state.** Great powers, alliance blocs and major wars shape every plan.
+
+So context is built from **queries** that can be pointed at any country or question. Each
+query returns structured data: the CLI renders it as Markdown today, and the chat agent
+calls the same functions as tools later, so the player never has to paste context by hand.
+
+### Game knowledge for long-term planning
+
+"What is the ideal plan for my country for the next 200 years?" cannot be answered from the
+save alone. The assistant also needs to know the game's content: mission trees, events,
+decisions, formable nations, idea groups. Then it must **cross that knowledge with the
+current world state**.
+
+Example: Austria's usual path is to integrate Bohemia and Hungary and take Burgundy. In a
+given campaign, though, Burgundy may be allied with two great powers, which makes that war
+a bad idea for now. A good plan is the standard route filtered by what is actually
+happening in the game.
+
+Sources, in order of preference:
+
+1. **Game files** from the player's installation (`missions/`, `events/`, `decisions/`,
+   `common/`). They match the installed version exactly and use the same Clausewitz
+   syntax the save parser already reads.
+2. **The EU4 wiki** for strategy and mechanics explanations, as a complement.
+
 ## Secondary goals
 
 ### 1. Comfort — one workspace for game and chat

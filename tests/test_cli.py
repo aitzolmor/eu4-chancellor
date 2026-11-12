@@ -84,3 +84,68 @@ def test_summary_uses_localisation(monkeypatch, tmp_path: Path, capsys):
 
     assert main(["summary"]) == 0
     assert "# Campaign briefing: Austria (HAB)" in capsys.readouterr().out
+
+
+# --- country ---------------------------------------------------------------------------
+
+
+def make_game_dir(tmp_path: Path) -> Path:
+    loc = tmp_path / "game" / "localisation"
+    loc.mkdir(parents=True)
+    (loc / "countries_l_spanish.yml").write_text(
+        'l_spanish:\n HAB:0 "Austria"\n TUR:0 "Otomanos"\n BOH:0 "Bohemia"\n'
+        ' BHU:0 "Bohemian Union"\n',
+        encoding="utf-8-sig",
+    )
+    return tmp_path / "game"
+
+
+@pytest.fixture
+def configured(monkeypatch, tmp_path: Path) -> Path:
+    save_dir = make_save_dir(tmp_path)
+    (save_dir.parent / "settings.txt").write_text('language="l_spanish"\n', encoding="utf-8")
+    monkeypatch.setenv("EU4_SAVE_DIR", str(save_dir))
+    monkeypatch.setenv("EU4_GAME_DIR", str(make_game_dir(tmp_path)))
+    return save_dir
+
+
+def test_country_by_name(configured, capsys):
+    assert main(["country", "otomanos"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("# Country briefing: Otomanos (TUR)")
+    assert "## Relation to the player" in out
+
+
+def test_country_by_tag(configured, capsys):
+    assert main(["country", "TUR"]) == 0
+    assert "# Country briefing: Otomanos (TUR)" in capsys.readouterr().out
+
+
+def test_country_name_with_spaces(configured, capsys):
+    assert main(["country", "Bohemian", "Union"]) == 0
+    assert "# Country briefing: Bohemian Union (BHU)" in capsys.readouterr().out
+
+
+def test_country_player_gets_campaign_briefing(configured, capsys):
+    assert main(["country", "austria"]) == 0
+    assert "# Campaign briefing: Austria (HAB)" in capsys.readouterr().out
+
+
+def test_country_ambiguous(configured, capsys):
+    assert main(["country", "bohem"]) == 1
+    err = capsys.readouterr().err
+    assert "matches several countries" in err
+    assert "Bohemia (BOH)" in err
+
+
+def test_country_unknown(configured, capsys):
+    assert main(["country", "Narnia"]) == 1
+    assert "No country named 'Narnia'" in capsys.readouterr().err
+
+
+def test_country_copy(configured, monkeypatch, capsys):
+    copied = []
+    monkeypatch.setattr(cli, "copy_to_clipboard", copied.append)
+    assert main(["country", "TUR", "--copy"]) == 0
+    assert copied[0].startswith("# Country briefing: Otomanos (TUR)")
+    assert "Briefing of Otomanos (TUR) copied" in capsys.readouterr().err

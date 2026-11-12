@@ -86,6 +86,9 @@ Values such as `manpower=33.343` are in thousands; `overextension_percentage=0.3
   `history`. Dated entries contain `monarch`, `heir` or `monarch_heir` blocks with the full
   person: `name`, `dynasty`, `ADM`/`DIP`/`MIL`, `birth_date`, `personalities`, … Match on
   `id.id` and keep the latest record. A date key can repeat, so read it with `get_all`.
+  Elective monarchies (Poland, Lithuania) record rulers chosen abroad under
+  `foreign_heir`. Across all 23 local saves, 0.6% of living countries' rulers
+  (68 of 11,826) are still not found under any known key.
 - **Leaders and advisors.** `leader` / `advisor` are also `{ id type }` references.
   Leader details appear in `history` dated entries (`leader={ name type fire shock … }`).
   Advisor details are not resolved yet.

@@ -10,9 +10,14 @@ from pathlib import Path
 from chancellor import __version__
 from chancellor.app.clipboard import ClipboardError, copy_to_clipboard
 from chancellor.config import Settings, load_settings
-from chancellor.context.summarizer import summarize_save
+from chancellor.context.campaign import Campaign, CountryLookupError
+from chancellor.context.summarizer import summarize
 from chancellor.game.localisation import Localisation, detect_language
 from chancellor.save.loader import SaveFormatError, find_current_save, load_save
+
+
+class CliError(Exception):
+    """An error to report to the user as ``error: <message>`` with exit code 1."""
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -24,23 +29,37 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    summary = sub.add_parser(
-        "summary",
-        help="Print a briefing of the current campaign.",
-        description="Print a Markdown briefing of the current campaign, ready for an LLM.",
-    )
-    summary.add_argument(
+    # Options shared by every command that reads a save and prints Markdown.
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument(
         "--save", type=Path, help="Save file to use (default: the current campaign)."
     )
-    summary.add_argument(
-        "--copy", action="store_true", help="Also copy the briefing to the clipboard."
+    common.add_argument(
+        "--copy", action="store_true", help="Also copy the output to the clipboard."
     )
-    summary.add_argument("--output", type=Path, help="Also write the briefing to this file.")
-    summary.add_argument(
+    common.add_argument("--output", type=Path, help="Also write the output to this file.")
+    common.add_argument(
         "--language", help="Name language, e.g. english or spanish (default: game setting)."
     )
 
-    sub.add_parser("chat", help="Open the chat window (Phase 2, not implemented yet).")
+    sub.add_parser(
+        "summary",
+        parents=[common],
+        help="Print a briefing of your own country.",
+        description="Print a Markdown briefing of the current campaign, ready for an LLM.",
+    )
+    country = sub.add_parser(
+        "country",
+        parents=[common],
+        help="Print a briefing of any country.",
+        description=(
+            "Print a Markdown briefing of any country, including its relation to the player. "
+            "Accepts a tag (BUR) or a name in the game's language (Borgoña, borgona, Borg)."
+        ),
+    )
+    country.add_argument("name", nargs="+", help="Country tag or name.")
+
+    sub.add_parser("chat", help="Open the chat window (Phase 4, not implemented yet).")
     return parser
 
 
@@ -54,26 +73,36 @@ def main(argv: Sequence[str] | None = None) -> int:
         Process exit code.
     """
     args = build_parser().parse_args(argv)
-    if args.command == "summary":
-        return _summary(args, load_settings())
+    _use_utf8()
+    try:
+        if args.command == "summary":
+            campaign, save_path = _load_campaign(args, load_settings())
+            return _emit(args, summarize(campaign), f"Briefing for {save_path.name}")
+        if args.command == "country":
+            campaign, save_path = _load_campaign(args, load_settings())
+            tag = campaign.resolve_country(" ".join(args.name))
+            return _emit(args, summarize(campaign, tag), f"Briefing of {campaign.label(tag)}")
+    except (CliError, CountryLookupError) as exc:
+        return _fail(str(exc))
     print(f"'{args.command}' is not implemented yet. See docs/ROADMAP.md.", file=sys.stderr)
     return 1
 
 
-def _summary(args: argparse.Namespace, settings: Settings) -> int:
+def _load_campaign(args: argparse.Namespace, settings: Settings) -> tuple[Campaign, Path]:
+    """Load the requested (or current) save together with localisation."""
     save_path: Path | None = args.save
     if save_path is None:
         if settings.save_dir is None:
-            return _fail("No save given and EU4_SAVE_DIR is not set (see .env.example).")
+            raise CliError("No save given and EU4_SAVE_DIR is not set (see .env.example).")
         try:
             save_path = find_current_save(settings.save_dir)
         except FileNotFoundError as exc:
-            return _fail(str(exc))
+            raise CliError(str(exc)) from exc
 
     try:
         raw = load_save(save_path)
     except (OSError, SaveFormatError) as exc:
-        return _fail(str(exc))
+        raise CliError(str(exc)) from exc
 
     loc = Localisation()
     if settings.game_dir is not None:
@@ -83,25 +112,33 @@ def _summary(args: argparse.Namespace, settings: Settings) -> int:
             language = detect_language(user_dir)
         loc = Localisation.load(settings.game_dir, language)
 
-    briefing = summarize_save(raw, loc)
+    return Campaign.from_raw(raw, loc), save_path
 
-    _write_stdout(briefing)
+
+def _emit(args: argparse.Namespace, text: str, what: str) -> int:
+    """Print the output and honour ``--output`` and ``--copy``."""
+    _write_stdout(text)
     if args.output:
-        args.output.write_text(briefing, encoding="utf-8")
+        args.output.write_text(text, encoding="utf-8")
     if args.copy:
         try:
-            copy_to_clipboard(briefing)
+            copy_to_clipboard(text)
         except ClipboardError as exc:
             return _fail(str(exc))
-        print(f"Briefing for {save_path.name} copied to the clipboard.", file=sys.stderr)
+        print(f"{what} copied to the clipboard.", file=sys.stderr)
     return 0
 
 
 def _write_stdout(text: str) -> None:
-    """Write UTF-8 text even on consoles with a legacy code page."""
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8")
+    """Write text to stdout (UTF-8, see :func:`_use_utf8`)."""
     sys.stdout.write(text)
+
+
+def _use_utf8() -> None:
+    """Make stdout and stderr UTF-8, even on consoles with a legacy code page."""
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
 
 
 def _fail(message: str) -> int:

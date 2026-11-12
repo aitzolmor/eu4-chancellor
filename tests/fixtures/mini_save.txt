@@ -82,24 +82,42 @@ countries={
 		neighbours={ BOH HUN }
 	}
 	BOH={
+		owned_provinces={ 266 }
+		allies={ HAB }
 		raw_development=170.000
 		technology={ adm_tech=5 dip_tech=5 mil_tech=5 }
 		army={ regiment={ name="x" } }
 		active_relations={ HAB={ cached_sum=150 attitude="attitude_loyal" } }
 	}
 	HUN={
+		owned_provinces={ 153 }
 		raw_development=298.000
 		technology={ adm_tech=5 dip_tech=5 mil_tech=5 }
 		active_relations={ HAB={ cached_sum=42 attitude="attitude_loyal" } }
 	}
 	TUR={
+		owned_provinces={ 151 }
+		allies={ BOH }
+		rival={ country="HAB" date="1450.1.1" }
+		neighbours={ HAB HUN }
+		treasury=250.000
+		manpower=40.000
+		max_manpower=50.000
 		raw_development=498.000
 		technology={ adm_tech=6 dip_tech=6 mil_tech=6 }
 		army={ regiment={ name="a" } regiment={ name="b" } }
 		active_relations={ HAB={ cached_sum=-25 attitude="attitude_rivalry" } }
 	}
+	BHU={
+		owned_provinces={ 1 }
+		raw_development=5.000
+	}
+	OLD={
+		raw_development=0.000
+	}
 	C00={
 		name="Austrian Antilles"
+		owned_provinces={ 2 }
 		raw_development=10.000
 	}
 }

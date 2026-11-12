@@ -1,6 +1,8 @@
 # Roadmap
 
 Each phase ends with something usable. Tick boxes as work lands.
+Phases were reordered on 2026-11-12 (D-009): query tools and game knowledge come before
+the chat, so the chat agent has something worth calling from day one.
 
 ## Phase 0 — Understand the save format
 
@@ -18,7 +20,7 @@ Goal: know exactly where every piece of data we need lives in a `.eu4` file.
 - [x] Decide parsing strategy (own parser vs. existing library) — D-003, D-008
 - [ ] Trim small fixtures from a real save into `tests/fixtures/`
 
-## Phase 1 — Summary to clipboard (MVP)
+## Phase 1 — Summary to clipboard (MVP) ✅
 
 Goal: `chancellor summary` prints a compact briefing of the player's situation and copies
 it to the clipboard, ready to paste into any chat.
@@ -35,30 +37,50 @@ it to the clipboard, ready to paste into any chat.
 - [ ] Income/expense breakdown by category
 - [ ] Advisors and generals in the briefing
 
-## Phase 2 — Chat workspace
+## Phase 2 — Query tools
 
-Goal: a desktop app docked beside the game that answers questions using the latest save
-as context. See [VISION.md](VISION.md) for the comfort goal.
+Goal: context about *any* country or question, not just the player. Every query is a
+function returning structured data, rendered as Markdown by the CLI and later exposed to
+the chat agent as a tool (D-009).
+
+- [x] `context.campaign`: shared, cached access to a loaded save (countries, wars, names)
+- [x] Resolve countries by tag or display name, accent- and case-insensitive
+- [x] `chancellor country <name>`: the briefing from any country's perspective, including
+  its relation to the player
+- [ ] `chancellor war-check <name>`: who would defend the target (allies, guarantors,
+  overlord, subjects, Emperor), combined strength of each side, shared allies
+- [ ] `chancellor world`: great powers, alliance blocs, major wars, unions
+- [ ] Structured return types (dataclasses) shared by CLI rendering and agent tools
+- [ ] Run from any folder (user-level config instead of `./.env` only)
+
+## Phase 3 — Game knowledge
+
+Goal: the assistant knows the game's content and can cross it with the campaign state.
+
+- [ ] Parse mission trees from `missions/` (requirements, rewards, claims granted)
+- [ ] Parse decisions and formable nations from `decisions/`
+- [ ] Index events and idea groups from `events/` and `common/`
+- [ ] `chancellor missions [<country>]`: mission tree with completion status from the save
+- [ ] "Expansion targets" view: mission/claim targets combined with `war-check` results
+- [ ] Wiki lookup as a complementary source for strategy and mechanics
+
+## Phase 4 — Chat workspace with agent
+
+Goal: a desktop app docked beside the game where Claude answers questions and gathers its
+own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfort goal.
 
 - [x] `config`: load API key, save dir and model from `.env`
-- [ ] `llm.client`: Claude API wrapper with streaming and prompt caching of the summary
-- [ ] `watcher`: detect new saves and refresh the cached summary
+- [ ] `llm.client`: Claude API wrapper with streaming, prompt caching and a tool-use loop
+- [ ] Expose Phase 2–3 queries as tools
+- [ ] `watcher`: detect new saves and refresh cached data
 - [ ] `app.ui`: web-based desktop window (pywebview or similar) with a chat view
 - [ ] Docked layout: position EU4 as a borderless window and dock the panel beside it
 - [ ] Overlay mode toggled by a global hotkey
 - [ ] Show which save/date the answer is based on
 - [ ] Conversation history within a session
-
-## Phase 3 — Agent with tools
-
-Goal: the model decides what to look up instead of receiving a fixed summary.
-
-- [ ] `context.tools`: `get_country`, `get_province`, `get_war`, `compare_armies`, `list_neighbours`
-- [ ] Tool-use loop in `llm.client`
-- [ ] Mechanics reference: EU4 wiki and/or game files (`common/`) as a retrieval source
 - [ ] Evaluation set of real questions with expected reasoning
 
-## Phase 4 — Charts and insight
+## Phase 5 — Charts and insight
 
 Goal: visual analysis of the campaign inside the workspace.
 
@@ -67,7 +89,7 @@ Goal: visual analysis of the campaign inside the workspace.
 - [ ] Save history: index past saves and chart trends over time
 - [ ] Let the model reference charts in its answers
 
-## Phase 5 — Claude plays (experimental)
+## Phase 6 — Claude plays (experimental)
 
 Goal: explore how far the assistant can act, not just advise.
 

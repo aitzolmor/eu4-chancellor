@@ -190,3 +190,25 @@ def test_lazy_list_of_blocks():
 
 def test_lazy_value_list():
     assert parse_lazy("x={ 1 2 3 }")["x"].parse() == [1, 2, 3]
+
+
+def test_lazy_reuses_child_spans_from_the_first_scan(monkeypatch):
+    from chancellor.save import parser
+
+    doc = parse_lazy('countries={ A={ x=1 } B={ name="{ tricky }" y={ 2 } } }')
+    calls = []
+    original = parser._scan_two_levels
+    monkeypatch.setattr(
+        parser, "_scan_two_levels", lambda *args: calls.append(args) or original(*args)
+    )
+    countries = doc["countries"].lazy()  # spans already known: no new scan
+    assert calls == []
+    assert countries["A"].parse() == {"x": 1}
+    assert countries["B"].parse() == {"name": "{ tricky }", "y": [2]}
+    countries["B"].lazy()  # third level was not recorded: scanned now
+    assert len(calls) == 1
+
+
+def test_lazy_unterminated_inner_block():
+    countries = parse_lazy("countries={ A={ x=1 ")["countries"].lazy()
+    assert countries["A"].parse() == {"x": 1}

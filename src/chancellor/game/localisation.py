@@ -15,6 +15,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from chancellor.game.cache import cached
+
 DEFAULT_LANGUAGE = "english"
 
 _ENTRY = re.compile(r'^\s*([\w.\-]+):\d*\s*"(.*)"\s*(?:#.*)?$')
@@ -34,7 +36,16 @@ class Localisation:
 
     @classmethod
     def load(cls, game_dir: Path, language: str = DEFAULT_LANGUAGE) -> Localisation:
-        """Load every localisation file for ``language`` from the game installation.
+        """Load a language from the game installation, reusing the on-disk cache."""
+        return cached(
+            f"localisation-{language}",
+            [game_dir / "localisation"],
+            lambda: cls.parse_game(game_dir, language),
+        )
+
+    @classmethod
+    def parse_game(cls, game_dir: Path, language: str = DEFAULT_LANGUAGE) -> Localisation:
+        """Parse every localisation file for ``language`` from the game installation.
 
         Args:
             game_dir: EU4 installation folder.

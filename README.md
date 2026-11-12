@@ -110,6 +110,10 @@ Hungary has over 40 cities and the administrative technology is too low.
 Coming next: queries about any country and possible wars (Phase 2), then game knowledge
 and a chat window docked beside the game.
 
+Game data (localisation, missions, decisions…) is parsed once and cached in your user
+cache folder. It is rebuilt automatically after a game patch; `chancellor clear-cache`
+removes it.
+
 ## Limitations
 
 - **Ironman saves** are binary and need a token file that is not publicly distributed.

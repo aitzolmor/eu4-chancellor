@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from chancellor.game.cache import cached
 from chancellor.save.parser import get_all, parse
 
 
@@ -45,6 +46,11 @@ class DecisionLibrary:
 
     @classmethod
     def load(cls, game_dir: Path) -> DecisionLibrary:
+        """Load from the game installation, reusing the on-disk cache when possible."""
+        return cached("decisions", [game_dir / "decisions"], lambda: cls.parse_game(game_dir))
+
+    @classmethod
+    def parse_game(cls, game_dir: Path) -> DecisionLibrary:
         """Parse every file in ``<game_dir>/decisions``."""
         decisions: list[Decision] = []
         folder = game_dir / "decisions"

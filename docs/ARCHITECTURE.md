@@ -33,7 +33,8 @@ flowchart LR
 | `context.summarizer` | Build a compact, LLM-friendly Markdown briefing from any country's perspective | 1–2 |
 | `app.cli` | Command-line entry point (`chancellor`) | 1 |
 | `app.clipboard` | Dependency-free clipboard copy (Win32 API, `pbcopy`, `wl-copy`/`xclip`) | 1 |
-| `context.tools` | Query functions (war check, world overview, …) shared by the CLI and the agent | 2 |
+| `context.war_check` | Who would fight in a hypothetical war and how strong each side is (`WarCheck` dataclass + Markdown renderer) | 2 |
+| `context.tools` | Registry of query functions exposed to the agent as tools | 4 |
 | `llm.client` | Talk to the LLM API: streaming, caching, tool-use loop | 4 |
 | `watcher` | Watch the save folder and trigger reloads | 4 |
 | `app.ui` | Chat window docked beside the game | 4 |

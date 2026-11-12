@@ -61,6 +61,7 @@ chancellor summary --copy       # ...and copy it to the clipboard, ready to past
 chancellor summary --save "path/to/save.eu4" --output briefing.md
 chancellor country Borgoña      # the same briefing for any country, plus its relation to you
 chancellor country BUR --copy   # tags work too; names are accent- and case-insensitive
+chancellor war-check Venecia    # who would defend the target and who would join you
 ```
 
 The briefing is a compact Markdown document (about 1k tokens) covering ruler, stability,
@@ -68,6 +69,11 @@ economy, military, territory, technology and ideas, estates, diplomacy, ongoing 
 a table of key countries, with names in your game's language. Briefings of other countries
 add how they relate to you (alliances, rivalries, wars, borders, opinions) and a side-by-side
 strength comparison.
+
+`war-check` lists every country that would fight if you declared war today: the target's
+allies, subjects, overlord, guarantors, the Holy Roman Emperor and any coalition against you,
+plus your own allies and subjects. Each one is marked certain, likely or possible, and the
+totals show the regiments and manpower on each side.
 
 ```text
 # Campaign briefing: Castilla (CAS), 1525.6.30

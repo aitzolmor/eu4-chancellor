@@ -124,7 +124,26 @@ player.
 
 `dependency` entries have `first` (overlord), `second` (subject) and `subject_type`
 (`personal_union`, `march`, `vassal`, …). `royal_marriage`, `alliance` and `guarantee`
-use the same `first`/`second` shape.
+use the same `first`/`second` shape; in `guarantee`, `first` guarantees `second`.
+
+Links are **kept after they end**: a `dependency` or `guarantee` may carry an `end_date`
+in the past (e.g. Denmark's 1444 unions). Filter by comparing `end_date` with the save
+date (`Campaign.active_links`). Country-level `subjects`, `allies` and `overlord` only
+list current relations.
+
+Whether a subject fights in its overlord's wars comes from the game files
+(`common/subject_types/00_subject_types.txt`): the default is `joins_overlords_wars = yes`,
+and in 1.37 only `tributary_state`, `nahuatl_tributary`, `eyalet`, `trade_protectorate`
+and `cultural_sphere_of_influence_subject` override it to `no`.
+
+#### Holy Roman Empire and coalitions
+
+- `empire.emperor` is the Emperor's tag; `empire.electors` lists electors.
+- Membership is per province: `provinces.-<id>.hre=yes`. A country counts as a member
+  when its capital province has it.
+- `coalition_against_us` is repeated once per member on the country being targeted
+  (e.g. `coalition_against_us="VEN"`). Attacking any member brings in the whole coalition.
+- No truce data has been found on the country or its `active_relations` yet.
 
 #### Dynamic countries
 

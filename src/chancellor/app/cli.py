@@ -12,6 +12,7 @@ from chancellor.app.clipboard import ClipboardError, copy_to_clipboard
 from chancellor.config import Settings, load_settings
 from chancellor.context.campaign import Campaign, CountryLookupError
 from chancellor.context.summarizer import summarize
+from chancellor.context.war_check import check_war, render_war_check
 from chancellor.game.localisation import Localisation, detect_language
 from chancellor.save.loader import SaveFormatError, find_current_save, load_save
 
@@ -59,6 +60,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     country.add_argument("name", nargs="+", help="Country tag or name.")
 
+    war = sub.add_parser(
+        "war-check",
+        parents=[common],
+        help="Who would fight if you declared war on a country.",
+        description=(
+            "List who would defend the target (allies, subjects, overlord, guarantors, the "
+            "Emperor, coalitions) and who would join you, with the strength of each side."
+        ),
+    )
+    war.add_argument("target", nargs="+", help="Target country tag or name.")
+    war.add_argument(
+        "--attacker", help="Attacking country tag or name (default: you). Quote names with spaces."
+    )
+
     sub.add_parser("chat", help="Open the chat window (Phase 4, not implemented yet).")
     return parser
 
@@ -82,6 +97,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             campaign, save_path = _load_campaign(args, load_settings())
             tag = campaign.resolve_country(" ".join(args.name))
             return _emit(args, summarize(campaign, tag), f"Briefing of {campaign.label(tag)}")
+        if args.command == "war-check":
+            campaign, _ = _load_campaign(args, load_settings())
+            target = campaign.resolve_country(" ".join(args.target))
+            attacker = campaign.resolve_country(args.attacker) if args.attacker else None
+            check = check_war(campaign, target, attacker)
+            return _emit(
+                args,
+                render_war_check(campaign, check),
+                f"War check against {campaign.label(target)}",
+            )
+    except ValueError as exc:  # e.g. a country attacking itself
+        return _fail(str(exc))
     except (CliError, CountryLookupError) as exc:
         return _fail(str(exc))
     print(f"'{args.command}' is not implemented yet. See docs/ROADMAP.md.", file=sys.stderr)

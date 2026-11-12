@@ -118,6 +118,73 @@ class Campaign:
             if tag in as_list(w.get("attackers")) or tag in as_list(w.get("defenders"))
         ]
 
+    @cached_property
+    def diplomacy(self) -> dict[str, Any]:
+        """The world's diplomatic links (alliances, guarantees, dependencies, ...)."""
+        block = self.gamestate.get("diplomacy", {})
+        result = block.parse() if isinstance(block, LazyBlock) else block
+        return result if isinstance(result, dict) else {}
+
+    def active_links(self, kind: str) -> list[dict[str, Any]]:
+        """Diplomatic links of one kind (``guarantee``, ``dependency``, ...) still in force.
+
+        Links whose ``end_date`` lies before the save date are skipped.
+        """
+        today = _date_key(self.date)
+        links = []
+        for link in get_all(self.diplomacy, kind):
+            if not isinstance(link, dict):
+                continue
+            end = link.get("end_date")
+            if end is not None and _date_key(str(end)) <= today:
+                continue
+            links.append(link)
+        return links
+
+    def subject_type(self, overlord: str, subject: str) -> str | None:
+        """Kind of subject relation (``vassal``, ``personal_union``, ...), if any."""
+        for link in self.active_links("dependency"):
+            if link.get("first") == overlord and link.get("second") == subject:
+                return str(link.get("subject_type", "subject"))
+        return None
+
+    def guarantors_of(self, tag: str) -> list[str]:
+        """Countries guaranteeing the independence of ``tag``."""
+        return [
+            str(link["first"])
+            for link in self.active_links("guarantee")
+            if link.get("second") == tag and "first" in link
+        ]
+
+    @cached_property
+    def _provinces(self) -> dict[str, Any]:
+        block = self.gamestate.get("provinces", {})
+        result = block.lazy() if isinstance(block, LazyBlock) else block
+        return result if isinstance(result, dict) else {}
+
+    def province(self, province_id: int | str) -> dict[str, Any] | None:
+        """Fully parsed province (ids are stored negated, e.g. ``-219``)."""
+        number = str(province_id).lstrip("-")
+        block = self._provinces.get(f"-{number}")
+        if isinstance(block, LazyBlock):
+            block = block.parse()
+        return block if isinstance(block, dict) else None
+
+    @property
+    def emperor(self) -> str | None:
+        """Tag of the Holy Roman Emperor, if there is one."""
+        block = self.gamestate.get("empire")
+        empire = block.parse() if isinstance(block, LazyBlock) else block
+        emperor = empire.get("emperor") if isinstance(empire, dict) else None
+        return str(emperor) if emperor and emperor != "---" else None
+
+    def in_hre(self, tag: str) -> bool:
+        """Whether the country's capital lies inside the Holy Roman Empire."""
+        country = self.country(tag)
+        capital = country.get("capital") if country else None
+        province = self.province(capital) if capital is not None else None
+        return bool(province and province.get("hre"))
+
     # --- names --------------------------------------------------------------------------
 
     def name(self, tag: str) -> str:
@@ -215,6 +282,14 @@ def as_list(value: Any) -> list[Any]:
     if value is None:
         return []
     return list(value) if isinstance(value, list) else [value]
+
+
+def _date_key(date: str) -> tuple[int, ...]:
+    """Sortable form of a ``YYYY.M.D`` date; unparsable dates sort first."""
+    try:
+        return tuple(int(part) for part in date.split("."))
+    except ValueError:
+        return (0,)
 
 
 def _match_tiers(wanted: str, names: dict[str, str]) -> list[list[str]]:

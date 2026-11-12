@@ -47,10 +47,12 @@ the chat agent as a tool (D-009).
 - [x] Resolve countries by tag or display name, accent- and case-insensitive
 - [x] `chancellor country <name>`: the briefing from any country's perspective, including
   its relation to the player
-- [ ] `chancellor war-check <name>`: who would defend the target (allies, guarantors,
-  overlord, subjects, Emperor), combined strength of each side, shared allies
+- [x] `chancellor war-check <name>`: who would defend the target (allies, guarantors,
+  overlord, subjects, Emperor, coalitions), combined strength of each side, shared allies
+- [ ] War check: truces, casus belli available and AI willingness to answer calls to arms
 - [ ] `chancellor world`: great powers, alliance blocs, major wars, unions
 - [ ] Structured return types (dataclasses) shared by CLI rendering and agent tools
+  (done for `war-check`; briefings still render directly to Markdown)
 - [ ] Run from any folder (user-level config instead of `./.env` only)
 
 ## Phase 3 — Game knowledge

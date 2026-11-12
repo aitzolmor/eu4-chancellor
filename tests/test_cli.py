@@ -149,3 +149,23 @@ def test_country_copy(configured, monkeypatch, capsys):
     assert main(["country", "TUR", "--copy"]) == 0
     assert copied[0].startswith("# Country briefing: Otomanos (TUR)")
     assert "Briefing of Otomanos (TUR) copied" in capsys.readouterr().err
+
+
+# --- war-check -------------------------------------------------------------------------
+
+
+def test_war_check(configured, capsys):
+    assert main(["war-check", "otomanos"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("# War check: Austria (HAB) vs Otomanos (TUR)")
+    assert "## Defenders" in out
+
+
+def test_war_check_with_attacker(configured, capsys):
+    assert main(["war-check", "Bohemia", "--attacker", "TUR"]) == 0
+    assert "# War check: Otomanos (TUR) vs Bohemia (BOH)" in capsys.readouterr().out
+
+
+def test_war_check_against_self(configured, capsys):
+    assert main(["war-check", "austria"]) == 1
+    assert "cannot declare war on itself" in capsys.readouterr().err

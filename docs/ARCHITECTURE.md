@@ -36,6 +36,7 @@ flowchart LR
 | `context.war_check` | Who would fight in a hypothetical war and how strong each side is (`WarCheck` dataclass + Markdown renderer) | 2 |
 | `context.world` | World overview: great powers, rankings, alliance networks, wars, unions, HRE (`WorldOverview` dataclass + renderer) | 2 |
 | `game.missions` | Mission series from the game's `missions/` folder (`MissionLibrary`) | 3 |
+| `game.modifiers` | Named modifiers and the stats they change (`ModifierLibrary`, `format_effect`) | 3 |
 | `context.script` | Readable, localised descriptions of trigger and effect script | 3 |
 | `context.missions` | A country's mission tree with completed / available / locked status | 3 |
 | `context.tools` | Registry of query functions exposed to the agent as tools | 4 |

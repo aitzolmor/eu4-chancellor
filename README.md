@@ -85,7 +85,9 @@ ongoing wars, personal unions and the Holy Roman Empire.
 `missions` reads the mission trees from your game installation and marks each mission as
 completed, available now or locked. Available missions show their requirements, and every
 open mission shows its rewards, translated from game script into readable lines with
-localised province, area and country names.
+localised province, area and country names. Granted modifiers list their actual bonuses,
+e.g. *La corona de hierro de Lombardía (permanent): Mejorar relaciones +15%, Tiempo de
+viaje -20%*.
 
 ```text
 # Campaign briefing: Castilla (CAS), 1525.6.30

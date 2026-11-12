@@ -152,6 +152,19 @@ and `cultural_sphere_of_influence_subject` override it to `no`.
 - `complex_dynamic_effect` stores script **inside quoted strings**
   (`first_limit = "…"`, `first_effect = "…"`); parse those strings again.
 
+#### Modifiers (game files)
+
+- `common/event_modifiers` (6k+ entries with the triggered folders; ~0.1 s to parse) maps
+  a modifier name to stat changes: `hab_union_with_bohemia = { diplomatic_upkeep = 1 }`.
+  `common/triggered_modifiers` and `common/province_triggered_modifiers` add `potential`
+  and `trigger` blocks around the stats.
+- Stat names are localised as `MODIFIER_<KEY>`, `<key>` or `<KEY>`. Some `<KEY>` entries
+  are long descriptions, not names, and some stats (e.g. `global_manpower_modifier`)
+  have no entry at all.
+- The game decides per stat whether it is a percentage. The heuristic used: fractional
+  values below 1 are percentages, except yearly/monthly gains and a list of flat stats
+  (prestige, legitimacy, war exhaustion, traditions, …).
+
 #### Great powers
 
 `great_powers={ original={ rank=1 country="CAS" value=1073.5 } … }` lists the eight great

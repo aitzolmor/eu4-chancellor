@@ -30,8 +30,8 @@ flowchart LR
 | --- | --- | --- |
 | 0 | Understand and document the save format | Mostly done |
 | 1 | CLI that copies a campaign summary to the clipboard | Working MVP |
-| 2 | Query tools: any country's briefing, war feasibility, world overview | In progress |
-| 3 | Game knowledge: missions, decisions and events crossed with the campaign | Planned |
+| 2 | Query tools: any country's briefing, war feasibility, world overview | Working |
+| 3 | Game knowledge: missions, decisions and events crossed with the campaign | In progress |
 | 4 | Chat workspace docked beside the game, with an agent that uses the tools | Planned |
 | 5 | Charts and trends across your saves | Planned |
 | 6 | Experimental: Claude acts in-game through computer use | Idea |
@@ -63,6 +63,8 @@ chancellor country Borgoña      # the same briefing for any country, plus its r
 chancellor country BUR --copy   # tags work too; names are accent- and case-insensitive
 chancellor war-check Venecia    # who would defend the target and who would join you
 chancellor world                # great powers, rankings, alliance networks and major wars
+chancellor missions             # your mission tree: done, available now, locked, with rewards
+chancellor missions Francia --brief
 ```
 
 The briefing is a compact Markdown document (about 1k tokens) covering ruler, stability,
@@ -79,6 +81,11 @@ totals show the regiments and manpower on each side.
 `world` gives the big picture that long-term plans depend on: the great powers, the largest
 countries by development and army, each major power's alliance network, the biggest
 ongoing wars, personal unions and the Holy Roman Empire.
+
+`missions` reads the mission trees from your game installation and marks each mission as
+completed, available now or locked. Available missions show their requirements, and every
+open mission shows its rewards, translated from game script into readable lines with
+localised province, area and country names.
 
 ```text
 # Campaign briefing: Castilla (CAS), 1525.6.30

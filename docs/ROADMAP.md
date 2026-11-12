@@ -59,10 +59,12 @@ the chat agent as a tool (D-009).
 
 Goal: the assistant knows the game's content and can cross it with the campaign state.
 
-- [ ] Parse mission trees from `missions/` (requirements, rewards, claims granted)
+- [x] Parse mission trees from `missions/` (requirements, rewards, claims granted)
 - [ ] Parse decisions and formable nations from `decisions/`
 - [ ] Index events and idea groups from `events/` and `common/`
-- [ ] `chancellor missions [<country>]`: mission tree with completion status from the save
+- [x] `chancellor missions [<country>]`: mission tree with completion status from the save
+- [x] Readable trigger/effect descriptions (`context.script`), localised names and tooltips
+- [ ] Resolve modifier effects (`common/event_modifiers`) so rewards show their real bonuses
 - [ ] "Expansion targets" view: mission/claim targets combined with `war-check` results
 - [ ] Wiki lookup as a complementary source for strategy and mechanics
 

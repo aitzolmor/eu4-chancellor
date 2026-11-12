@@ -136,6 +136,22 @@ Whether a subject fights in its overlord's wars comes from the game files
 and in 1.37 only `tributary_state`, `nahuatl_tributary`, `eyalet`, `trade_protectorate`
 and `cultural_sphere_of_influence_subject` override it to `no`.
 
+#### Missions
+
+- `countries.<TAG>.country_missions.mission_slot` is repeated once per column of the
+  mission tree; each holds the names of the mission *series* assigned to that column
+  (e.g. `{ WoC_austria_1_holy_roman_empire WoC_austria_1_1 }`). The game has already
+  evaluated each series' `potential` (DLC, tag, flags), so there is no need to re-evaluate.
+- `countries.<TAG>.completed_missions` lists completed mission keys.
+- Definitions live in `<game_dir>/missions/*.txt` (228 files, 1,422 series and 4,813
+  missions in 1.37; full parse in ~0.8 s). Most files are UTF-8, but 11 are Windows-1252.
+- A series has `slot`, `generic`, `potential`… and one block per mission with `position`,
+  `required_missions`, `trigger`, `effect`, `icon`, `provinces_to_highlight`, `ai_weight`.
+- Mission titles: `<mission>_title` in localisation. Localised texts contain colour codes
+  (`§Y…§!`) and placeholders (`[BOH.GetName]`, `[Root.GetFlag]`).
+- `complex_dynamic_effect` stores script **inside quoted strings**
+  (`first_limit = "…"`, `first_effect = "…"`); parse those strings again.
+
 #### Great powers
 
 `great_powers={ original={ rank=1 country="CAS" value=1073.5 } … }` lists the eight great

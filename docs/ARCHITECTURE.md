@@ -35,6 +35,9 @@ flowchart LR
 | `app.clipboard` | Dependency-free clipboard copy (Win32 API, `pbcopy`, `wl-copy`/`xclip`) | 1 |
 | `context.war_check` | Who would fight in a hypothetical war and how strong each side is (`WarCheck` dataclass + Markdown renderer) | 2 |
 | `context.world` | World overview: great powers, rankings, alliance networks, wars, unions, HRE (`WorldOverview` dataclass + renderer) | 2 |
+| `game.missions` | Mission series from the game's `missions/` folder (`MissionLibrary`) | 3 |
+| `context.script` | Readable, localised descriptions of trigger and effect script | 3 |
+| `context.missions` | A country's mission tree with completed / available / locked status | 3 |
 | `context.tools` | Registry of query functions exposed to the agent as tools | 4 |
 | `llm.client` | Talk to the LLM API: streaming, caching, tool-use loop | 4 |
 | `watcher` | Watch the save folder and trigger reloads | 4 |

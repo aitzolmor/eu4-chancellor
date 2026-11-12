@@ -18,6 +18,9 @@ from chancellor.save.parser import LazyBlock, get_all, parse, parse_lazy
 
 DYNAMIC_TAG = re.compile(r"^[A-Z]\d\d$")
 _MAX_CANDIDATES = 25
+_OWNS_LAND = re.compile(r"\bowned_provinces=\{\s*\d")
+_RAW_DEVELOPMENT = re.compile(r"\braw_development=(-?[\d.]+)")
+_REGIMENT = re.compile(r"\bregiment=\{")
 
 
 class CountryLookupError(LookupError):
@@ -117,6 +120,31 @@ class Campaign:
             for w in self.wars
             if tag in as_list(w.get("attackers")) or tag in as_list(w.get("defenders"))
         ]
+
+    @cached_property
+    def quick_stats(self) -> dict[str, tuple[float, int]]:
+        """``(development, regiments)`` of every living country, without full parsing.
+
+        Fully parsing ~1,400 country blocks takes tens of seconds, so world-wide rankings
+        use regular expressions over the raw blocks instead (about 1-2 s). The values
+        match a full parse: ``raw_development`` only appears at the top of a country
+        block, and every ``regiment={`` belongs to one of its armies.
+        """
+        stats: dict[str, tuple[float, int]] = {}
+        for tag, block in self.country_blocks.items():
+            if isinstance(block, LazyBlock):
+                text, start, end = block.text, block.start, block.end
+                if not _OWNS_LAND.search(text, start, end):
+                    continue
+                match = _RAW_DEVELOPMENT.search(text, start, end)
+                development = float(match.group(1)) if match else 0.0
+                regiments = len(_REGIMENT.findall(text, start, end))
+                stats[tag] = (development, regiments)
+            elif isinstance(block, dict) and block.get("owned_provinces"):
+                armies = [a for a in get_all(block, "army") if isinstance(a, dict)]
+                regiments = sum(len(get_all(a, "regiment")) for a in armies)
+                stats[tag] = (float(block.get("raw_development") or 0.0), regiments)
+        return stats
 
     @cached_property
     def diplomacy(self) -> dict[str, Any]:

@@ -62,6 +62,7 @@ chancellor summary --save "path/to/save.eu4" --output briefing.md
 chancellor country Borgoña      # the same briefing for any country, plus its relation to you
 chancellor country BUR --copy   # tags work too; names are accent- and case-insensitive
 chancellor war-check Venecia    # who would defend the target and who would join you
+chancellor world                # great powers, rankings, alliance networks and major wars
 ```
 
 The briefing is a compact Markdown document (about 1k tokens) covering ruler, stability,
@@ -74,6 +75,10 @@ strength comparison.
 allies, subjects, overlord, guarantors, the Holy Roman Emperor and any coalition against you,
 plus your own allies and subjects. Each one is marked certain, likely or possible, and the
 totals show the regiments and manpower on each side.
+
+`world` gives the big picture that long-term plans depend on: the great powers, the largest
+countries by development and army, each major power's alliance network, the biggest
+ongoing wars, personal unions and the Holy Roman Empire.
 
 ```text
 # Campaign briefing: Castilla (CAS), 1525.6.30

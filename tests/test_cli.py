@@ -169,3 +169,13 @@ def test_war_check_with_attacker(configured, capsys):
 def test_war_check_against_self(configured, capsys):
     assert main(["war-check", "austria"]) == 1
     assert "cannot declare war on itself" in capsys.readouterr().err
+
+
+# --- world -----------------------------------------------------------------------------
+
+
+def test_world(configured, capsys):
+    assert main(["world", "--top", "3"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("# World overview, 1471.10.2")
+    assert "## Largest countries" in out

@@ -91,3 +91,13 @@ Long-term planning needs game content: missions, events, decisions and formables
 player's own installation provides it in the exact installed version, and in the
 Clausewitz syntax the existing parser reads. The EU4 wiki can lag behind patches, so it
 is a secondary source, used for strategy and mechanics explanations.
+
+## D-011 — Alliance networks per major power, not transitive blocs
+
+**Date:** 2026-11-12 · **Status:** Accepted
+
+Chaining alliances transitively merged rivals such as France and Austria into a single
+"bloc" of about 100 countries, which says nothing about a real war. The world overview
+instead shows each major power's direct network: the power, its fighting subjects, its
+allies and their fighting subjects. Roughly, that is who shows up when the power goes to
+war. Major powers are the player, the great powers and the largest armies.

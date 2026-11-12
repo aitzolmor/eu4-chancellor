@@ -1,7 +1,28 @@
+import shutil
+from pathlib import Path
+
 import pytest
 
 from chancellor import __version__
+from chancellor.app import cli
 from chancellor.app.cli import main
+
+FIXTURE = Path(__file__).parent / "fixtures" / "mini_save.txt"
+
+
+@pytest.fixture(autouse=True)
+def isolated_env(monkeypatch, tmp_path: Path):
+    """Keep the developer's real .env and environment out of CLI tests."""
+    for key in ("EU4_SAVE_DIR", "EU4_GAME_DIR", "EU4_LANGUAGE", "ANTHROPIC_API_KEY"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.chdir(tmp_path)
+
+
+def make_save_dir(tmp_path: Path) -> Path:
+    save_dir = tmp_path / "user" / "save games"
+    save_dir.mkdir(parents=True)
+    shutil.copy(FIXTURE, save_dir / "mini.eu4")
+    return save_dir
 
 
 def test_version(capsys):
@@ -12,5 +33,54 @@ def test_version(capsys):
 
 
 def test_unimplemented_command_exits_nonzero(capsys):
-    assert main(["summary"]) == 1
+    assert main(["chat"]) == 1
     assert "not implemented" in capsys.readouterr().err
+
+
+def test_summary_without_configuration_fails(capsys):
+    assert main(["summary"]) == 1
+    assert "EU4_SAVE_DIR" in capsys.readouterr().err
+
+
+def test_summary_uses_save_dir(monkeypatch, tmp_path: Path, capsys):
+    monkeypatch.setenv("EU4_SAVE_DIR", str(make_save_dir(tmp_path)))
+    assert main(["summary"]) == 0
+    assert "# Campaign briefing: HAB (HAB), 1471.10.2" in capsys.readouterr().out
+
+
+def test_summary_explicit_save_and_output(tmp_path: Path, capsys):
+    save = make_save_dir(tmp_path) / "mini.eu4"
+    out = tmp_path / "briefing.md"
+    assert main(["summary", "--save", str(save), "--output", str(out)]) == 0
+    assert out.read_text(encoding="utf-8") == capsys.readouterr().out
+
+
+def test_summary_copy(monkeypatch, tmp_path: Path, capsys):
+    copied = []
+    monkeypatch.setattr(cli, "copy_to_clipboard", copied.append)
+    save = make_save_dir(tmp_path) / "mini.eu4"
+    assert main(["summary", "--save", str(save), "--copy"]) == 0
+    assert copied and copied[0].startswith("# Campaign briefing")
+    assert "copied to the clipboard" in capsys.readouterr().err
+
+
+def test_summary_rejects_non_save(tmp_path: Path, capsys):
+    bad = tmp_path / "bad.eu4"
+    bad.write_text("nope", encoding="utf-8")
+    assert main(["summary", "--save", str(bad)]) == 1
+    assert "error:" in capsys.readouterr().err
+
+
+def test_summary_uses_localisation(monkeypatch, tmp_path: Path, capsys):
+    game = tmp_path / "game" / "localisation"
+    game.mkdir(parents=True)
+    (game / "countries_l_spanish.yml").write_text(
+        'l_spanish:\n HAB:0 "Austria"\n', encoding="utf-8-sig"
+    )
+    save_dir = make_save_dir(tmp_path)
+    (save_dir.parent / "settings.txt").write_text('language="l_spanish"\n', encoding="utf-8")
+    monkeypatch.setenv("EU4_SAVE_DIR", str(save_dir))
+    monkeypatch.setenv("EU4_GAME_DIR", str(tmp_path / "game"))
+
+    assert main(["summary"]) == 0
+    assert "# Campaign briefing: Austria (HAB)" in capsys.readouterr().out

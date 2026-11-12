@@ -1,0 +1,118 @@
+EU4txt
+date=1471.10.2
+save_game="mini.eu4"
+player="HAB"
+displayed_country_name="Austria"
+players_countries={
+	"Player"
+	"HAB"
+}
+countries={
+	HAB={
+		human=yes
+		government_rank=2
+		government={
+			government=monarchy
+			reform_stack={
+				reforms={ "monarchy_mechanic" "austrian_archduchy_reform" }
+			}
+		}
+		primary_culture=austrian
+		religion=catholic
+		capital=134
+		is_great_power=yes
+		score_place=7
+		history={
+			1440.2.22={
+				heir={
+					id={ id=3666 type=48 }
+					name="Ladislaus"
+					dynasty="von Habsburg"
+					ADM=3 DIP=3 MIL=2
+					birth_date=1440.2.22
+				}
+			}
+			1457.11.24={
+				monarch={
+					id={ id=3666 type=48 }
+					name="Ladislaus"
+					dynasty="von Habsburg"
+					ADM=3 DIP=3 MIL=2
+					birth_date=1440.2.22
+					personalities={ industrious_personality=yes }
+				}
+			}
+		}
+		monarch={ id=3666 type=48 }
+		stability=1.000
+		legitimacy=100.000
+		prestige=93.700
+		treasury=36.100
+		ledger={ lastmonthincome=26.200 lastmonthexpense=24.500 }
+		loan={ id={ id=1 type=60 } amount=100 }
+		loan={ id={ id=2 type=60 } amount=76 }
+		inflation=6.250
+		manpower=63.781
+		max_manpower=63.781
+		sailors=467.000
+		max_sailors=559.000
+		army={
+			name="Army of Vienna"
+			regiment={ name="1st" type=western_medieval_infantry }
+			regiment={ name="2nd" type=western_medieval_infantry }
+		}
+		army={
+			name="Army of Linz"
+			regiment={ name="3rd" type=western_medieval_knights }
+		}
+		navy={
+			name="Fleet"
+			ship={ name="A" type=cog }
+		}
+		raw_development=185.000
+		owned_provinces={ 134 133 }
+		core_provinces={ 134 133 }
+		technology={ adm_tech=6 dip_tech=5 mil_tech=6 }
+		active_idea_groups={ HAB_ideas=0 diplomatic_ideas=1 }
+		estate={ type="estate_church" loyalty=46.500 territory=16.700 }
+		allies={ BOH }
+		subjects={ HUN }
+		rival={ country="TUR" date="1450.1.1" }
+		enemy="TUR"
+		neighbours={ BOH HUN }
+	}
+	BOH={
+		raw_development=170.000
+		technology={ adm_tech=5 dip_tech=5 mil_tech=5 }
+		army={ regiment={ name="x" } }
+		active_relations={ HAB={ cached_sum=150 attitude="attitude_loyal" } }
+	}
+	HUN={
+		raw_development=298.000
+		technology={ adm_tech=5 dip_tech=5 mil_tech=5 }
+		active_relations={ HAB={ cached_sum=42 attitude="attitude_loyal" } }
+	}
+	TUR={
+		raw_development=498.000
+		technology={ adm_tech=6 dip_tech=6 mil_tech=6 }
+		army={ regiment={ name="a" } regiment={ name="b" } }
+		active_relations={ HAB={ cached_sum=-25 attitude="attitude_rivalry" } }
+	}
+	C00={
+		name="Austrian Antilles"
+		raw_development=10.000
+	}
+}
+active_war={
+	name=" Austrian Conquest of Nikopol"
+	attackers={ "HAB" "HUN" }
+	defenders={ "TUR" }
+	action=1471.10.2
+	take_province={ type="take_claim" province=150 casus_belli="cb_conquest" }
+}
+active_war={
+	name="Unrelated war"
+	attackers={ "FRA" }
+	defenders={ "ENG" }
+}
+checksum="0"

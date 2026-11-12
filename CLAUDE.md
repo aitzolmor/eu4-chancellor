@@ -52,5 +52,9 @@ python -m venv .venv && .venv\Scripts\activate
 pip install -e ".[dev]"
 ruff check . && ruff format --check .
 pytest
-chancellor --help
+chancellor summary          # briefing of the current campaign (uses .env paths)
 ```
+
+Exploring real saves: load with `chancellor.save.loader.load_save`, then `parse_lazy` and
+`.lazy()` / `.parse()` only the blocks you need — a full parse takes ~19 s. Set
+`PYTHONIOENCODING=utf-8` when printing names from Git Bash.

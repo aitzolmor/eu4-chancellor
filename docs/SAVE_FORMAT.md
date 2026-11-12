@@ -136,6 +136,19 @@ Whether a subject fights in its overlord's wars comes from the game files
 and in 1.37 only `tributary_state`, `nahuatl_tributary`, `eyalet`, `trade_protectorate`
 and `cultural_sphere_of_influence_subject` override it to `no`.
 
+#### Great powers
+
+`great_powers={ original={ rank=1 country="CAS" value=1073.5 } … }` lists the eight great
+powers with their score (`value`).
+
+#### World-wide rankings without a full parse
+
+Parsing every country block takes tens of seconds, so `Campaign.quick_stats` scans the
+raw blocks with regular expressions instead (~2 s for ~1,400 tags). A country exists if
+its `owned_provinces={` list is non-empty. `raw_development=` appears once, at the top of a
+country block, and each `regiment={` belongs to one of its armies. Checked on 345 sampled
+countries across all local saves: identical to a full parse.
+
 #### Holy Roman Empire and coalitions
 
 - `empire.emperor` is the Emperor's tag; `empire.electors` lists electors.

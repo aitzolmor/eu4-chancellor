@@ -13,6 +13,7 @@ from chancellor.config import Settings, load_settings
 from chancellor.context.campaign import Campaign, CountryLookupError
 from chancellor.context.summarizer import summarize
 from chancellor.context.war_check import check_war, render_war_check
+from chancellor.context.world import render_world, world_overview
 from chancellor.game.localisation import Localisation, detect_language
 from chancellor.save.loader import SaveFormatError, find_current_save, load_save
 
@@ -74,6 +75,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--attacker", help="Attacking country tag or name (default: you). Quote names with spaces."
     )
 
+    world = sub.add_parser(
+        "world",
+        parents=[common],
+        help="Overview of the world: great powers, rankings, alliances and wars.",
+        description=(
+            "Print the big picture: great powers, the largest countries, the alliance "
+            "networks of the major powers, ongoing wars, personal unions and the HRE."
+        ),
+    )
+    world.add_argument("--top", type=int, default=10, help="Countries per ranking (default 10).")
+
     sub.add_parser("chat", help="Open the chat window (Phase 4, not implemented yet).")
     return parser
 
@@ -107,6 +119,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 render_war_check(campaign, check),
                 f"War check against {campaign.label(target)}",
             )
+        if args.command == "world":
+            campaign, save_path = _load_campaign(args, load_settings())
+            overview = world_overview(campaign, top=max(1, args.top))
+            return _emit(args, render_world(campaign, overview), "World overview")
     except ValueError as exc:  # e.g. a country attacking itself
         return _fail(str(exc))
     except (CliError, CountryLookupError) as exc:

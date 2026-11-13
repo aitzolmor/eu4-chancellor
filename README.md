@@ -31,8 +31,8 @@ flowchart LR
 | 0 | Understand and document the save format | Mostly done |
 | 1 | CLI that copies a campaign summary to the clipboard | Working MVP |
 | 2 | Query tools: any country's briefing, war feasibility, world overview | Working |
-| 3 | Game knowledge: missions, decisions and events crossed with the campaign | In progress |
-| 4 | Chat workspace docked beside the game, with an agent that uses the tools | Planned |
+| 3 | Game knowledge: missions, decisions and events crossed with the campaign | Working |
+| 4 | Chat workspace docked beside the game, with an agent that uses the tools | Terminal chat working |
 | 5 | Charts and trends across your saves | Planned |
 | 6 | Experimental: Claude acts in-game through computer use | Idea |
 
@@ -114,12 +114,28 @@ subjects or allies (diplomacy, not war).
 | Francia (FRA) | our rival, rivals us, neighbour | 714 | 64 | 10 | -46 (Rivalidad) |
 ```
 
-Coming next: queries about any country and possible wars (Phase 2), then game knowledge
-and a chat window docked beside the game.
+Coming next: a desktop window docked beside the game for the chat (Phase 4), then charts of
+your campaign across saves (Phase 5).
 
 Game data (localisation, missions, decisions…) is parsed once and cached in your user
 cache folder. It is rebuilt automatically after a game patch; `chancellor clear-cache`
 removes it.
+
+## Chat
+
+```bash
+chancellor chat
+```
+
+Ask in plain language, in any language: *"¿Me sale rentable atacar a Borgoña?"*, *"What
+should Austria aim for in the next 50 years?"*. The Chancellor (Claude Opus 5.5) decides
+which queries to run (country briefings, war checks, the world overview, missions,
+formable nations, expansion targets), reads the results, and answers with the numbers
+behind its advice. When you save the game, the next question uses the new save.
+
+It needs an Anthropic API key in `.env` (`ANTHROPIC_API_KEY`, see `.env.example`). Each
+question is billed by the API: a few tool lookups plus the answer usually cost a few cents.
+`/usage` shows the tokens used in the session.
 
 ## Limitations
 

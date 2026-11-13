@@ -6,7 +6,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-DEFAULT_MODEL = "claude-sonnet-5-5"
+DEFAULT_MODEL = "claude-opus-5-5"
+DEFAULT_EFFORT = "high"
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,8 @@ class Settings:
         model: Model identifier used by the LLM client.
         language: Localisation language (e.g. ``"spanish"``). ``None`` means detect it
             from the game's ``settings.txt``.
+        effort: Effort level for the chat agent (``low``, ``medium``, ``high``, ``xhigh``,
+            ``max``): how much the model thinks before answering.
     """
 
     save_dir: Path | None
@@ -28,6 +31,7 @@ class Settings:
     api_key: str | None
     model: str = DEFAULT_MODEL
     language: str | None = None
+    effort: str = DEFAULT_EFFORT
 
 
 def _read_dotenv(path: Path) -> dict[str, str]:
@@ -70,4 +74,5 @@ def load_settings(dotenv_path: Path | None = None) -> Settings:
         api_key=get("ANTHROPIC_API_KEY"),
         model=get("CHANCELLOR_MODEL") or DEFAULT_MODEL,
         language=get("EU4_LANGUAGE"),
+        effort=get("CHANCELLOR_EFFORT") or DEFAULT_EFFORT,
     )

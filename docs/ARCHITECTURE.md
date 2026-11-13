@@ -45,8 +45,9 @@ flowchart LR
 | `context.conditions` | Three-valued evaluator for game conditions (true / false / unknown) | 3 |
 | `context.decisions` | Decisions a country can see, with a requirement checklist | 3 |
 | `context.targets` | Expansion targets: wanted provinces by owner, with war odds (`TargetReport`) | 3 |
-| `context.tools` | Registry of query functions exposed to the agent as tools | 4 |
-| `llm.client` | Talk to the LLM API: streaming, caching, tool-use loop | 4 |
+| `context.tools` | The queries as agent tools: definitions, input validation, `Toolbox` bound to a save | 4 |
+| `llm.client` | `ChancellorAgent`: streaming tool-use loop on the Messages API (caching, thinking, fallbacks) | 4 |
+| `app.chat` | Terminal chat: follows the newest save, prints streamed answers and tool calls | 4 |
 | `watcher` | Watch the save folder and trigger reloads | 4 |
 | `app.ui` | Chat window docked beside the game | 4 |
 

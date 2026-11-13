@@ -149,3 +149,25 @@ Targets are ranked in odds tiers (2x or better, 1x–2x, below 1x) and then by
 development. Ranking by raw odds alone would put one-province minors above rich,
 slightly harder targets. Hard targets get their own section so that a coalition-protected
 mission target (e.g. Venice) stays visible.
+
+## D-015 — Chat agent: terminal first, manual streaming loop, Opus 5.5
+
+**Date:** 2026-11-13 · **Status:** Accepted
+
+- **Terminal first.** `chancellor chat` ships the whole agent (tools, loop, save
+  following) before any window code. The desktop window (D-005, D-006) will reuse
+  `ChancellorAgent` unchanged.
+- **Manual loop instead of the SDK tool runner.** The loop streams answer text to the
+  player while it is generated, validates every tool input before running it (inputs
+  stream eagerly and are not validated by the API), turns bad input and unknown countries
+  into `is_error` tool results the model can recover from, and caps the rounds per
+  question. The runner is a beta helper; the loop is about 60 lines.
+- **Request settings.** `claude-opus-5-5` (override with `CHANCELLOR_MODEL`), adaptive
+  thinking (always on for this model) at effort `high` (`CHANCELLOR_EFFORT`), top-level
+  prompt caching (the static system prompt and tool list form the cached prefix),
+  server-side refusal fallbacks (`fallbacks: "default"`), and an append-only history so
+  thinking blocks stay valid.
+- **Save changes mid-conversation** are announced with a mid-conversation system message
+  after the next question, which keeps the cached prefix intact.
+- **The SDK is imported lazily.** Importing `anthropic` takes ~10 s on the development
+  machine, so only `chancellor chat` pays for it.

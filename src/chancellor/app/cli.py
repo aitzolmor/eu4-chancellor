@@ -137,7 +137,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Delete cached game data (it is rebuilt automatically when needed).",
     )
 
-    sub.add_parser("chat", help="Open the chat window (Phase 4, not implemented yet).")
+    chat = sub.add_parser(
+        "chat",
+        help="Chat with the Chancellor about your campaign (needs an Anthropic API key).",
+        description=(
+            "Ask questions in plain language; Claude looks up your save and the game files "
+            "with the same queries as the other commands. Reloads automatically when you save."
+        ),
+    )
+    chat.add_argument("--save", type=Path, help="Save file to use (default: the current one).")
+    chat.add_argument("--language", help="Name language (default: game setting).")
     return parser
 
 
@@ -205,6 +214,17 @@ def main(argv: Sequence[str] | None = None) -> int:
             modifiers = ModifierLibrary.load(settings.game_dir)
             text = render_decisions(campaign, tag, checks, modifiers)
             return _emit(args, text, f"Decisions of {campaign.label(tag)}")
+        if args.command == "chat":
+            settings = load_settings()
+
+            def load(current: Settings) -> tuple[Campaign, Path]:
+                campaign, path = _load_campaign(args, current)
+                args.save = None  # after the first load, always follow the newest save
+                return campaign, path
+
+            from chancellor.app.chat import run_chat  # deferred: the SDK is slow to import
+
+            return run_chat(settings, load)
         if args.command == "targets":
             settings = load_settings()
             if settings.game_dir is None:

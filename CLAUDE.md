@@ -31,6 +31,7 @@ charts (PDX Tools-style), and — long term — Claude acting in-game via comput
 | How modules fit together | `docs/ARCHITECTURE.md` |
 | Facts about the `.eu4` save format | `docs/SAVE_FORMAT.md` |
 | Why a decision was made | `docs/DECISIONS.md` |
+| Desktop app layout and views | `docs/UI_DESIGN.md` |
 
 Update those docs in the same change that makes them stale.
 

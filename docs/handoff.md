@@ -5,7 +5,7 @@ the same day after the first play-test (PRs #1–#21 merged, the next imperial
 reform in review; 347 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-019),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-021),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -65,7 +65,8 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
      formables, about 6% for the formables).
 4. **Usability:**
    - run from any folder (today `.env` is read from the working directory);
-   - the docked desktop window (`app.ui`, D-005/D-006) and the overlay hotkey.
+   - the desktop app: designed on 2026-11-13 ([UI_DESIGN](UI_DESIGN.md), D-020,
+     D-021), not built yet. Next is the panel window (build order step 1).
 5. **Later phases:**
    - an evaluation set of real questions;
    - Phase 5: charts and trends across saves, PDX Tools evaluation;
@@ -175,9 +176,13 @@ The API key lives only in the git-ignored `.env`. Never print it, and never put 
    Austria-Hungary, where to expand. Note what changed, what is still wrong, and turn new
    findings into roadmap items. A Claude Code session can run it with the
    `mcp__eu4-chancellor__*` tools; Claude Desktop shows how Claude chains them itself.
-2. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
+2. **Desktop app, build order step 1** ([UI_DESIGN](UI_DESIGN.md)): the pywebview panel
+   with the header and key numbers. It does not depend on the play-test, so it can go
+   ahead before or after it. The API chat mode stays off unless the player switches it
+   on (D-020).
+3. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
    with the answers given through MCP.
-3. Remaining data gaps (casus belli, income breakdown, advisors and generals) or the
+4. Remaining data gaps (casus belli, income breakdown, advisors and generals) or the
    docked window, whichever the play-test shows matters more.
 
 **Tip:** a Claude Code session on this machine has the `eu4-chancellor` MCP tools too

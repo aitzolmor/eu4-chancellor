@@ -51,7 +51,8 @@ flowchart LR
 | `app.chat` | Terminal chat: follows the newest save, prints streamed answers and tool calls | 4 |
 | `app.mcp_server` | MCP server for Claude Desktop: the same tools over stdio, reloading the newest save | 4 |
 | `watcher` | Watch the save folder and trigger reloads | 4 |
-| `app.ui` | Chat window docked beside the game | 4 |
+| `app.ui` | pywebview panel beside the game: campaign status, alerts, chat-mode switch (D-020, D-021, [UI_DESIGN](UI_DESIGN.md)) | 4 |
+| `app.layout` | Win32 window placement: EU4 borderless, panel and Claude Desktop docked beside it | 4 |
 
 Every query follows the same pattern (D-009): a function takes a `Campaign` and returns
 structured data, the CLI renders it as Markdown, and the agent receives it as a tool

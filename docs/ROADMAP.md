@@ -93,13 +93,18 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
   subscription (no API key, no per-question billing); `chancellor mcp-config` prints the
   Claude Desktop entry
 - [ ] First live run with a real API key; tune the system prompt and effort
-- [ ] `watcher`: background save watching for the desktop window (the terminal chat checks
-  before each question)
-- [ ] `app.ui`: web-based desktop window (pywebview or similar) with a chat view
-- [ ] Docked layout: position EU4 as a borderless window and dock the panel beside it
-- [ ] Overlay mode toggled by a global hotkey
-- [ ] Show which save/date the answer is based on
-- [ ] Conversation history within a session
+- [x] Desktop app design: hybrid chat (D-020), pywebview shell (D-021), layout and views
+  in [UI_DESIGN.md](UI_DESIGN.md)
+- [ ] `app.ui`: pywebview panel with the header (country, date, save) and key numbers
+- [ ] `watcher`: background save watching with live refresh of the panel (the terminal chat
+  checks before each question)
+- [ ] Alerts: truces ending, coalition and AE, overextension, imperial reform ready, new
+  missions or formables
+- [ ] `app.layout`: docked layout (EU4 borderless, panel and Claude Desktop beside it) and
+  undock
+- [ ] Quick questions (copy to Claude Desktop, or send to the API tab) and the overlay hotkey
+- [ ] API chat tab behind the player's chat-mode switch (D-020), with a session counter of
+  questions and tokens; conversation history within a session
 - [ ] Evaluation set of real questions with expected reasoning
 
 ### Play-test findings (2026-11-13, Austria 1475 save, through the MCP tools)

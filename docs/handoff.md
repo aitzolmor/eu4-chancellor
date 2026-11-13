@@ -1,8 +1,8 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13** and updated
-the same day after the first play-test (PRs #1–#18 merged, allied defenders in
-review; 330 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
+the same day after the first play-test (PRs #1–#19 merged, region quotas in
+review; 335 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
 [ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-018),
@@ -51,8 +51,9 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
    [ROADMAP](ROADMAP.md) under *Play-test findings*). Done: armies at sea are counted
    (#15), the briefing shows the HRE (#16), aggressive expansion, overextension and
    monarch power (#17), war checks and targets know about truces (#18) and flag
-   targets defended by the player's own allies. Left: "N of M" region missions, readable checklists, the next imperial
-   reform.
+   targets defended by the player's own allies (#19); targets say "any N of M
+   provinces" for counted mission conditions. Left: readable checklists, the next
+   imperial reform.
 2. **First live run of `chancellor chat`** with the real API key, to tune the system
    prompt and effort. It spends money, so ask the user before running it.
 3. **Data gaps that limit advice:**
@@ -162,16 +163,16 @@ The API key lives only in the git-ignored `.env`. Never print it, and never put 
 
 ## Next step
 
-1. **"N of M" for region missions in `targets`.** A mission such as Relaciones ibéricas
-   (`hab_spain_pu`) asks for 4 provinces in `iberia_region` (inside an `OR` with a
-   personal-union path), yet `targets` presents every Iberian province as wanted. Keep
-   the count from `num_of_provinces_owned_or_owned_by_non_sovereign_subjects_with` (and
-   similar counted conditions) and say "4 of 34 provinces" in the reasons; mention the
-   alternative branch when the count sits inside an `OR`.
-2. Then the rest of the play-test list in the roadmap: readable checklists, the next
-   imperial reform.
+1. **Readable checklists.** `get_decisions` (and the mission requirements) print raw
+   trigger keys such as `junior_union_with: ROOT`, `NOT: num_of_cities: 40` or
+   `is_free_or_tributary_trigger: yes`, and some decision titles stay as keys
+   ("force british union debate"). Describe the common triggers in words in
+   `context.script` (use the game's own localisation where a tooltip key exists), and
+   check the Austria-Hungary checklist on the play-test save reads naturally.
+2. Then the next imperial reform in the HRE section (needs `common/imperial_reforms`).
 3. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
-   with the answers given through MCP.
+   with the answers given through MCP. A second play-test through MCP would also show
+   whether the fixes changed Claude's advice.
 
 **Tip:** a Claude Code session on this machine has the `eu4-chancellor` MCP tools too
 (`mcp__eu4-chancellor__*`), so play-tests can be run from here at no API cost. They read

@@ -1,7 +1,13 @@
 import pytest
 
 from chancellor.context.campaign import Campaign
-from chancellor.context.targets import find_targets, provinces_in, render_targets
+from chancellor.context.targets import (
+    Quota,
+    find_targets,
+    provinces_in,
+    render_targets,
+    wanted_provinces,
+)
 from chancellor.game.decisions import DecisionLibrary, parse_decision_file
 from chancellor.game.localisation import Localisation
 from chancellor.game.missions import MissionLibrary, parse_mission_file
@@ -51,6 +57,43 @@ def test_area_mentioned_outside_counts_is_ignored():
 
 def test_huge_geography_is_ignored():
     assert ids("num_of_owned_provinces_with = { value = 5 region = europe }") == set()
+
+
+def quotas(script: str) -> dict[int, Quota | None]:
+    return wanted_provinces(parse(script), RULES)
+
+
+def test_counted_conditions_keep_their_quota():
+    script = "num_of_owned_provinces_with = { value = 1 region = iberia_region }"
+    assert quotas(script) == {
+        219: Quota(1, ("iberia_region",), 2, False),
+        220: Quota(1, ("iberia_region",), 2, False),
+    }
+
+
+def test_quota_inside_or_is_optional():
+    script = """
+    OR = {
+        legitimacy = 100
+        num_of_owned_provinces_with = { value = 1 region = iberia_region }
+    }
+    """
+    assert all(q is not None and q.optional for q in quotas(script).values())
+
+
+def test_count_of_every_province_is_no_quota():
+    script = "num_of_owned_provinces_with = { value = 2 area = venetia_area }"
+    assert quotas(script) == {112: None, 108: None}
+
+
+def test_province_named_on_its_own_wins_over_a_quota():
+    script = """
+    owns = 219
+    num_of_owned_provinces_with = { value = 1 region = iberia_region }
+    """
+    found = quotas(script)
+    assert found[219] is None
+    assert found[220] == Quota(1, ("iberia_region",), 2, False)
 
 
 # --- the report ------------------------------------------------------------------------
@@ -226,3 +269,46 @@ def test_owners_defended_by_your_own_ally_come_last(report):
     assert order.index("VEN") < order.index("SAL")
     text = render_targets(campaign, result)
     assert "| defended by your ally BRA |" in text
+
+
+def test_reasons_describe_quotas_and_merge_named_provinces():
+    missions = MissionLibrary(
+        parse_mission_file(
+            """
+            hab_series = {
+                slot = 1
+                hab_iberia = {
+                    position = 1
+                    trigger = { OR = {
+                        legitimacy = 100
+                        num_of_owned_provinces_with = { value = 1 region = iberia_region }
+                    } }
+                }
+                hab_venice = {
+                    position = 2
+                    trigger = {
+                        owns = 112
+                        num_of_owned_provinces_with = { value = 1 area = venetia_area }
+                    }
+                }
+            }
+            """
+        )
+    )
+    world = WORLD.replace("    POL={", "    CAS={ owned_provinces={ 219 220 } } POL={").replace(
+        "    -999={",
+        '    -219={ owner="CAS" base_tax=1.000 } -220={ owner="CAS" base_tax=1.000 } -999={',
+    )
+    campaign = Campaign(
+        {"player": "HAB", "date": "1475.1.1"},
+        parse(world),
+        Localisation({"iberia_region": "Iberia", "venetia_area": "Veneto"}),
+    )
+    result = find_targets(campaign, RULES, missions, DecisionLibrary({}))
+    targets = {t.owner: t for t in result.targets}
+    assert targets["CAS"].reasons == [
+        "mission: hab iberia (any 1 of 2 provinces in Iberia; one of several ways)"
+    ]
+    assert targets["VEN"].reasons == [
+        "mission: hab venice (specific provinces, plus any 1 of 2 provinces in Veneto)"
+    ]

@@ -66,6 +66,7 @@ chancellor world                # great powers, rankings, alliance networks and 
 chancellor missions             # your mission tree: done, available now, locked, with rewards
 chancellor missions Francia --brief
 chancellor decisions --formables # nations you can form and what you are missing
+chancellor targets              # where to expand next, and how hard each target is
 ```
 
 The briefing is a compact Markdown document (about 1k tokens) covering ruler, stability,
@@ -94,6 +95,12 @@ viaje -20%*.
 checklist: requirements met `[x]`, not met `[ ]` and not checkable automatically `[?]`.
 For example, Austria in 1475 sees *Austria-Hungary* with 13 of 15 requirements met:
 Hungary has over 40 cities and the administrative technology is too low.
+
+`targets` ties it all together. It gathers the provinces your available missions,
+formable nations, claims and cores point at, groups them by who holds them now, and runs a
+war check against each owner. Favourable targets come first. Targets protected by
+coalitions or strong alliances are listed apart, and so are provinces held by your own
+subjects or allies (diplomacy, not war).
 
 ```text
 # Campaign briefing: Castilla (CAS), 1525.6.30

@@ -133,3 +133,19 @@ parser records the first two levels of blocks in a single pass, so opening `coun
 no longer rescans 70% of the file. That halves save preparation (4.2 s → 2.3 s). A
 "C-level" brace scanner (split, accumulate, bytes.find) was tried and measured: it was no
 faster than the token scan, so it was dropped.
+
+## D-014 — Expansion targets only count ownership conditions
+
+**Date:** 2026-11-13 · **Status:** Accepted
+
+Mission and formable conditions mention provinces and regions for many reasons (culture,
+religion, trade, a capital's area). Counting every mention marked whole countries as
+targets, e.g. all of Castile for a dynastic mission. `targets` therefore only extracts
+ownership: `owns`-style conditions, province counts filtered by area or region, and
+province or geography scopes that check `owned_by`, `is_core` or similar. Continents,
+superregions and any scope over 120 provinces are too broad to be targets.
+
+Targets are ranked in odds tiers (2x or better, 1x–2x, below 1x) and then by
+development. Ranking by raw odds alone would put one-province minors above rich,
+slightly harder targets. Hard targets get their own section so that a coalition-protected
+mission target (e.g. Venice) stays visible.

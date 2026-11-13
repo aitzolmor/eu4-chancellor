@@ -226,3 +226,17 @@ def test_clear_cache_command(isolated_cache: Path, capsys):
     assert main(["clear-cache"]) == 0
     assert "Removed 1 cached file(s)" in capsys.readouterr().err
     assert not list(isolated_cache.glob("*.pickle"))
+
+
+# --- targets ---------------------------------------------------------------------------
+
+
+def test_targets_need_game_dir(monkeypatch, tmp_path: Path, capsys):
+    monkeypatch.setenv("EU4_SAVE_DIR", str(make_save_dir(tmp_path)))
+    assert main(["targets"]) == 1
+    assert "EU4_GAME_DIR" in capsys.readouterr().err
+
+
+def test_targets(configured, capsys):
+    assert main(["targets"]) == 0
+    assert capsys.readouterr().out.startswith("# Expansion targets: Austria (HAB)")

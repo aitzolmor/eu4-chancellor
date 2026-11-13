@@ -215,3 +215,18 @@ A truce does not make a war impossible, only costly (breaking it), so:
   likelihood, because whether they may still join is not verified.
 - `targets` sorts owners under a truce after every other war target instead of dropping
   them, and names the ones pushed out of the visible list.
+
+## D-018 — Targets defended by the player's own allies rank with truced ones
+
+**Date:** 2026-11-13 · **Status:** Accepted
+
+An owner can be defended by one of the attacker's allies when that ally is bound to it:
+its overlord, one of its subjects, or a coalition member. On the play-test save Aragón
+(defended by its overlord Castilla), Navarra (Castilla) and Turingia (Sajonia) were top
+war targets for Austria. The forces table already moved those allies to the defending
+side, but nothing said that the war would turn an ally into an enemy.
+
+`check_war` now lists them as `allied_defenders` with a note, and `targets` treats them
+like a truce (D-017): such owners sort after every other war target and are named when
+pushed out of view. Allies that are merely allied to both sides stay in "Tied to both
+sides", as before.

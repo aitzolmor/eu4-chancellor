@@ -119,8 +119,8 @@ def test_render(campaign, rules, library):
     assert "## Formable nations" in text
     assert "### Form Germany, forms Germany (GER)" in text
     assert "`form_germany`: not yet; 1 met, 1 not met, 1 unchecked." in text
-    assert "- [x] adm_tech: 5" in text
-    assert "- [ ] owns_core_province: Berlin (#50)" in text
+    assert "- [x] Administrative technology 5 or more" in text
+    assert "- [ ] Owns Berlin (#50) as a core" in text
     assert "- [?] estate_thing: yes" in text
     assert "  - change_tag: Germany (GER)" in text
     assert "`small_decision`: can be taken now" in text

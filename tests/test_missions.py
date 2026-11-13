@@ -159,7 +159,7 @@ def test_render(campaign: Campaign, library: MissionLibrary):
     assert "1 of 4 missions completed, 2 available now, 1 locked." in text
     assert "- [x] First mission (`hab_first`)" in text
     assert "- [ ] **Second mission (`hab_second`)**, available now" in text
-    assert "- owns_core_province: Praga (#266)" in text
+    assert "- Owns Praga (#266) as a core" in text
     assert "- give_claims: area: Silesia" in text
     assert "- [-] hab third (`hab_third`), after: Second mission" in text
     assert "mod_series" in text
@@ -181,8 +181,8 @@ def lines(script: str, campaign: Campaign, **kwargs) -> list[str]:
 
 def test_tags_provinces_and_areas(campaign: Campaign):
     assert lines("BOH = { is_subject_of = ROOT } owns = 266 area = silesia_area", campaign) == [
-        "- Bohemia (BOH): is_subject_of: ROOT",
-        "- owns: Praga (#266)",
+        "- Bohemia (BOH): is_subject_of: this country (ROOT)",
+        "- Owns Praga (#266)",
         "- area: Silesia",
     ]
 
@@ -204,7 +204,7 @@ def test_tooltips_are_localised(campaign: Campaign):
 def test_if_else(campaign: Campaign):
     script = "if = { limit = { is_emperor = yes } add_prestige = 5 } else = { add_prestige = 1 }"
     assert lines(script, campaign) == [
-        "- If (is_emperor: yes):",
+        "- If (Holy Roman Emperor):",
         "  - add_prestige: 5",
         "- Otherwise:",
         "  - add_prestige: 1",
@@ -247,3 +247,28 @@ def test_clean_text(campaign: Campaign):
     assert clean_text("§YHello§! [BOH.GetName]\\nworld [Root.GetFlag]", campaign) == (
         "Hello Bohemia world"
     )
+
+
+def test_common_triggers_are_written_in_words(campaign: Campaign):
+    script = """
+    adm_tech = 15
+    is_at_war = no
+    is_free_or_tributary_trigger = yes
+    NOT = { num_of_cities = 40 }
+    HUN = { junior_union_with = ROOT }
+    has_country_flag = some_flag
+    """
+    assert lines(script, campaign) == [
+        "- Administrative technology 15 or more",
+        "- Not at war",
+        "- Independent or a tributary",
+        "- Not: 40 or more cities",
+        "- HUN (HUN): Junior partner in a personal union with this country (ROOT)",
+        "- Has country flag some_flag",
+    ]
+
+
+def test_uncommon_triggers_keep_their_key(campaign: Campaign):
+    assert lines("has_institution = printing_press", campaign) == [
+        "- has_institution: printing_press"
+    ]

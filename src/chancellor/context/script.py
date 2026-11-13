@@ -10,8 +10,10 @@ province ids and tags unreadable. :func:`describe` keeps the meaning and drops t
 * ``if`` / ``else`` and ``complex_dynamic_effect`` branches become labelled sub-lists;
 * hidden effects, AI weights and highlighting rules are skipped.
 
-The output keeps script keys such as ``owns_core_province`` as they are: they are
-precise, and the LLM reading the briefing knows them.
+The most common triggers are written in words (``Junior partner in a personal union
+with this country``, ``Administrative technology 15 or more``), because raw keys read
+poorly in checklists. Every other script key is kept as it is: it is precise, and the
+LLM reading the output knows it.
 """
 
 from __future__ import annotations
@@ -61,6 +63,86 @@ _PROVINCE_KEYS = {
     "add_permanent_claim",
 }
 _PROVINCE_SCOPED = {"area", "region", "superregion", "province_id"}
+
+# Common triggers described in words. Anything not listed keeps its script key, which is
+# precise and known to the LLM; these are the ones players and the model meet most often
+# in checklists, where raw keys such as `junior_union_with: ROOT` read poorly.
+_YES_NO_PHRASES = {
+    "is_at_war": ("At war", "Not at war"),
+    "is_free_or_tributary_trigger": ("Independent or a tributary", "Not independent"),
+    "is_nomad": ("A nomad horde", "Not a nomad horde"),
+    "is_emperor": ("Holy Roman Emperor", "Not the Holy Roman Emperor"),
+    "is_elector": ("An elector of the Empire", "Not an elector of the Empire"),
+    "is_part_of_hre": ("Inside the Holy Roman Empire", "Outside the Holy Roman Empire"),
+    "is_subject": ("A subject", "Not a subject"),
+    "is_lesser_in_union": ("Junior partner in a personal union", "Not a junior partner"),
+    "is_colonial_nation": ("A colonial nation", "Not a colonial nation"),
+    "is_bankrupt": ("Bankrupt", "Not bankrupt"),
+    "has_regency": ("Under a regency", "No regency"),
+    "is_state": ("A state", "Not a state"),
+    "exists": ("Exists", "Does not exist"),
+    "ai": ("Run by the AI", "Played by a human"),
+}
+_VALUE_PHRASES = {
+    "adm_tech": "Administrative technology {v} or more",
+    "dip_tech": "Diplomatic technology {v} or more",
+    "mil_tech": "Military technology {v} or more",
+    "num_of_cities": "{v} or more cities",
+    "total_development": "Total development {v} or more",
+    "stability": "Stability {v} or more",
+    "legitimacy": "Legitimacy {v} or more",
+    "legitimacy_equivalent": "Legitimacy (or equivalent) {v} or more",
+    "prestige": "Prestige {v} or more",
+    "army_tradition": "Army tradition {v} or more",
+    "is_year": "Year {v} or later",
+    "owns": "Owns {v}",
+    "owns_core_province": "Owns {v} as a core",
+    "controls": "Controls {v}",
+    "owns_or_non_sovereign_subject_of": "{v} held by this country or a non-sovereign subject",
+    "owned_by": "Owned by {v}",
+    "controlled_by": "Controlled by {v}",
+    "is_core": "A core of {v}",
+    "country_or_non_sovereign_subject_holds": "Held by {v} or its non-sovereign subjects",
+    "country_or_subject_holds": "Held by {v} or its subjects",
+    "junior_union_with": "Junior partner in a personal union with {v}",
+    "senior_union_with": "Senior partner in a personal union over {v}",
+    "tag": "Is {v}",
+    "exists": "{v} exists",
+    "mission_completed": "Mission completed: {v}",
+    "has_country_flag": "Has country flag {v}",
+    "has_global_flag": "Global flag {v} is set",
+    "religion": "Religion: {v}",
+    "religion_group": "Religion group: {v}",
+    "culture_group": "Culture group: {v}",
+    "primary_culture": "Primary culture: {v}",
+    "accepted_culture": "Accepts the {v} culture",
+    "government": "Government: {v}",
+    "has_reform": "Has the government reform {v}",
+    "has_dlc": "Has the {v} DLC",
+    "crown_land_share": "Crown land {v}% or more",
+    "has_estate": "Has the {v} estate",
+}
+# Values localised by their own key (religions, cultures, governments, reforms).
+_LOCALISED_VALUES = {
+    "religion",
+    "religion_group",
+    "culture_group",
+    "primary_culture",
+    "accepted_culture",
+    "government",
+    "has_reform",
+    "has_estate",
+}
+_BLOCK_PHRASES = {
+    "NOT": "Not",
+    "OR": "One of",
+    "AND": "All of",
+    "num_of_owned_provinces_with": "Owned provinces",
+    "num_of_provinces_owned_or_owned_by_non_sovereign_subjects_with": (
+        "Provinces held by this country or its non-sovereign subjects"
+    ),
+}
+_SCOPE_WORDS = {"ROOT": "this country (ROOT)", "root": "this country (ROOT)"}
 
 
 def describe(
@@ -172,7 +254,28 @@ def _entry(key: str, value: Any, campaign: _Ctx, depth: int) -> list[str]:
     if isinstance(value, list):
         shown = ", ".join(_value(key, v, campaign) for v in value)
         return [f"{pad}- {_key(key, campaign)}: {shown}"]
+    phrase = _phrase(key, value, campaign)
+    if phrase:
+        return [f"{pad}- {phrase}"]
     return [f"{pad}- {_key(key, campaign)}: {_value(key, value, campaign)}"]
+
+
+def _phrase(key: str, value: Any, campaign: _Ctx) -> str | None:
+    """A common trigger in words, e.g. ``Junior partner in a personal union with ...``."""
+    if isinstance(value, bool) and key in _YES_NO_PHRASES:
+        yes, no = _YES_NO_PHRASES[key]
+        return yes if value else no
+    template = _VALUE_PHRASES.get(key)
+    if template is None or isinstance(value, bool):
+        return None
+    if key == "mission_completed" and isinstance(value, str):
+        title = campaign.loc.get(f"{value}_title", "")
+        shown = clean_text(title, campaign) if title else value
+    elif key in _LOCALISED_VALUES and isinstance(value, str):
+        shown = campaign.loc.get(value, value.replace("_", " "))
+    else:
+        shown = _value(key, value, campaign)
+    return template.format(v=shown)
 
 
 def _branch(parts: dict[str, Any], campaign: _Ctx, depth: int) -> list[str]:
@@ -228,6 +331,8 @@ def _looks_like_script(text: str) -> bool:
 
 
 def _key(key: str, campaign: _Ctx) -> str:
+    if key in _BLOCK_PHRASES:
+        return _BLOCK_PHRASES[key]
     if _is_tag(key):
         return campaign.label(key)
     if key.lstrip("-").isdigit():
@@ -245,6 +350,8 @@ def _value(key: str, value: Any, campaign: _Ctx) -> str:
     if isinstance(value, int) and key in _PROVINCE_KEYS:
         return _province(value, campaign)
     if isinstance(value, str):
+        if value in _SCOPE_WORDS:
+            return _SCOPE_WORDS[value]
         if _is_tag(value):
             return campaign.label(value)
         if key in _PROVINCE_SCOPED or _GEOGRAPHY.search(value):

@@ -21,7 +21,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
-from chancellor.context.campaign import Campaign, as_list
+from chancellor.context.campaign import Campaign, Truce, as_list
 from chancellor.context.decisions import check_decisions
 from chancellor.context.missions import mission_tree
 from chancellor.context.war_check import check_war
@@ -76,6 +76,7 @@ class Target:
         defender_regiments: Expected regiments defending the owner.
         defender_worst_case: Defending regiments including possible joiners.
         defenders: Main defenders (owner first), for display.
+        truce: The country's truce with the owner, if any (war would break it).
     """
 
     owner: str
@@ -89,6 +90,7 @@ class Target:
     defender_regiments: int = 0
     defender_worst_case: int = 0
     defenders: list[str] = field(default_factory=list)
+    truce: Truce | None = None
 
     @property
     def odds(self) -> float:
@@ -267,8 +269,9 @@ def render_targets(campaign: Campaign, report: TargetReport, top: int = 15) -> s
             "## War targets",
             "",
             "Odds compare the regiments expected on each side if war were declared today "
-            "(certain and likely participants). Favourable odds (2x or more) first, then "
-            "even ones; within each, the most development first.",
+            "(certain and likely participants). Owners you have a truce with come last. "
+            "Favourable odds (2x or more) first, then even ones; within each, the most "
+            "development first.",
             "",
             "| # | Held by | Provinces | Dev | Wanted for | You vs defenders | Odds | Notes |",
             "| --- | --- | --- | --- | --- | --- | --- | --- |",
@@ -284,6 +287,11 @@ def render_targets(campaign: Campaign, report: TargetReport, top: int = 15) -> s
             )
         if len(war) > top:
             lines += ["", f"{len(war) - top} more war targets not shown."]
+            truced = [t for t in war[top:] if t.truce]
+            if truced:
+                names = ", ".join(f"{label(t.owner)} ({_truce_note(t)})" for t in truced[:8])
+                more = f" and {len(truced) - 8} more" if len(truced) > 8 else ""
+                lines.append(f"Not shown because of a truce: {names}{more}.")
 
     if hard:
         lines += [
@@ -329,8 +337,9 @@ def render_targets(campaign: Campaign, report: TargetReport, top: int = 15) -> s
         ]
     lines += [
         "",
-        "_Odds ignore truces, casus belli, fort levels, generals and terrain. Missions only "
-        "count when available now; formables only when visible to the country._",
+        "_Odds ignore casus belli, fort levels, generals and terrain; truce end dates are "
+        "estimates. Missions only count when available now; formables only when visible to "
+        "the country._",
     ]
     return "\n".join(lines) + "\n"
 
@@ -383,19 +392,21 @@ def _target(
         target.defender_regiments = check.totals("defenders", worst_case=False).regiments
         target.defender_worst_case = check.totals("defenders", worst_case=True).regiments
         target.defenders = [p.tag for p in check.defenders]
+        target.truce = check.truce
     return target
 
 
 def _attractiveness(target: Target) -> tuple[Any, ...]:
-    """Peaceful targets apart; war targets by odds tier, then by development.
+    """Peaceful targets apart; war targets by truce, odds tier, then development.
 
-    Ranking by raw odds alone would put one-province minors above rich, slightly harder
+    Owners under a truce come after every other war target. Ranking by raw odds alone
+    would put one-province minors above rich, slightly harder
     targets, so odds are bucketed: favourable (2x or more), even (1x-2x), unfavourable.
     """
     if target.peaceful:
-        return (0, 0, -target.development)
+        return (0, 0, 0, -target.development)
     tier = 0 if target.odds >= 2 else 1 if target.odds >= 1 else 2
-    return (1, tier, -target.development)
+    return (1, target.truce is not None, tier, -target.development)
 
 
 def _notes(target: Target) -> str:
@@ -410,7 +421,14 @@ def _notes(target: Target) -> str:
         notes.append("in a coalition against you")
     if target.owner_at_war:
         notes.append("already at war")
+    if target.truce:
+        notes.append(_truce_note(target))
     return "; ".join(notes)
+
+
+def _truce_note(target: Target) -> str:
+    end = target.truce.estimated_end if target.truce else None
+    return f"truce until about {end}" if end else "truce"
 
 
 def _reasons(target: Target) -> str:

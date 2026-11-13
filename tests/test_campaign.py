@@ -6,7 +6,9 @@ import pytest
 from chancellor.context.campaign import (
     Campaign,
     CountryLookupError,
+    Truce,
     count_regiments,
+    estimate_truce_end,
     land_armies,
     normalize,
 )
@@ -164,3 +166,33 @@ def test_aggressive_expansion_towards(parser):
     ]  # MIL has no AE against HAB; DED no longer exists
     assert [g.tag for g in campaign.aggressive_expansion_towards("TUR")] == ["POL", "MIL"]
     assert campaign.aggressive_expansion_towards("POL") == []
+
+
+@pytest.mark.parametrize(
+    ("last_war", "warscore", "end"),
+    [
+        ("1475.6.21", 0, "1480.6.21"),  # base 5 years
+        ("1475.6.21", 100, "1490.6.21"),  # plus 10 at full war score
+        ("1475.6.21", 41, "1484.7.28"),  # 9.1 years, 365-day calendar
+        ("1475.12.31", 0, "1480.12.31"),
+        ("1475.6.21", 150, "1490.6.21"),  # war score is capped
+        ("unknown", 50, None),
+    ],
+)
+def test_estimate_truce_end(last_war: str, warscore: int, end: str | None):
+    assert estimate_truce_end(last_war, warscore) == end
+
+
+def test_truce_between_two_countries():
+    save = """
+    countries={
+        HAB={ owned_provinces={ 1 } active_relations={
+            TUR={ last_war="1475.6.21" last_warscore=41 truce=yes }
+            VEN={ last_war="1450.1.1" last_warscore=20 } } }
+        TUR={ owned_provinces={ 2 } }
+    }
+    """
+    campaign = Campaign({"player": "HAB"}, parse_lazy(save))
+    assert campaign.truce("HAB", "TUR") == Truce("TUR", "1475.6.21", 41, "1484.7.28")
+    assert campaign.truce("HAB", "VEN") is None  # an old war, no truce left
+    assert campaign.truce("TUR", "HAB") is None  # nothing recorded on TUR's side here

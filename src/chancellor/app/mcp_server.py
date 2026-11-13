@@ -37,8 +37,8 @@ country, a possible war, the world, missions, formable nations or where to expan
 Several independent lookups can be made in parallel.
 - Countries can be named by tag (BUR) or by name in the player's game language (Borgoña).
 - Every call reads the newest save, so after the player saves, look things up again.
-- The tools do not know war score, truces or casus belli; requirements marked [?] could \
-not be checked automatically.
+- The tools do not know war score or casus belli. Truces are known, but their end dates \
+are estimates. Requirements marked [?] could not be checked automatically.
 - Give concrete, prioritised advice with the numbers and names behind it, then the risks.
 """
 

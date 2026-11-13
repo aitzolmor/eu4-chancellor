@@ -122,7 +122,8 @@ at sea. Use `campaign.land_armies` / `count_regiments`.
     scans every country for AE against one tag in about a second.
   - **Truces** are here too: `truce=yes`, `last_war="1475.6.21"` (when the last war
     ended) and `last_warscore=41`. They are symmetric (both countries carry them). The
-    truce end date is not stored.
+    truce end date is not stored; `estimate_truce_end` derives it from the defines
+    (D-017), which matched all 295 truces with a war date in the 1475 save.
 - `ledger`: `lastmonthincome` / `lastmonthexpense` totals and per-category arrays
   (`lastmonthincometable`, …). The index → category mapping is not documented yet.
 - `loan` (repeated): `amount`, `interest`, `expiry_date`, `lender`.

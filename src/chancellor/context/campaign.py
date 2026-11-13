@@ -40,6 +40,59 @@ class Grievance:
     attitude: str | None
 
 
+@dataclass(frozen=True)
+class Truce:
+    """A truce between two countries after a war.
+
+    Attributes:
+        other: The country the truce is with.
+        last_war: Date the last war between them ended, ``YYYY.M.D``, if known.
+        warscore: War score of that peace, if known.
+        estimated_end: When the truce should end, ``YYYY.M.D``, if it can be estimated.
+            The save does not store it; see :func:`estimate_truce_end`.
+    """
+
+    other: str
+    last_war: str | None
+    warscore: int | None
+    estimated_end: str | None
+
+
+# From common/defines.lua: TRUCE_YEARS = 5 and SCALED_TRUCE_YEARS = 10 (extra years at
+# 100% war score). Checked against every truce in a 1475 save: none outlived its estimate.
+TRUCE_YEARS = 5
+SCALED_TRUCE_YEARS = 10
+_MONTH_DAYS = (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)  # EU4 has no leap years
+
+
+def estimate_truce_end(last_war: str, warscore: int) -> str | None:
+    """Estimated end of a truce: base years plus years scaled by the war score.
+
+    Modifiers to truce length (ideas, policies) are not counted, so the result is an
+    estimate.
+
+    Args:
+        last_war: Date the war ended, ``YYYY.M.D``.
+        warscore: War score of the peace, 0-100.
+
+    Returns:
+        The estimated end date, or ``None`` if ``last_war`` is not a date.
+    """
+    try:
+        year, month, day = (int(part) for part in last_war.split("."))
+    except ValueError:
+        return None
+    years = TRUCE_YEARS + SCALED_TRUCE_YEARS * min(max(warscore, 0), 100) / 100
+    days = round(years * 365)
+    ordinal = year * 365 + sum(_MONTH_DAYS[: month - 1]) + day - 1 + days
+    year, rest = divmod(ordinal, 365)
+    month = 1
+    while rest >= _MONTH_DAYS[month - 1]:
+        rest -= _MONTH_DAYS[month - 1]
+        month += 1
+    return f"{year}.{month}.{rest + 1}"
+
+
 class CountryLookupError(LookupError):
     """Raised when a country query matches no country or several equally well.
 
@@ -187,6 +240,27 @@ class Campaign:
         block = self.gamestate.get("diplomacy", {})
         result = block.parse() if isinstance(block, LazyBlock) else block
         return result if isinstance(result, dict) else {}
+
+    def truce(self, tag: str, other: str) -> Truce | None:
+        """The truce between two countries, if they have one.
+
+        Truces are ``truce=yes`` in ``active_relations``, next to ``last_war`` and
+        ``last_warscore``; both countries carry the same values.
+        """
+        country = self.country(tag) or {}
+        relation = (country.get("active_relations") or {}).get(other)
+        if not isinstance(relation, dict) or relation.get("truce") is not True:
+            return None
+        last_war = relation.get("last_war")
+        warscore = relation.get("last_warscore")
+        last_war = str(last_war) if last_war else None
+        warscore = int(warscore) if isinstance(warscore, int | float) else None
+        estimated_end = (
+            estimate_truce_end(last_war, warscore)
+            if last_war is not None and warscore is not None
+            else None
+        )
+        return Truce(other=other, last_war=last_war, warscore=warscore, estimated_end=estimated_end)
 
     def aggressive_expansion_towards(self, tag: str) -> list[Grievance]:
         """Every living country's aggressive expansion against ``tag``, highest first.

@@ -196,3 +196,22 @@ Both front ends stay: the API chat is the base for the docked desktop window, wh
 MCP server is the zero-cost way to use the tools today. Tools raise the SDK's `ToolError`
 so Claude sees messages such as "No country named 'Narnia'"; other exceptions are masked
 by the SDK.
+
+## D-017 — Truces: estimated end date, demoted rather than hidden
+
+**Date:** 2026-11-13 · **Status:** Accepted
+
+The save records that a truce exists (`truce=yes` in `active_relations`, with `last_war`
+and `last_warscore`) but not when it ends. The end is estimated as
+`last_war + TRUCE_YEARS + SCALED_TRUCE_YEARS × warscore / 100` (5 + 10 × share, from
+`common/defines.lua`). On the 1475 play-test save none of the 295 truces with a war date
+had outlived that estimate. Modifiers to truce length (ideas, policies) are ignored, so
+the date is always labelled an estimate.
+
+A truce does not make a war impossible, only costly (breaking it), so:
+
+- `check_war` keeps its forces table and puts the truce warning first; participants
+  with a truce against the other side are listed in the notes, without changing their
+  likelihood, because whether they may still join is not verified.
+- `targets` sorts owners under a truce after every other war target instead of dropping
+  them, and names the ones pushed out of the visible list.

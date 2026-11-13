@@ -1,11 +1,11 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13** and updated
-the same day after the first play-test (PRs #1–#16 merged, aggressive expansion in
-review; 318 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
+the same day after the first play-test (PRs #1–#17 merged, truces in review;
+328 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-016),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-017),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -50,14 +50,13 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
 1. **Play-test findings** (first play-test done on 2026-11-13, list in
    [ROADMAP](ROADMAP.md) under *Play-test findings*). Done: armies at sea are counted
    (#15), the briefing shows the HRE (#16), aggressive expansion, overextension and
-   monarch power. Left: truces in war checks and targets, targets defended by the
-   player's own allies, "N of M" region missions, readable checklists, the next imperial
+   monarch power (#17), and war checks and targets know about truces. Left: targets
+   defended by the player's own allies, "N of M" region missions, readable checklists, the next imperial
    reform.
 2. **First live run of `chancellor chat`** with the real API key, to tune the system
    prompt and effort. It spends money, so ask the user before running it.
 3. **Data gaps that limit advice:**
-   - available casus belli (not found in the save yet; truces were found, see
-     SAVE_FORMAT);
+   - available casus belli (not found in the save yet);
    - income and expense breakdown (ledger category indices not mapped);
    - advisors and generals in the briefing;
    - estate and parliament conditions in the checklists (about 37% `[?]` outside the
@@ -113,7 +112,7 @@ The full reasoning is in [DECISIONS.md](DECISIONS.md).
   - Rulers are references into the country history, and elective monarchies use
     `foreign_heir`; 0.6% of rulers still go unresolved.
   - War score and casus belli are not in the save. Truces are, in `active_relations`
-    (`truce=yes`, `last_war`), but without an end date.
+    (`truce=yes`, `last_war`), but without an end date (estimated, D-017).
 - **Localisation.** Stat names live under `MODIFIER_X`, `x` or `X`, and some of those are
   long descriptions. Texts contain colour codes and `[Root.…]` placeholders.
 
@@ -163,14 +162,12 @@ The API key lives only in the git-ignored `.env`. Never print it, and never put 
 
 ## Next step
 
-1. **Truces in the war check and the targets.** The save has them (`truce=yes` and
-   `last_war` in `active_relations`, symmetric). On the play-test save the Ottomans are
-   the top expansion target, yet a peace with them was signed on the save date. Show the
-   truce and when the last war ended in `check_war`, mark or demote truced owners in
-   `targets`, and drop "truces" from the "cannot know" lists in the MCP `INSTRUCTIONS`
-   and the chat system prompt. The end date is not stored; if an estimate is shown, base
-   it on the truce defines in `common/defines.lua` and say it is an estimate.
-2. Then the rest of the play-test list in the roadmap, most painful first.
+1. **Targets defended by the player's own allies.** On the play-test save Aragón is a
+   top war target, but it is defended by Castilla, Austria's ally: that war would break
+   the alliance and turn a 41-regiment ally into an enemy. Flag such owners in
+   `targets` (and in `check_war` notes), and consider demoting them like truces (D-017).
+2. Then the rest of the play-test list in the roadmap: "N of M" region missions,
+   readable checklists, the next imperial reform.
 3. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
    with the answers given through MCP.
 

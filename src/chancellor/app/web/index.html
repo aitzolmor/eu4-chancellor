@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chancellor</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <header class="header">
+    <div class="identity">
+      <h1 id="country" class="country">Chancellor</h1>
+      <p id="meta" class="meta">Reading your save…</p>
+    </div>
+    <button id="refresh" class="icon-button" type="button" aria-label="Read the save again" title="Read the save again">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>
+    </button>
+  </header>
+
+  <section class="chat-mode" aria-label="Chat">
+    <span class="label">Chat</span>
+    <span id="chat-mode" class="pill">Claude Desktop</span>
+  </section>
+
+  <main id="content" aria-live="polite">
+    <section id="loading" class="state">
+      <div class="spinner" aria-hidden="true"></div>
+      <p>Reading your save…</p>
+    </section>
+
+    <section id="error" class="state error" hidden>
+      <p id="error-text"></p>
+      <button id="retry" type="button">Try again</button>
+    </section>
+
+    <section id="numbers" class="numbers" hidden>
+      <h2 class="section-title">At a glance</h2>
+      <dl class="grid">
+        <div class="cell"><dt>Treasury</dt><dd id="treasury"></dd><dd id="balance" class="sub"></dd><dd id="loans" class="sub"></dd></div>
+        <div class="cell"><dt>Manpower</dt><dd id="manpower"></dd><dd id="manpower-max" class="sub"></dd></div>
+        <div class="cell"><dt>Regiments</dt><dd id="regiments"></dd></div>
+        <div class="cell"><dt>Stability</dt><dd id="stability"></dd><dd id="legitimacy" class="sub"></dd></div>
+        <div class="cell"><dt>Prestige</dt><dd id="prestige"></dd><dd id="rank" class="sub"></dd></div>
+        <div class="cell"><dt>Development</dt><dd id="development"></dd></div>
+        <div class="cell wide"><dt>Monarch power</dt><dd id="powers"></dd><dd class="sub">administrative / diplomatic / military</dd></div>
+        <div class="cell wide"><dt>Wars</dt><dd id="wars"></dd></div>
+      </dl>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>Ask the Chancellor in Claude Desktop; it reads the same save.</span>
+  </footer>
+
+  <script type="module" src="panel.js"></script>
+</body>
+</html>

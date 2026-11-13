@@ -132,6 +132,10 @@ main {
 .cell dd.negative, .negative { color: var(--danger); }
 
 .footer { color: var(--text-muted); font-size: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+.dock-row { display: flex; gap: 8px; }
+.dock-row button { flex: 1; font-size: 13px; }
+.dock-note { margin: 8px 0 0; }
+.dock-note.error { color: var(--danger); }
 
 [hidden] { display: none !important; }
 

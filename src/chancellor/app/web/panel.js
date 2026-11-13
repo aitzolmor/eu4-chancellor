@@ -134,9 +134,58 @@ window.addEventListener("save-changed", (event) => {
   load();
 });
 
+const DOCK_MODES = {
+  two_screens: "Docked: panel and Claude Desktop on the second screen.",
+  one_screen: "Docked: game on the left, panel and Claude Desktop on the right.",
+};
+
+async function dock() {
+  const note = $("dock-note");
+  note.classList.remove("error");
+  setText("dock-note", "Docking…");
+  const result = await window.pywebview.api.dock();
+  if (!result.ok) {
+    note.classList.add("error");
+    setText("dock-note", result.error);
+    return;
+  }
+  let text = DOCK_MODES[result.mode] ?? "Docked.";
+  if (!result.game_found) text += " EU4 is not running; start it in borderless windowed mode.";
+  setText("dock-note", text);
+  $("undock").hidden = false;
+}
+
+async function undock() {
+  await window.pywebview.api.undock();
+  $("undock").hidden = true;
+  setText("dock-note", "Windows are back where they were.");
+}
+
+$("dock").addEventListener("click", dock);
+$("undock").addEventListener("click", undock);
 $("refresh").addEventListener("click", load);
 $("retry").addEventListener("click", load);
 setInterval(() => lastStatus && renderMeta(lastStatus), 30_000);
+// One screen: the panel opens over the game from the floating icon (D-022), so the
+// footer offers a way back instead of the dock buttons.
+async function setUpLayout() {
+  const { mode } = await window.pywebview.api.layout_mode();
+  if (mode !== "overlay") return;
+  $("dock").hidden = true;
+  $("close-overlay").hidden = false;
+  setText("dock-note", "Opened over the game. The icon or this button puts it away.");
+}
+
+$("close-overlay").addEventListener("click", () => window.pywebview.api.toggle_overlay());
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !$("close-overlay").hidden) window.pywebview.api.toggle_overlay();
+});
+
+function start() {
+  setUpLayout();
+  load();
+}
+
 // The bridge may be ready before this module runs; then the event has already fired.
-if (window.pywebview?.api?.status) load();
-else window.addEventListener("pywebviewready", load);
+if (window.pywebview?.api?.status) start();
+else window.addEventListener("pywebviewready", start);

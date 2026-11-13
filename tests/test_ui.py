@@ -73,3 +73,72 @@ def test_alerts_come_back_as_plain_values():
 def test_alerts_report_errors_to_the_page():
     result = PanelApi(_Provider(RuntimeError("No .eu4 files"))).alerts()
     assert result == {"ok": False, "error": "No .eu4 files"}
+
+
+def test_dock_reports_errors_to_the_page(monkeypatch):
+    from chancellor.app import layout
+
+    monkeypatch.setattr(layout.sys, "platform", "linux")
+    api = PanelApi(_Provider())
+    assert api.dock() == {"ok": False, "error": "Docking is only available on Windows."}
+    assert api.undock() == {"ok": True}  # nothing docked, nothing to undo
+
+
+class _Window:
+    """Stands in for a pywebview window."""
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    def show(self) -> None:
+        self.calls.append("show")
+
+    def hide(self) -> None:
+        self.calls.append("hide")
+
+    def destroy(self) -> None:
+        self.calls.append("destroy")
+
+    def evaluate_js(self, script: str) -> None:
+        self.calls.append(script)
+
+
+def test_layout_mode_follows_the_windows():
+    api = PanelApi(_Provider())
+    api._attach(panel=_Window())
+    assert api.layout_mode() == {"mode": "two_screens"}
+    api._attach(icon=_Window())
+    assert api.layout_mode() == {"mode": "overlay"}
+
+
+def test_icon_needs_the_panel_and_windows(monkeypatch):
+    from chancellor.app import layout
+
+    api = PanelApi(_Provider())
+    assert api.toggle_overlay() == {"ok": False, "error": "The panel window is not ready yet."}
+    monkeypatch.setattr(layout.sys, "platform", "linux")
+    error = {"ok": False, "error": "Docking is only available on Windows."}
+    assert api.icon_down() == error
+    assert api.icon_up() == error
+
+
+def test_quit_closes_every_window_off_the_calling_thread():
+    import time
+
+    panel, icon = _Window(), _Window()
+    api = PanelApi(_Provider())
+    api._attach(panel=panel, icon=icon)
+    assert api.quit() == {"ok": True}
+    deadline = time.monotonic() + 2
+    while "destroy" not in icon.calls and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert panel.calls == ["destroy"] and icon.calls == ["destroy"]
+
+
+def test_closing_the_panel_in_overlay_mode_only_puts_it_away():
+    from chancellor.app.ui import _put_away_instead
+
+    api = PanelApi(_Provider())
+    assert _put_away_instead(api) is False  # the close is cancelled
+    api._quitting = True
+    assert _put_away_instead(api) is True  # unless the app is quitting

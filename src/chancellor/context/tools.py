@@ -143,6 +143,10 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
 }
 
 
+# Game data the toolbox loads lazily; shared when the save changes (see with_campaign).
+_GAME_DATA = ("_missions", "_decisions", "_rules", "_modifiers")
+
+
 class Toolbox:
     """Runs tools against one loaded save; game data is loaded on first use."""
 
@@ -155,6 +159,14 @@ class Toolbox:
     def definitions(self) -> list[dict[str, Any]]:
         """Tool definitions for the Messages API (stable order for prompt caching)."""
         return TOOL_DEFINITIONS
+
+    def with_campaign(self, campaign: Campaign) -> Toolbox:
+        """A toolbox for another save that reuses the game data already loaded here."""
+        other = Toolbox(campaign, self.game_dir)
+        for name in _GAME_DATA:
+            if name in self.__dict__:  # cached_property values live in the instance dict
+                other.__dict__[name] = self.__dict__[name]
+        return other
 
     def run(self, name: str, arguments: Any) -> str:
         """Run a tool and return its Markdown output.

@@ -133,6 +133,23 @@ def build_parser() -> argparse.ArgumentParser:
     targets.add_argument("--top", type=int, default=15, help="War targets to list (default 15).")
 
     sub.add_parser(
+        "mcp",
+        help="Run the MCP server so Claude Desktop can use the Chancellor's tools.",
+        description=(
+            "Serve the queries over the Model Context Protocol (stdio). Claude Desktop "
+            "starts this command itself; see `chancellor mcp-config`."
+        ),
+    )
+    sub.add_parser(
+        "mcp-config",
+        help="Print the Claude Desktop configuration for the MCP server.",
+        description=(
+            "Print the JSON to merge into Claude Desktop's claude_desktop_config.json, "
+            "with this installation's Python and your save and game folders."
+        ),
+    )
+
+    sub.add_parser(
         "clear-cache",
         help="Delete cached game data (it is rebuilt automatically when needed).",
     )
@@ -214,6 +231,22 @@ def main(argv: Sequence[str] | None = None) -> int:
             modifiers = ModifierLibrary.load(settings.game_dir)
             text = render_decisions(campaign, tag, checks, modifiers)
             return _emit(args, text, f"Decisions of {campaign.label(tag)}")
+        if args.command == "mcp":
+            from chancellor.app.mcp_server import CampaignProvider, build_server
+
+            settings = load_settings()
+
+            def load_path(path: Path) -> Campaign:
+                options = argparse.Namespace(save=path, language=None)
+                return _load_campaign(options, settings)[0]
+
+            build_server(CampaignProvider(settings, load_path)).run("stdio")
+            return 0
+        if args.command == "mcp-config":
+            from chancellor.app.mcp_server import desktop_config_json
+
+            _write_stdout(desktop_config_json(load_settings()) + "\n")
+            return 0
         if args.command == "chat":
             settings = load_settings()
 

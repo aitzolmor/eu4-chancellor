@@ -48,6 +48,7 @@ flowchart LR
 | `context.tools` | The queries as agent tools: definitions, input validation, `Toolbox` bound to a save | 4 |
 | `llm.client` | `ChancellorAgent`: streaming tool-use loop on the Messages API (caching, thinking, fallbacks) | 4 |
 | `app.chat` | Terminal chat: follows the newest save, prints streamed answers and tool calls | 4 |
+| `app.mcp_server` | MCP server for Claude Desktop: the same tools over stdio, reloading the newest save | 4 |
 | `watcher` | Watch the save folder and trigger reloads | 4 |
 | `app.ui` | Chat window docked beside the game | 4 |
 

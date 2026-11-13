@@ -88,6 +88,9 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
 - [x] Expose Phase 2–3 queries as tools (`context.tools`, six tools)
 - [x] `chancellor chat`: terminal chat; reloads the save when the game writes a new one and
   tells the model earlier results may be stale
+- [x] `chancellor mcp`: MCP server so Claude Desktop uses the same tools with a Claude
+  subscription (no API key, no per-question billing); `chancellor mcp-config` prints the
+  Claude Desktop entry
 - [ ] First live run with a real API key; tune the system prompt and effort
 - [ ] `watcher`: background save watching for the desktop window (the terminal chat checks
   before each question)

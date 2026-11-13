@@ -171,3 +171,28 @@ mission target (e.g. Venice) stays visible.
   after the next question, which keeps the cached prefix intact.
 - **The SDK is imported lazily.** Importing `anthropic` takes ~10 s on the development
   machine, so only `chancellor chat` pays for it.
+
+## D-016 — MCP server for Claude Desktop alongside the API chat
+
+**Date:** 2026-11-13 · **Status:** Accepted
+
+The API chat bills every question, while a Claude subscription (Pro, Max, …) already
+covers Claude Desktop, which can call local tools through the Model Context Protocol.
+`chancellor mcp` serves the same `Toolbox` over stdio, so both front ends share every
+query, description and validation rule. Trade-offs:
+
+- **Subscription, not tokens.** It uses the plan's usage limits instead of per-token
+  billing, and needs no API key.
+- **Less control.** The model, effort and system prompt belong to Claude Desktop. The
+  server's `instructions` and the tool descriptions carry the guidance.
+- **Freshness per call.** The server reloads whenever the newest save's path or mtime
+  changes, and keeps game data loaded across reloads. There is no "the player saved"
+  note in the conversation; `get_save_status` lets the model confirm what it is reading.
+- **Configuration by environment.** Claude Desktop starts the server from its own
+  working directory, so `.env` is not found. `chancellor mcp-config` prints the entry
+  with absolute paths in `env`, and never includes the API key.
+
+Both front ends stay: the API chat is the base for the docked desktop window, while the
+MCP server is the zero-cost way to use the tools today. Tools raise the SDK's `ToolError`
+so Claude sees messages such as "No country named 'Narnia'"; other exceptions are masked
+by the SDK.

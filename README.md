@@ -137,6 +137,25 @@ It needs an Anthropic API key in `.env` (`ANTHROPIC_API_KEY`, see `.env.example`
 question is billed by the API: a few tool lookups plus the answer usually cost a few cents.
 `/usage` shows the tokens used in the session.
 
+## Use it from Claude Desktop (no API key needed)
+
+If you have a Claude subscription, Claude Desktop can use the Chancellor's tools directly
+through MCP. You chat in Claude Desktop as usual, and questions about your campaign are
+answered from your save, at no extra cost beyond your plan.
+
+1. Print the configuration for your machine:
+
+   ```bash
+   chancellor mcp-config
+   ```
+
+2. In Claude Desktop, open **Settings → Developer → Edit Config** and merge the printed
+   `mcpServers` entry into `claude_desktop_config.json`.
+3. Restart Claude Desktop. The `eu4-chancellor` tools appear in the tools menu; ask
+   something like *"¿Cómo va mi partida?"*.
+
+Every tool call reads the newest save, so just save the game before asking.
+
 ## Limitations
 
 - **Ironman saves** are binary and need a token file that is not publicly distributed.

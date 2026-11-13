@@ -83,6 +83,11 @@ All placement works in physical pixels with a per-monitor DPI-aware process, so 
 
 ## The Chancellor panel
 
+> Future direction (ROADMAP, *Idea: goal-based watches and a campaign journal*): the key
+> numbers and alerts below largely repeat the game's own screens. The panel's lasting
+> value is likely watches tied to the player's goals, goal progress and a journal of
+> changes between saves. The current layout stays until that is designed.
+
 From top to bottom:
 
 1. **Header**: country name and tag, in-game date, save file name, "read 2 min ago",

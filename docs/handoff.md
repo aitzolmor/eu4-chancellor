@@ -71,6 +71,8 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
      with an overlay on one (D-022), both verified live. Next is step 5, quick
      questions.
 5. **Later phases:**
+   - goal-based watches, goals and a campaign journal for the panel (an idea, recorded
+     in ROADMAP under *Ideas / later*; not scheduled);
    - an evaluation set of real questions;
    - Phase 5: charts and trends across saves, PDX Tools evaluation;
    - Phase 6: Claude acting in-game through computer use.

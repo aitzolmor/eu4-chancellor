@@ -161,3 +161,35 @@ Goal: explore how far the assistant can act, not just advise.
 
 - Ironman support via a token file
 - Package as a single executable
+
+### Idea: goal-based watches and a campaign journal (2026-11-13)
+
+Not scheduled. Raised after using the panel: its key numbers and alerts repeat what the
+game already shows, and the game's own alerts are literal (a problem, or something you
+can do now) and know nothing of the player's plans. The panel could instead watch for
+what *the player* cares about.
+
+- **Watches**, written in plain language in the chat and turned by Claude into a
+  structured rule (new MCP tools: `create_watch`, `list_watches`, `delete_watch`),
+  checked on every new save, firing once:
+  - *thresholds on your country*: "tell me when I have 200 ducats" (a building you are
+    waiting for), manpower back above 80%, enough monarch power for a core or an idea;
+  - *opportunities against a target*: "tell me when France is weak enough to attack":
+    a combination the war check already measures (odds of 1.5x or better, no truce,
+    France at war elsewhere or with high war exhaustion, an alliance of hers broken);
+  - *changes in the world*: a coalition against you dissolving (members dropping below
+    50 AE), a truce with a rival ending, an ally declaring a war, a ruler or heir dying.
+- **Goals**: the plan agreed in the chat ("conquer France", "form Austria-Hungary")
+  tracked with the checklists the tools already produce (missions, formables, war
+  odds), so the panel shows progress towards what the player chose.
+- **Campaign journal** (the "logger" idea): a record of notable changes between saves
+  (wars, alliances, provinces, rulers) plus fired watches. It gives the panel a
+  timeline ("since your last save..."), gives the chat memory of what happened, and is
+  the base for Phase 5's history across saves.
+- Where alerts show: the panel, a badge on the floating icon (one screen), and
+  optionally a Windows notification while the overlay is closed.
+- Constraints to design around: watches are only as fresh as the last save (a monthly
+  autosave keeps them close to real time); "weak" must become concrete numbers the
+  player can see and adjust; watches and the journal persist in a small file in the
+  user's data folder; creating them through Claude Desktop costs nothing (D-016), and
+  the paid API is never involved unless the player switches it on (D-020).

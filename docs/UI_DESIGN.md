@@ -42,50 +42,42 @@ Rules for the API mode:
 ## Screen layout
 
 The developer's setup (2026-11-13): a main laptop at 2240×1400 with 150% scaling (about
-1493×933 logical pixels), where EU4 runs borderless, and at times a second laptop at
-1920×1080 showing a window from the first. With one screen, a 30% column is only about
-450 logical pixels, too narrow for Claude Desktop, so the layout depends on how many
-screens Windows reports:
+1493×933 logical pixels), where EU4 runs borderless, and at times a second screen at
+1920×1080 (a cabled monitor, or a second laptop through Windows' *Project to this PC*,
+Miracast, which Windows treats as an extended display). The game's window is never
+moved or resized: EU4 draws at its own resolution and ignores outside resizing (D-022).
 
-- **Two screens** (preferred when available): EU4 keeps the whole main screen; the
-  Chancellor panel and Claude Desktop share the second screen side by side (panel about
-  a third, Claude Desktop the rest).
-- **One screen**: the split below, with the panel and Claude Desktop stacked in the
-  right-hand column; the overlay mode suits it better when the column is too narrow.
+**Two screens** (preferred when available): EU4 keeps its whole screen; the Chancellor
+panel and Claude Desktop are docked side by side on the other one (panel a third,
+Claude Desktop the rest). *Dock beside the game* arranges them; *Undock* puts them back.
 
-All placement works in physical pixels with a per-monitor DPI-aware process, so the
-150% scaling does not shift windows. The second laptop receives the main laptop's
-screen through Windows' *Project to this PC* (Miracast), which Windows treats as an
-extended display, so it can host docked windows; to be verified when docking is built.
-
-One-screen split (proportions, so any resolution scales the same way):
+**One screen**: nothing is split. A floating icon (a gold crown in a navy circle) sits
+over the game, always on top, and can be dragged anywhere. A click opens an overlay
+column on the icon's side of the screen: the panel on top, Claude Desktop below, both
+above the game. Another click, *Back to the game* or `Esc` puts them away (Claude
+Desktop drops behind the game). The icon is shown only while the game is the active
+window, while the overlay is open, or when the game is not running; it hides when the
+player switches to another program.
 
 ```
 ┌──────────────────────────────────────────────┬──────────────────────┐
 │                                              │  Chancellor panel    │
-│                                              │  (status, alerts,    │
-│                 Europa Universalis IV        │   quick actions)     │
-│                 borderless window            ├──────────────────────┤
-│                 ~70% of the width            │                      │
-│                                              │  Chat column         │
-│                                              │  Claude Desktop      │
-│                                              │  (or the API tab)    │
+│                                              │  (overlay, on top)   │
+│                 Europa Universalis IV        ├──────────────────────┤
+│                 borderless, full screen      │                      │
+│                                         (o)  │  Claude Desktop      │
+│                                    icon ─┘   │  (overlay, on top)   │
 │                                              │                      │
 └──────────────────────────────────────────────┴──────────────────────┘
 ```
 
-- **Docked** (default): the app moves and resizes three top-level windows: EU4 on the
-  left, the Chancellor panel at the top right, Claude Desktop below it. In API mode the
-  chat tab takes the panel's lower part and Claude Desktop is left alone.
-- **Overlay**: a global hotkey (proposed `Ctrl+Shift+Space`) shows the panel always on
-  top over a full-width game, and hides it again. For players who prefer the game full
-  screen.
-- **Undocked**: the panel is an ordinary window; nothing else is moved.
+The column is 40% of the screen wide, or wider if Claude Desktop will not shrink that
+far (about 600 logical pixels): the app measures what it accepted and lines the panel
+up with it.
 
-EU4 must run in *borderless windowed* mode (a game setting); the app checks the window
-style and explains how to switch if it finds an exclusive full-screen window. Windows
-are found by process (`eu4.exe`, Claude Desktop's package) and moved with Win32 calls
-(`SetWindowPos`), never reparented (D-006).
+All placement works in physical pixels with a per-monitor DPI-aware process, so the
+150% scaling does not shift windows. Windows are found by process (`eu4.exe`,
+`claude.exe`) and moved with Win32 calls (`SetWindowPos`), never reparented (D-006).
 
 ## The Chancellor panel
 
@@ -140,12 +132,12 @@ as a calm instrument panel, not compete with the map.
 
 ## Open questions
 
-- Claude Desktop's minimum window width may not fit the one-screen column at 150%
-  scaling; measure it before fixing the split.
-- Miracast displays add latency and can drop; docking should survive the second screen
-  disappearing (fall back to the one-screen layout).
-- Whether a global hotkey can be registered while EU4 has focus without elevated rights
-  (`RegisterHotKey` should work; to be verified).
+- Miracast displays add latency and can drop; the app decides one or two screens at
+  start, and should follow a screen appearing or disappearing while it runs.
+- Whether a global hotkey can be registered while EU4 has focus. EU4 runs as
+  administrator on the developer's machine, and Windows hides input state from normal
+  programs while an elevated window is in front (D-022); `RegisterHotKey` may still
+  work, to be verified.
 
 ## Build order
 
@@ -154,12 +146,13 @@ as a calm instrument panel, not compete with the map.
 2. Watcher and live refresh. **Done** (`chancellor.watcher.SaveWatcher`).
 3. Alerts. **Done** (`chancellor.context.alerts`); "new missions or formables since the
    previous save" is left for later, since it needs the previous save's state.
-4. Docked layout with EU4 and Claude Desktop; undock. **Done** (`chancellor.app.layout`,
-   the panel's *Dock beside the game* button). Verified live on two screens (a cabled
-   1920×1080 monitor): panel and Claude Desktop land pixel-exact on the second screen
-   and undock restores them, maximized state included. Not verified yet: the one-screen
-   split (it resizes EU4's borderless window, which the game may not like), docking over
-   Miracast, the fallback when a screen drops, and docking automatically at start.
+4. Docking on two screens and the floating icon with an overlay on one (D-022).
+   **Done** (`chancellor.app.layout`). Verified live: on two screens the panel and
+   Claude Desktop land pixel-exact on the second one and undock restores them; on one
+   screen, with EU4 in front and running as administrator, the icon drags, opens and
+   closes the overlay, hides when the game is not in front, and quits. Not verified
+   yet: Miracast, a screen dropping or appearing while the app runs, and remembering
+   where the icon was left.
 5. Quick questions; overlay hotkey.
 6. API chat tab behind the chat-mode switch.
 7. Charts and history (Phase 5).

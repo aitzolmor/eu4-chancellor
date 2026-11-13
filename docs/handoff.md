@@ -5,7 +5,7 @@ the same day after the first play-test (PRs #1–#21 merged, the next imperial
 reform in review; 347 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-021),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-022),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -67,8 +67,9 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
    - run from any folder (today `.env` is read from the working directory);
    - the desktop app: designed on 2026-11-13 ([UI_DESIGN](UI_DESIGN.md), D-020,
      D-021); steps 1-4 are built: the panel window (`chancellor app`), the save
-     watcher with live refresh, alerts, and docking (verified on two screens). Next is
-     step 5, quick questions and the overlay hotkey.
+     watcher with live refresh, alerts, and docking: on two screens, or a floating icon
+     with an overlay on one (D-022), both verified live. Next is step 5, quick
+     questions.
 5. **Later phases:**
    - an evaluation set of real questions;
    - Phase 5: charts and trends across saves, PDX Tools evaluation;
@@ -158,6 +159,26 @@ The full reasoning is in [DECISIONS.md](DECISIONS.md).
   itself on arrival (`WM_DPICHANGED`), undoing a size set in the same call: Claude
   Desktop ended at 2/3 size. `_Win32.place` moves first, then sizes with the invisible
   borders of the new DPI (11 px at 150%, 7 px at 100%).
+- **EU4 runs as administrator here.** With an elevated window in front, Windows hides
+  the mouse buttons from normal programs: `GetAsyncKeyState` read nothing while EU4 was
+  active, though the cursor position and clicks on our own windows still arrived. The
+  floating icon's page reports press and release for that reason (D-022). Check with a
+  token query (`TokenElevation`) when input behaves differently with the game in front.
+- **EU4 ignores outside resizing.** `SetWindowPos` on its borderless SDL window changes
+  nothing; never plan a layout that needs the game to shrink.
+- **Win32 handles from ctypes.** `HWND_TOPMOST` is `-1` and must reach `SetWindowPos`
+  as a pointer-sized value, so `_Win32` declares `argtypes` on its own `WinDLL`
+  instances (never on the shared `ctypes.windll`, which pywebview uses too). Without
+  them the call failed silently and the overlay was neither on top nor resized.
+- **pywebview and hidden windows.** A window created with `hidden=True` is centred on
+  its first `show()`, which can land after our move; the overlay places it once
+  visible, then again 0.3 s later. pywebview's default `min_size` (200×100) also applies
+  to a 64 px icon unless set. Destroying windows from inside a pending `js_api` call
+  hangs; `PanelApi.quit` does it on another thread, and the panel's `closing` handler
+  must not cancel a quit.
+- **Diagnosing the live app.** A run that logs the button state, cursor, foreground
+  window and icon actions (only on change) found the elevation problem in one try;
+  keep that approach for input issues.
 - **"Claude Desktop" is this app.** The `claude.exe` window docking moves is the same
   Claude app the Code tab runs in, so a live docking test moves the conversation window.
 
@@ -194,10 +215,10 @@ The API key lives only in the git-ignored `.env`. Never print it, and never put 
    findings into roadmap items. A Claude Code session can run it with the
    `mcp__eu4-chancellor__*` tools; Claude Desktop shows how Claude chains them itself.
 2. **Desktop app, build order step 5** ([UI_DESIGN](UI_DESIGN.md)): quick questions
-   (copy a question to the clipboard and bring Claude Desktop to the front) and the
-   overlay hotkey. Docking (step 4) still needs live checks: the one-screen split with
-   EU4 running (it resizes the game's borderless window), Miracast, and a screen
-   dropping. The API chat mode stays off unless the player switches it on (D-020).
+   (copy a question to the clipboard and bring Claude Desktop to the front), and a
+   hotkey for the overlay. Docking still needs: Miracast, a screen appearing or dropping
+   while the app runs, and remembering the icon's position. The API chat mode stays off
+   unless the player switches it on (D-020).
 3. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
    with the answers given through MCP.
 4. Remaining data gaps (casus belli, income breakdown, advisors and generals) or the

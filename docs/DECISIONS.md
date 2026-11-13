@@ -286,3 +286,32 @@ to Python through `js_api` calls and `evaluate_js` events. The frontend is plain
 CSS and JavaScript modules with no build step; libraries are vendored so the app works
 offline. If the frontend outgrows that, a bundler can be added later without touching
 the backend contract. Window docking uses Win32 through `ctypes` (D-006).
+
+## D-022 — One screen: a floating icon and an overlay, never a split
+
+**Date:** 2026-11-13 · **Status:** Accepted (refines D-006)
+
+The one-screen layout planned in UI_DESIGN gave the game 70% of the screen and a column
+to the panel and Claude Desktop. Tried live, it could not work:
+
+- EU4's borderless window ignores outside resizing; it draws at the resolution set in
+  the game, so the "70%" game stayed full screen on top of the column.
+- Claude Desktop will not go narrower than about 600 logical pixels (903 physical at
+  150%), wider than a 30% column.
+
+So with one screen nothing is split. A small floating icon stays over the game; clicking
+it opens the panel and Claude Desktop as an always-on-top column on the icon's side of
+the screen, and clicking again puts them away (Claude Desktop drops behind the game).
+The icon can be dragged out of the way, and is shown only while the game is in front.
+With two screens, docking on the other screen stays the preferred layout.
+
+Implementation notes that shaped it:
+
+- **EU4 runs as administrator** on the developer's machine. While an elevated window is
+  in front, Windows hides the mouse buttons' state from normal programs
+  (`GetAsyncKeyState` reads nothing), but the pointer's position and the clicks on our
+  own window still arrive. The icon's page therefore reports press and release, and
+  Python follows the pointer in between.
+- The icon window is clipped to its circle (`SetWindowRgn`), since pywebview's
+  transparency does not work there, and is created with `focus=False` so clicking it
+  does not take the focus from the game.

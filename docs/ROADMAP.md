@@ -73,7 +73,8 @@ Goal: the assistant knows the game's content and can cross it with the campaign 
 - [x] Readable trigger/effect descriptions (`context.script`), localised names and tooltips
 - [x] Resolve modifier effects (`common/event_modifiers`, triggered modifiers) so rewards show
   their real bonuses (99.9% of mission modifier grants)
-- [ ] "Expansion targets" view: mission/claim targets combined with `war-check` results
+- [x] `chancellor targets`: provinces wanted by available missions, visible formables, claims
+  and cores, grouped by owner, with a war check against each (favourable / even / hard)
 - [ ] Wiki lookup as a complementary source for strategy and mechanics
 
 ## Phase 4 — Chat workspace with agent

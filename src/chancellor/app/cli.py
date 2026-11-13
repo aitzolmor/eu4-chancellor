@@ -14,6 +14,7 @@ from chancellor.context.campaign import Campaign, CountryLookupError
 from chancellor.context.decisions import check_decisions, render_decisions
 from chancellor.context.missions import mission_tree, render_missions
 from chancellor.context.summarizer import summarize
+from chancellor.context.targets import find_targets, render_targets
 from chancellor.context.war_check import check_war, render_war_check
 from chancellor.context.world import render_world, world_overview
 from chancellor.game.cache import cache_dir, clear_cache
@@ -119,6 +120,18 @@ def build_parser() -> argparse.ArgumentParser:
     decisions.add_argument("name", nargs="*", help="Country tag or name (default: you).")
     decisions.add_argument("--formables", action="store_true", help="Only formable nations.")
 
+    targets = sub.add_parser(
+        "targets",
+        parents=[common],
+        help="Where to expand: wanted provinces by owner, with war odds.",
+        description=(
+            "Cross the provinces wanted by available missions, visible formable nations, "
+            "claims and cores with who holds them now and a war check against each owner."
+        ),
+    )
+    targets.add_argument("name", nargs="*", help="Country tag or name (default: you).")
+    targets.add_argument("--top", type=int, default=15, help="War targets to list (default 15).")
+
     sub.add_parser(
         "clear-cache",
         help="Delete cached game data (it is rebuilt automatically when needed).",
@@ -192,6 +205,21 @@ def main(argv: Sequence[str] | None = None) -> int:
             modifiers = ModifierLibrary.load(settings.game_dir)
             text = render_decisions(campaign, tag, checks, modifiers)
             return _emit(args, text, f"Decisions of {campaign.label(tag)}")
+        if args.command == "targets":
+            settings = load_settings()
+            if settings.game_dir is None:
+                raise CliError("Targets need the game files; set EU4_GAME_DIR.")
+            campaign, _ = _load_campaign(args, settings)
+            tag = campaign.resolve_country(" ".join(args.name)) if args.name else campaign.player
+            report = find_targets(
+                campaign,
+                GameRules.load(settings.game_dir),
+                MissionLibrary.load(settings.game_dir),
+                DecisionLibrary.load(settings.game_dir),
+                tag,
+            )
+            text = render_targets(campaign, report, top=max(1, args.top))
+            return _emit(args, text, f"Expansion targets of {campaign.label(tag)}")
     except ValueError as exc:  # e.g. a country attacking itself
         return _fail(str(exc))
     except (CliError, CountryLookupError) as exc:

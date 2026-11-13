@@ -44,6 +44,7 @@ flowchart LR
 | `game.decisions` | Decisions and formable nations from `decisions/` (`DecisionLibrary`) | 3 |
 | `context.conditions` | Three-valued evaluator for game conditions (true / false / unknown) | 3 |
 | `context.decisions` | Decisions a country can see, with a requirement checklist | 3 |
+| `context.targets` | Expansion targets: wanted provinces by owner, with war odds (`TargetReport`) | 3 |
 | `context.tools` | Registry of query functions exposed to the agent as tools | 4 |
 | `llm.client` | Talk to the LLM API: streaming, caching, tool-use loop | 4 |
 | `watcher` | Watch the save folder and trigger reloads | 4 |

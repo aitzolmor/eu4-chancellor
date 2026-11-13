@@ -60,6 +60,8 @@ chancellor missions         # mission tree with progress (reads game files)
 chancellor decisions --formables  # formable nations with a requirement checklist
 chancellor targets          # where to expand: wanted provinces by owner, with war odds
 chancellor chat             # talk to the Chancellor (needs ANTHROPIC_API_KEY; billed)
+chancellor mcp              # MCP server for Claude Desktop (stdio; never print to stdout)
+chancellor mcp-config       # Claude Desktop config entry with absolute paths
 chancellor clear-cache      # drop cached game data (tests use a temp cache via conftest)
 ```
 

@@ -83,9 +83,14 @@ Goal: a desktop app docked beside the game where Claude answers questions and ga
 own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfort goal.
 
 - [x] `config`: load API key, save dir and model from `.env`
-- [ ] `llm.client`: Claude API wrapper with streaming, prompt caching and a tool-use loop
-- [ ] Expose Phase 2–3 queries as tools
-- [ ] `watcher`: detect new saves and refresh cached data
+- [x] `llm.client`: Claude API agent with streaming, prompt caching, adaptive thinking,
+  refusal fallbacks and a validated tool-use loop
+- [x] Expose Phase 2–3 queries as tools (`context.tools`, six tools)
+- [x] `chancellor chat`: terminal chat; reloads the save when the game writes a new one and
+  tells the model earlier results may be stale
+- [ ] First live run with a real API key; tune the system prompt and effort
+- [ ] `watcher`: background save watching for the desktop window (the terminal chat checks
+  before each question)
 - [ ] `app.ui`: web-based desktop window (pywebview or similar) with a chat view
 - [ ] Docked layout: position EU4 as a borderless window and dock the panel beside it
 - [ ] Overlay mode toggled by a global hotkey

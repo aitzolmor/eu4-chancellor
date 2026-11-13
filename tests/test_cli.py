@@ -32,9 +32,9 @@ def test_version(capsys):
     assert __version__ in capsys.readouterr().out
 
 
-def test_unimplemented_command_exits_nonzero(capsys):
+def test_chat_without_save_folder_fails_cleanly(capsys):
     assert main(["chat"]) == 1
-    assert "not implemented" in capsys.readouterr().err
+    assert "EU4_SAVE_DIR" in capsys.readouterr().err
 
 
 def test_summary_without_configuration_fails(capsys):

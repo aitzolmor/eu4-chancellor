@@ -155,3 +155,69 @@ def test_foreign_heir_is_resolved():
         "history": {"1514.8.2": {"foreign_heir": {"id": {"id": 7, "type": 48}, "name": "August"}}},
     }
     assert _find_person(country, country["monarch"])["name"] == "August"
+
+
+# --- Holy Roman Empire -----------------------------------------------------------------
+
+# HAB is Emperor, BOH and SAX are electors (SAX backs Brandenburg), BAV is a plain member
+# and FRA lies outside the Empire.
+EMPIRE = """
+countries={
+    HAB={ owned_provinces={ 134 } capital=134 }
+    BOH={ owned_provinces={ 266 } capital=266 preferred_emperor="HAB" }
+    SAX={ owned_provinces={ 61 } capital=61 preferred_emperor="BRA" }
+    BAV={ owned_provinces={ 65 } capital=65 }
+    FRA={ owned_provinces={ 183 } capital=183 }
+}
+provinces={
+    -134={ hre=yes } -266={ hre=yes } -61={ hre=yes } -65={ hre=yes } -183={ }
+}
+empire={
+    emperor="HAB" imperial_influence=59.683
+    passed_reform=emperor_reichsreform passed_reform=emperor_reichsregiment
+    electors={ BOH SAX }
+}
+"""
+EMPIRE_NAMES = {
+    "HAB": "Austria",
+    "BOH": "Bohemia",
+    "SAX": "Saxony",
+    "BRA": "Brandenburg",
+    "BAV": "Bavaria",
+    "FRA": "France",
+    "emperor_reichsreform_title": "Call for Reichsreform",
+}
+
+
+@pytest.fixture
+def empire() -> Campaign:
+    from chancellor.save.parser import parse_lazy
+
+    meta = {"player": "HAB", "date": "1475.6.21"}
+    return Campaign(meta, parse_lazy(EMPIRE), Localisation(EMPIRE_NAMES))
+
+
+def _hre_section(briefing: str) -> str:
+    return briefing.split("## Holy Roman Empire", 1)[1].split("\n## ", 1)[0]
+
+
+def test_emperor_sees_authority_reforms_and_electors(empire: Campaign):
+    section = _hre_section(summarize(empire))
+    assert "- Role: Emperor" in section
+    assert "- Emperor:" not in section
+    assert "- Imperial authority: 59.7" in section
+    # Localised title when there is one, humanised key otherwise.
+    assert "2: Call for Reichsreform, emperor reichsregiment" in section
+    assert (
+        "- Electors: 2; 1 favours Austria (HAB) (Bohemia); 1 favours Brandenburg (BRA) (Saxony)"
+        in section
+    )
+
+
+def test_elector_and_member_see_the_emperor(empire: Campaign):
+    assert "- Role: Elector\n- Emperor: Austria (HAB)" in _hre_section(summarize(empire, "BOH"))
+    assert "- Role: Member" in _hre_section(summarize(empire, "BAV"))
+
+
+def test_countries_outside_the_empire_have_no_hre_section(empire: Campaign):
+    assert "Holy Roman Empire" not in summarize(empire, "FRA")

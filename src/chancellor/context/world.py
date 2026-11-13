@@ -140,7 +140,7 @@ def world_overview(campaign: Campaign, top: int = 10, max_blocs: int = 6) -> Wor
             and link.get("second") in stats
         ],
         emperor=campaign.emperor,
-        electors=_electors(campaign),
+        electors=campaign.electors,
     )
 
 
@@ -334,14 +334,6 @@ def _wars(campaign: Campaign) -> list[WarSummary]:
         wars,
         key=lambda w: (not w.involves_player, -(w.attacker_regiments + w.defender_regiments)),
     )
-
-
-def _electors(campaign: Campaign) -> list[str]:
-    block = campaign.gamestate.get("empire")
-    empire = block.parse() if isinstance(block, LazyBlock) else block
-    if not isinstance(empire, dict):
-        return []
-    return [str(t) for t in as_list(empire.get("electors"))]
 
 
 # --- rendering helpers -----------------------------------------------------------------

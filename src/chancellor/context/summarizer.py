@@ -101,6 +101,7 @@ def summarize(campaign: Campaign, tag: str | None = None) -> str:
         _progress(ctx),
         _estates(ctx),
         _diplomacy(ctx),
+        _empire(ctx),
         _wars(ctx),
         _key_countries(ctx),
     ]
@@ -266,6 +267,60 @@ def _diplomacy(ctx: _Context) -> str:
             ("Trade embargoes against it", _tags(ctx, c.get("trade_embargoed_by"))),
         ],
     )
+
+
+def _empire(ctx: _Context) -> str:
+    """The country's place in the Holy Roman Empire; empty if it has none."""
+    campaign = ctx.campaign
+    emperor = campaign.emperor
+    electors = campaign.electors
+    is_emperor = ctx.tag == emperor
+    is_elector = ctx.tag in electors
+    if not (is_emperor or is_elector or campaign.in_hre(ctx.tag)):
+        return ""
+    roles = [r for r, held in (("Emperor", is_emperor), ("elector", is_elector)) if held]
+    role = " and ".join(roles) if roles else "member"
+    empire = campaign.empire
+    reforms = [_reform_title(ctx, str(r)) for r in as_list(empire.get("passed_reform"))]
+    return _section(
+        "Holy Roman Empire",
+        [
+            ("Role", role[0].upper() + role[1:]),
+            ("Emperor", None if is_emperor or not emperor else f"{ctx.name(emperor)} ({emperor})"),
+            ("Imperial authority", _num(empire.get("imperial_influence"))),
+            (
+                "Imperial reforms passed",
+                f"{len(reforms)}: {', '.join(reforms)}" if reforms else "none",
+            ),
+            ("Electors", _elector_preferences(ctx, electors)),
+        ],
+    )
+
+
+def _reform_title(ctx: _Context, reform: str) -> str:
+    title = ctx.loc.get(f"{reform}_title", "")
+    return title or ctx.text(reform)
+
+
+def _elector_preferences(ctx: _Context, electors: list[str]) -> str | None:
+    """Electors grouped by the candidate they favour for the next election."""
+    if not electors:
+        return None
+    backers: dict[str, list[str]] = {}
+    for elector in electors:
+        preferred = (ctx.other(elector) or {}).get("preferred_emperor")
+        backers.setdefault(str(preferred) if preferred else "", []).append(elector)
+    emperor = ctx.campaign.emperor
+    groups = sorted(
+        backers.items(),
+        key=lambda item: (not item[0], -len(item[1]), item[0] != emperor, item[0]),
+    )
+    parts = []
+    for candidate, tags in groups:
+        who = f"{ctx.name(candidate)} ({candidate})" if candidate else "no preference"
+        verb = "favours" if len(tags) == 1 else "favour"
+        parts.append(f"{len(tags)} {verb} {who} ({', '.join(ctx.name(t) for t in tags)})")
+    return f"{len(electors)}; " + "; ".join(parts)
 
 
 def _wars(ctx: _Context) -> str:

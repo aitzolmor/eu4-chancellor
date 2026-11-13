@@ -217,13 +217,23 @@ class Campaign:
             self._province_cache[number] = block if isinstance(block, dict) else None
         return self._province_cache[number]
 
+    @cached_property
+    def empire(self) -> dict[str, Any]:
+        """The Holy Roman Empire block: emperor, electors, imperial authority, reforms."""
+        block = self.gamestate.get("empire", {})
+        result = block.parse() if isinstance(block, LazyBlock) else block
+        return result if isinstance(result, dict) else {}
+
     @property
     def emperor(self) -> str | None:
         """Tag of the Holy Roman Emperor, if there is one."""
-        block = self.gamestate.get("empire")
-        empire = block.parse() if isinstance(block, LazyBlock) else block
-        emperor = empire.get("emperor") if isinstance(empire, dict) else None
+        emperor = self.empire.get("emperor")
         return str(emperor) if emperor and emperor != "---" else None
+
+    @property
+    def electors(self) -> list[str]:
+        """Tags of the Holy Roman Empire's electors."""
+        return [str(t) for t in as_list(self.empire.get("electors"))]
 
     def in_hre(self, tag: str) -> bool:
         """Whether the country's capital lies inside the Holy Roman Empire."""

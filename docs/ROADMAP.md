@@ -120,8 +120,11 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
 - [x] Targets: when a mission needs N provinces of a region, say "N of M" instead of
   presenting the whole region (Relaciones ibéricas needs 4 Iberian provinces), and
   whether it is one of several ways to complete it
-- [ ] Checklists: describe trigger keys in words (`junior_union_with: ROOT`,
-  `NOT: num_of_cities: 40`) and localise decision titles left as keys
+- [x] Checklists: describe the common trigger keys in words (`junior_union_with: ROOT`,
+  `NOT: num_of_cities: 40`) (D-019)
+- [ ] Decision titles built by scripted localisation (`[Root.GetActsOfUnionDecisionTitle]`)
+  still fall back to the key ("force british union debate"); the heading's "forms …"
+  says what it does
 
 ## Phase 5 — Charts and insight
 

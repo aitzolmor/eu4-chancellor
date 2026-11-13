@@ -230,3 +230,21 @@ side, but nothing said that the war would turn an ally into an enemy.
 like a truce (D-017): such owners sort after every other war target and are named when
 pushed out of view. Allies that are merely allied to both sides stay in "Tied to both
 sides", as before.
+
+## D-019 — Common triggers in words, the rest as script keys
+
+**Date:** 2026-11-13 · **Status:** Accepted
+
+`context.script` used to keep every trigger key as written (`junior_union_with: ROOT`,
+`NOT: num_of_cities: 40`), on the grounds that keys are precise and the LLM knows them.
+The play-test showed checklists that read poorly for the player and leave ambiguity for
+the model (which country is `ROOT` inside a `Hungría:` scope?).
+
+About 40 of the most common triggers (technology, cities, war, independence, HRE role,
+unions, ownership, flags, missions, religion, culture, government, estates) are now
+phrases: "Junior partner in a personal union with this country (ROOT)", "Not: 40 or more
+cities". `NOT`, `OR` and `AND` read "Not", "One of", "All of". `ROOT` becomes "this
+country (ROOT)", keeping the scope name so nested scopes stay unambiguous. Every other key
+is kept as it is: rare triggers stay precise, and the table grows only when a play-test
+shows a key that matters. `value` is not phrased because it also appears in effects and
+variables.

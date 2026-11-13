@@ -1,11 +1,11 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13** and updated
-the same day after the first play-test (PRs #1–#19 merged, region quotas in
-review; 335 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
+the same day after the first play-test (PRs #1–#20 merged, readable checklists
+in review; 337 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-018),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-019),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -52,8 +52,8 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
    (#15), the briefing shows the HRE (#16), aggressive expansion, overextension and
    monarch power (#17), war checks and targets know about truces (#18) and flag
    targets defended by the player's own allies (#19); targets say "any N of M
-   provinces" for counted mission conditions. Left: readable checklists, the next
-   imperial reform.
+   provinces" for counted mission conditions (#20); common triggers read as words
+   (D-019). Left: the next imperial reform.
 2. **First live run of `chancellor chat`** with the real API key, to tune the system
    prompt and effort. It spends money, so ask the user before running it.
 3. **Data gaps that limit advice:**
@@ -163,16 +163,17 @@ The API key lives only in the git-ignored `.env`. Never print it, and never put 
 
 ## Next step
 
-1. **Readable checklists.** `get_decisions` (and the mission requirements) print raw
-   trigger keys such as `junior_union_with: ROOT`, `NOT: num_of_cities: 40` or
-   `is_free_or_tributary_trigger: yes`, and some decision titles stay as keys
-   ("force british union debate"). Describe the common triggers in words in
-   `context.script` (use the game's own localisation where a tooltip key exists), and
-   check the Austria-Hungary checklist on the play-test save reads naturally.
-2. Then the next imperial reform in the HRE section (needs `common/imperial_reforms`).
+The first play-test's list is nearly done. In order:
+
+1. **Second play-test through MCP** (free): ask the same questions as the first one
+   (see `notes/2026-11-13-playtest.md`) on a fresh save, and compare. The user must
+   restart Claude Desktop to load the new code; a Claude Code session can run it with
+   the `mcp__eu4-chancellor__*` tools too.
+2. **The next imperial reform** in the HRE section: read `common/imperial_reforms`
+   (order from `required_reform`, branches from `gui_container` and `disabled_by`) and
+   show the next one and its effect.
 3. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
-   with the answers given through MCP. A second play-test through MCP would also show
-   whether the fixes changed Claude's advice.
+   with the answers given through MCP.
 
 **Tip:** a Claude Code session on this machine has the `eu4-chancellor` MCP tools too
 (`mcp__eu4-chancellor__*`), so play-tests can be run from here at no API cost. They read

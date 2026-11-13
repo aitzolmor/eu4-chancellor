@@ -28,8 +28,8 @@ countries={
           army={ regiment={ } regiment={ } } manpower=10.000 max_manpower=20.000
           raw_development=250.000 technology={ mil_tech=6 } }
     GEL={ owned_provinces={ 5 } overlord=BUR manpower=2.000 }
-    FRA={ owned_provinces={ 183 } allies={ BUR } army={ regiment={ } regiment={ } regiment={ }
-          regiment={ } } manpower=40.000 }
+    FRA={ owned_provinces={ 183 } allies={ BUR } army={ regiment={ } regiment={ } }
+          navy={ ship={ } army={ regiment={ } regiment={ } } } manpower=40.000 }
     ENG={ owned_provinces={ 236 } manpower=15.000 }
     VEN={ owned_provinces={ 112 } capital=112 army={ regiment={ } } manpower=8.000 }
     GEN={ owned_provinces={ 101 } army={ regiment={ } } manpower=6.000 }
@@ -136,7 +136,7 @@ def test_totals(campaign: Campaign):
     check = check_war(campaign, "BUR")
     expected = check.totals("defenders", worst_case=False)
     worst = check.totals("defenders", worst_case=True)
-    assert (expected.regiments, expected.countries) == (6, 3)  # BUR 2, FRA 4, GEL 0
+    assert (expected.regiments, expected.countries) == (6, 3)  # BUR 2, FRA 4 (2 at sea), GEL 0
     assert worst.countries == 4  # + ENG
     assert worst.manpower == pytest.approx(10 + 2 + 40 + 15)
 

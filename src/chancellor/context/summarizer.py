@@ -13,7 +13,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
-from chancellor.context.campaign import Campaign, as_list
+from chancellor.context.campaign import Campaign, as_list, count_regiments, land_armies
 from chancellor.game.localisation import Localisation
 from chancellor.save.loader import RawSave
 from chancellor.save.parser import get_all
@@ -181,9 +181,9 @@ def _economy(ctx: _Context) -> str:
 
 def _military(ctx: _Context) -> str:
     c = ctx.country
-    armies = [a for a in get_all(c, "army") if isinstance(a, dict)]
+    armies = land_armies(c)
     navies = [n for n in get_all(c, "navy") if isinstance(n, dict)]
-    regiments = sum(len(get_all(a, "regiment")) for a in armies)
+    regiments = count_regiments(c)
     ships = sum(len(get_all(n, "ship")) for n in navies)
     mercs = len(get_all(c, "mercenary_company"))
     return _section(
@@ -403,8 +403,7 @@ def _rivals(country: dict[str, Any]) -> list[str]:
 
 
 def _regiments(country: dict[str, Any]) -> int:
-    armies = [a for a in get_all(country, "army") if isinstance(a, dict)]
-    return sum(len(get_all(a, "regiment")) for a in armies)
+    return count_regiments(country)
 
 
 def _mil_tech(country: dict[str, Any]) -> str:

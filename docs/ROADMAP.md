@@ -100,8 +100,10 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
 - [x] `watcher`: background save watching with live refresh of the panel; a save is
   reported once it has stopped changing (the terminal chat still checks before each
   question)
-- [ ] Alerts: truces ending, coalition and AE, overextension, imperial reform ready, new
-  missions or formables
+- [x] Alerts: wars, coalition and countries at 50+ AE, truces with rivals or neighbours
+  ending within two years, losses, loans, overextension, war exhaustion, negative
+  stability, monarch power near the cap, an imperial reform ready
+- [ ] Alerts: missions or formables that became available since the previous save
 - [ ] `app.layout`: docked layout (EU4 borderless, panel and Claude Desktop beside it) and
   undock
 - [ ] Quick questions (copy to Claude Desktop, or send to the API tab) and the overlay hotkey

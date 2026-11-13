@@ -19,6 +19,36 @@ function thousands(men) {
 
 function show(section) {
   for (const id of ["loading", "error", "numbers"]) $(id).hidden = id !== section;
+  $("alerts-section").hidden = section !== "numbers";
+}
+
+function renderAlerts(alerts) {
+  const list = $("alerts");
+  list.replaceChildren();
+  for (const alert of alerts) {
+    const item = document.createElement("li");
+    const dot = document.createElement("span");
+    dot.className = `dot ${alert.severity}`;
+    dot.setAttribute("aria-label", alert.severity);
+    const text = document.createElement("span");
+    text.textContent = alert.text;
+    item.append(dot, text);
+    list.append(item);
+  }
+  $("alerts-loading").hidden = alerts.length > 0;
+  setText("alerts-loading", alerts.length ? "" : "Nothing urgent.");
+}
+
+async function loadAlerts() {
+  setText("alerts-loading", "Checking…");
+  $("alerts-loading").hidden = false;
+  try {
+    const result = await window.pywebview.api.alerts();
+    if (result.ok) renderAlerts(result.alerts);
+    else setText("alerts-loading", `Alerts unavailable: ${result.error}`);
+  } catch (error) {
+    setText("alerts-loading", `Alerts unavailable: ${error}`);
+  }
 }
 
 function setText(id, text, tone = null) {
@@ -83,6 +113,7 @@ async function load() {
       readAt = result.read_at;
       lastStatus = result.status;
       render(result.status);
+      loadAlerts(); // slower (aggressive expansion scan); the numbers show first
     } else {
       setText("error-text", result.error);
       show("error");

@@ -66,8 +66,8 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
 4. **Usability:**
    - run from any folder (today `.env` is read from the working directory);
    - the desktop app: designed on 2026-11-13 ([UI_DESIGN](UI_DESIGN.md), D-020,
-     D-021); steps 1-2 are built: the panel window (`chancellor app`) and the save
-     watcher with live refresh. Next is step 3, alerts.
+     D-021); steps 1-3 are built: the panel window (`chancellor app`), the save
+     watcher with live refresh, and alerts. Next is step 4, docking.
 5. **Later phases:**
    - an evaluation set of real questions;
    - Phase 5: charts and trends across saves, PDX Tools evaluation;
@@ -186,12 +186,13 @@ The API key lives only in the git-ignored `.env`. Never print it, and never put 
    Austria-Hungary, where to expand. Note what changed, what is still wrong, and turn new
    findings into roadmap items. A Claude Code session can run it with the
    `mcp__eu4-chancellor__*` tools; Claude Desktop shows how Claude chains them itself.
-2. **Desktop app, build order step 3** ([UI_DESIGN](UI_DESIGN.md)): alerts in the
-   panel (truces ending, coalition and AE, overextension, an imperial reform ready, new
-   missions or formables), built from data the tools already produce. It does not
-   depend on the play-test. The second laptop joins through *Project to this PC*
-   (Miracast, an extended display), which docking (step 4) should handle. The API chat
-   mode stays off unless the player switches it on (D-020).
+2. **Desktop app, build order step 4** ([UI_DESIGN](UI_DESIGN.md)): `app.layout`,
+   docking EU4, the panel and Claude Desktop with Win32 calls through `ctypes`
+   (per-monitor DPI aware). Two screens when Windows reports two (the second laptop
+   joins through *Project to this PC*, Miracast, an extended display), one-screen split
+   otherwise, and a fallback when the second screen drops. Needs the user at the
+   machine with EU4 and Claude Desktop open to try it. The API chat mode stays off
+   unless the player switches it on (D-020).
 3. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
    with the answers given through MCP.
 4. Remaining data gaps (casus belli, income breakdown, advisors and generals) or the

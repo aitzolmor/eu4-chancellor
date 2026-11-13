@@ -79,3 +79,12 @@ def test_docking_is_windows_only(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(layout.sys, "platform", "linux")
     with pytest.raises(DockError, match="only available on Windows"):
         Docker("Chancellor")
+
+
+def test_the_win32_layer_has_every_call_the_docker_makes():
+    import inspect
+    import re
+
+    used = set(re.findall(r"self\._api\.(\w+)", inspect.getsource(Docker)))
+    missing = {name for name in used if not hasattr(layout._Win32, name)}
+    assert not missing, f"Docker calls _Win32 methods that do not exist: {missing}"

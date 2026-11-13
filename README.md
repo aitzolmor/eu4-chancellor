@@ -173,7 +173,7 @@ With two screens, **Dock beside the game** puts the panel and Claude Desktop on 
 screen the game is not on, and **Undock** puts them back. With one screen, a small crown
 icon floats over the game instead: drag it wherever it is out of the way, click it to
 open the panel and Claude Desktop over that side of the screen, and click again (or press
-`Esc`) to get back to the game. Run EU4 in borderless windowed mode. Charts are on the
+`Esc`) to get back to the game. Right-click the icon to close the Chancellor. Run EU4 in borderless windowed mode. Charts are on the
 way; see [docs/UI_DESIGN.md](docs/UI_DESIGN.md).
 
 ## Limitations

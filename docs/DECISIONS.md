@@ -289,7 +289,8 @@ the backend contract. Window docking uses Win32 through `ctypes` (D-006).
 
 ## D-022 — One screen: a floating icon and an overlay, never a split
 
-**Date:** 2026-11-13 · **Status:** Accepted (refines D-006)
+**Date:** 2026-11-13 · **Status:** Accepted (refines D-006; the icon's implementation is
+superseded by D-023)
 
 The one-screen layout planned in UI_DESIGN gave the game 70% of the screen and a column
 to the panel and Claude Desktop. Tried live, it could not work:
@@ -315,3 +316,22 @@ Implementation notes that shaped it:
 - The icon window is clipped to its circle (`SetWindowRgn`), since pywebview's
   transparency does not work there, and is created with `focus=False` so clicking it
   does not take the focus from the game.
+
+## D-023 — The floating icon is a native window, not a web view
+
+**Date:** 2026-11-13 · **Status:** Accepted (refines D-022)
+
+The first floating icon was a small pywebview window clipped to a circle with
+`SetWindowRgn`. Screen pixels sampled with and without it showed the corners still
+painted: WebView2 composites its content outside the window region, and neither
+pywebview's transparency nor a colour key changed that. Windows 11's own rounded
+corners do clip, but only to a small fixed radius.
+
+The icon is now a plain Win32 layered window (`app.icon_window.FloatingIcon`) whose
+pixels carry their own alpha (`UpdateLayeredWindow`), so only the circle shows; the
+same sampling confirmed the corners match what is behind. It is also the cheapest
+option to run: no browser process for a 64 px button. It handles the mouse itself
+(left button drags or clicks, right button opens *Close Chancellor*), and those
+messages arrive even while the game runs as administrator. The picture is drawn in pure
+Python (`render_icon`, anti-aliased from exact distances, three cached states), so it is
+tested on any platform. The panel stays a web view, where HTML is worth its cost.

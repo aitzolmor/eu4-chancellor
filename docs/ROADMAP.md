@@ -106,7 +106,8 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
 - [ ] Alerts: missions or formables that became available since the previous save
 - [x] `app.layout`: docked layout on two screens and undock; on one screen a floating,
   draggable icon that opens the panel and Claude Desktop as an overlay (D-022), shown
-  only while the game is in front; verified live with EU4 running as administrator
+  only while the game is in front; verified live with EU4 running as administrator; the
+  icon is a native, truly round window (D-023)
 - [ ] Docking: try it over Miracast, follow a screen appearing or dropping while the app
   runs, remember the icon's position between sessions, dock automatically at start
 - [ ] Quick questions (copy to Claude Desktop, or send to the API tab) and a hotkey for

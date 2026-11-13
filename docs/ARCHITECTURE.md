@@ -54,7 +54,8 @@ flowchart LR
 | `app.mcp_server` | MCP server for Claude Desktop: the same tools over stdio, reloading the newest save | 4 |
 | `watcher` | `SaveWatcher`: polls the current save and reports it once it has finished writing; the panel reloads on it | 4 |
 | `app.ui` | pywebview panel beside the game: campaign status, alerts, chat-mode switch (D-020, D-021, [UI_DESIGN](UI_DESIGN.md)) | 4 |
-| `app.layout` | Window arrangement: `plan_layout` (pure rules: dock on two screens, overlay column on one) and `Docker` (Win32 find, place, restore, floating icon; per-monitor DPI aware) | 4 |
+| `app.layout` | Window arrangement: `plan_layout` (pure rules: dock on two screens, overlay column on one) and `Docker` (Win32 find, place, restore; per-monitor DPI aware) | 4 |
+| `app.icon_window` | The floating icon: `render_icon` (pure-Python, anti-aliased drawing) and `FloatingIcon` (native layered window, its own message loop, drag, click, right-click menu) | 4 |
 
 Every query follows the same pattern (D-009): a function takes a `Campaign` and returns
 structured data, the CLI renders it as Markdown, and the agent receives it as a tool

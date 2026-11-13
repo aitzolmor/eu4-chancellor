@@ -25,6 +25,7 @@ charts (PDX Tools-style), and — long term — Claude acting in-game via comput
 
 | Need | Read |
 | --- | --- |
+| Current state, traps and next step | `docs/handoff.md` |
 | Goals and priorities | `docs/VISION.md` |
 | Phases and current task list | `docs/ROADMAP.md` |
 | How modules fit together | `docs/ARCHITECTURE.md` |

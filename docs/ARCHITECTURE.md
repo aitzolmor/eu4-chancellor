@@ -37,6 +37,7 @@ flowchart LR
 | `context.world` | World overview: great powers, rankings, alliance networks, wars, unions, HRE (`WorldOverview` dataclass + renderer) | 2 |
 | `game.missions` | Mission series from the game's `missions/` folder (`MissionLibrary`) | 3 |
 | `game.modifiers` | Named modifiers and the stats they change (`ModifierLibrary`, `format_effect`) | 3 |
+| `game.imperial_reforms` | HRE imperial reforms: order, branches, DLC set, modifiers; the next reform (`ImperialReformLibrary`) | 4 |
 | `context.script` | Readable, localised descriptions of trigger and effect script | 3 |
 | `context.missions` | A country's mission tree with completed / available / locked status | 3 |
 | `game.cache` | On-disk cache of parsed game data, invalidated by file size/mtime and package version | 3 |

@@ -136,7 +136,9 @@ def _stat_name(stat: str, loc: Localisation) -> str:
     """Localised stat name; several stats have no entry and fall back to the key."""
     for key in (f"MODIFIER_{stat.upper()}", stat, stat.upper()):
         text = " ".join(loc.get(key, "").replace("§Y", "").replace("§!", "").split())
-        if text and len(text) <= _MAX_NAME_LENGTH:  # longer entries are descriptions
+        # Longer entries are descriptions; entries with $PLACEHOLDERS$ are sentence
+        # templates such as "Una $DIRECTION$ de $VALUE$ diplomáticos." (DIPLOMATS).
+        if text and len(text) <= _MAX_NAME_LENGTH and "$" not in text:
             return text.rstrip(":").strip()
     return stat.replace("_", " ")
 

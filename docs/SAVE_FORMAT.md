@@ -221,7 +221,10 @@ sea. Checked on 345 sampled countries across all local saves: identical to a ful
   `empire.passed_reform` is repeated once per reform passed (e.g.
   `emperor_reichsreform`); its readable name is the localisation key `<reform>_title`.
   The reforms, their order (`required_reform`) and their branches (`gui_container`,
-  `disabled_by`) are in `common/imperial_reforms/00_hre_emperor.txt`.
+  `disabled_by`) are in `common/imperial_reforms/00_hre_emperor.txt`; players without
+  the Emperor DLC use the set in `00_hre.txt`. `meta.dlc_enabled` says which applies.
+  A reform needs at least 50 imperial authority (`IMPERIAL_REFORM_COST` in the defines)
+  and the electors' votes.
 - `empire.old_emperor` (repeated) records past reigns with `country` and `date`.
 - Each elector's country block has `is_elector=yes` and `preferred_emperor="HAB"`, the
   candidate it currently backs.

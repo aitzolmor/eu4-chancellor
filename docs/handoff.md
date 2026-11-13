@@ -1,8 +1,8 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13** and updated
-the same day after the first play-test (PRs #1–#20 merged, readable checklists
-in review; 337 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
+the same day after the first play-test (PRs #1–#21 merged, the next imperial
+reform in review; 347 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
 [ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-019),
@@ -47,13 +47,14 @@ Shared foundations:
 
 In priority order. The full list is in [ROADMAP](ROADMAP.md).
 
-1. **Play-test findings** (first play-test done on 2026-11-13, list in
+1. **Second play-test** (first play-test done on 2026-11-13, findings list in
    [ROADMAP](ROADMAP.md) under *Play-test findings*). Done: armies at sea are counted
    (#15), the briefing shows the HRE (#16), aggressive expansion, overextension and
    monarch power (#17), war checks and targets know about truces (#18) and flag
    targets defended by the player's own allies (#19); targets say "any N of M
    provinces" for counted mission conditions (#20); common triggers read as words
-   (D-019). Left: the next imperial reform.
+   (#21, D-019) and the HRE section shows the next imperial reform. Every finding is
+   done; the second play-test checks whether the advice actually improved.
 2. **First live run of `chancellor chat`** with the real API key, to tune the system
    prompt and effort. It spends money, so ask the user before running it.
 3. **Data gaps that limit advice:**
@@ -163,17 +164,21 @@ The API key lives only in the git-ignored `.env`. Never print it, and never put 
 
 ## Next step
 
-The first play-test's list is nearly done. In order:
+1. **Second play-test through MCP, planned for the morning of 2026-11-14.** The user
+   cannot play before the evening of 2026-11-13; they will advance the campaign that
+   night and save, so the play-test runs on a newer save than 1475.6.21. Before it:
+   - check `get_save_status` shows the new save (ask the user to save if not);
+   - ask the user to restart Claude Desktop fully, so its MCP server loads the new code.
 
-1. **Second play-test through MCP** (free): ask the same questions as the first one
-   (see `notes/2026-11-13-playtest.md`) on a fresh save, and compare. The user must
-   restart Claude Desktop to load the new code; a Claude Code session can run it with
-   the `mcp__eu4-chancellor__*` tools too.
-2. **The next imperial reform** in the HRE section: read `common/imperial_reforms`
-   (order from `required_reform`, branches from `gui_container` and `disabled_by`) and
-   show the next one and its effect.
-3. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
+   Ask the same questions as the first play-test (`notes/2026-11-13-playtest.md`): how
+   the campaign is going, attacking Venice, the next 50 years, forming Germany or
+   Austria-Hungary, where to expand. Note what changed, what is still wrong, and turn new
+   findings into roadmap items. A Claude Code session can run it with the
+   `mcp__eu4-chancellor__*` tools; Claude Desktop shows how Claude chains them itself.
+2. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
    with the answers given through MCP.
+3. Remaining data gaps (casus belli, income breakdown, advisors and generals) or the
+   docked window, whichever the play-test shows matters more.
 
 **Tip:** a Claude Code session on this machine has the `eu4-chancellor` MCP tools too
 (`mcp__eu4-chancellor__*`), so play-tests can be run from here at no API cost. They read

@@ -17,6 +17,7 @@ LOC = Localisation(
         "diplomatic_reputation": "Reputación diplomática",
         "hab_union": "Crown of Bohemia",
         "ballrooms": "Ballrooms",
+        "DIPLOMATS": "Una $DIRECTION$ de $VALUE$ diplomáticos.",
     }
 )
 
@@ -60,6 +61,7 @@ def test_load_from_game_dir(tmp_path: Path):
         ("yearly_corruption", -0.05, "yearly corruption -0.05"),
         ("war_exhaustion", -0.03, "war exhaustion -0.03"),
         ("can_fabricate", True, "can fabricate"),
+        ("diplomats", 1, "diplomats +1"),  # sentence template skipped
     ],
 )
 def test_format_effect(stat, value, expected):

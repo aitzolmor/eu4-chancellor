@@ -22,6 +22,7 @@ from chancellor.context.targets import find_targets, render_targets
 from chancellor.context.war_check import check_war, render_war_check
 from chancellor.context.world import render_world, world_overview
 from chancellor.game.decisions import DecisionLibrary
+from chancellor.game.imperial_reforms import ImperialReformLibrary
 from chancellor.game.missions import MissionLibrary
 from chancellor.game.modifiers import ModifierLibrary
 from chancellor.game.rules import GameRules
@@ -43,7 +44,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "Briefing of one country from the current save: ruler, stability, economy, "
             "military, territory and overextension, technology, ideas and monarch power, "
             "estates, diplomacy, aggressive expansion held against it (who is near or in a "
-            "coalition), its place in the Holy Roman Empire, wars and the countries around "
+            "coalition), its place in the Holy Roman Empire (with the next imperial reform), "
+            "wars and the countries around "
             "it. For any country other than the player's it also shows "
             "the relation to the player and a strength comparison. Omit `country` for the "
             "player's own country."
@@ -187,7 +189,8 @@ class Toolbox:
     # --- handlers -----------------------------------------------------------------------
 
     def _get_country_briefing(self, args: dict[str, Any]) -> str:
-        return summarize(self.campaign, self._tag(args.get("country")))
+        tag = self._tag(args.get("country"))
+        return summarize(self.campaign, tag, reforms=self._imperial_reforms)
 
     def _check_war(self, args: dict[str, Any]) -> str:
         target = self._tag(args["target"])
@@ -244,6 +247,11 @@ class Toolbox:
     @cached_property
     def _modifiers(self) -> ModifierLibrary:
         return ModifierLibrary.load(self._game_dir())
+
+    @cached_property
+    def _imperial_reforms(self) -> ImperialReformLibrary | None:
+        """Optional: briefings work without the game files, just without the next reform."""
+        return ImperialReformLibrary.load(self.game_dir) if self.game_dir else None
 
 
 def validate(name: str, arguments: Any) -> dict[str, Any]:

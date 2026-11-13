@@ -283,3 +283,26 @@ def test_overextension_and_monarch_power(ae: Campaign):
     assert "- Overextension: 29%" in briefing
     assert "- Monarch power (adm/dip/mil): 450/79/425" in briefing
     assert "- Overextension: 0%" in summarize(ae, "TUR")  # the key is omitted at 0
+
+
+def test_next_imperial_reform_with_the_game_files(empire: Campaign):
+    from chancellor.game.imperial_reforms import ImperialReformLibrary, parse_reform_file
+
+    reforms = ImperialReformLibrary(
+        parse_reform_file(
+            """
+            emperor_reichsreform = { empire = hre potential = { has_dlc = "Emperor" } }
+            emperor_reichsregiment = { empire = hre potential = { has_dlc = "Emperor" }
+                required_reform = emperor_reichsreform emperor = { diplomats = 1 } }
+            emperor_reichsstabilitaet = { empire = hre potential = { has_dlc = "Emperor" }
+                required_reform = emperor_reichsregiment province = { local_unrest = -2 } }
+            """
+        )
+    )
+    empire.meta["dlc_enabled"] = ["Emperor"]
+    section = _hre_section(summarize(empire, reforms=reforms))
+    assert (
+        "- Next reform: emperor reichsstabilitaet (HRE provinces: local unrest -2). "
+        "Needs 50 imperial authority, now 59.7, and the electors' votes"
+    ) in section
+    assert "Next reform" not in _hre_section(summarize(empire))  # no game files, no line

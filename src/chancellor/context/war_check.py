@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-from chancellor.context.campaign import Campaign, as_list, count_regiments
+from chancellor.context.campaign import Campaign, Truce, as_list, count_regiments
 from chancellor.save.parser import get_all
 
 Likelihood = Literal["certain", "likely", "possible"]
@@ -80,7 +80,8 @@ class WarCheck:
         attackers: Attacker and countries that would join it.
         defenders: Target and countries that would defend it.
         neutral: Countries tied to both sides, unlikely to join either.
-        notes: Extra facts worth considering (ongoing wars, HRE, coalitions).
+        notes: Extra facts worth considering (ongoing wars, HRE, coalitions, truces).
+        truce: The truce between attacker and target, if any: declaring war breaks it.
     """
 
     attacker: str
@@ -90,6 +91,7 @@ class WarCheck:
     defenders: list[Participant]
     neutral: list[Participant]
     notes: list[str]
+    truce: Truce | None = None
 
     def totals(self, side: Literal["attackers", "defenders"], worst_case: bool) -> SideTotals:
         """Sum the strength of one side.
@@ -207,14 +209,17 @@ def check_war(campaign: Campaign, target: str, attacker: str | None = None) -> W
         ]
         return sorted(people, key=lambda p: (_LIKELIHOOD_ORDER[p.likelihood], -p.regiments))
 
+    attacking, defending = build(attackers), build(defenders)
+    notes += _participant_truces(campaign, attacker, target, attacking, defending)
     return WarCheck(
         attacker=attacker,
         target=target,
         date=campaign.date,
-        attackers=build(attackers),
-        defenders=build(defenders),
+        attackers=attacking,
+        defenders=defending,
         neutral=build(neutral),
         notes=notes,
+        truce=campaign.truce(attacker, target),
     )
 
 
@@ -227,6 +232,10 @@ def render_war_check(campaign: Campaign, check: WarCheck) -> str:
         "Who would fight if "
         f"{campaign.name(check.attacker)} declared war on {campaign.name(check.target)} today.",
         "",
+    ]
+    if check.truce:
+        lines += [f"**{_truce_warning(campaign, check)}**", ""]
+    lines += [
         "## Balance of forces",
         "",
         "| Side | Countries | Regiments | Manpower | Worst case regiments | Worst case manpower |",
@@ -265,7 +274,8 @@ def render_war_check(campaign: Campaign, check: WarCheck) -> str:
     lines += [
         "",
         "_Likelihoods are estimates. Allies can refuse a call to arms, and guarantors and the "
-        "Emperor decide case by case. Truces, war score and the casus belli are not checked._",
+        "Emperor decide case by case. War score and the casus belli are not checked; truce "
+        "end dates are estimates._",
     ]
     return "\n".join(lines) + "\n"
 
@@ -343,6 +353,48 @@ def _notes(campaign: Campaign, attacker: str, target: str, hre_target: bool) -> 
         )
     if target in as_list(att.get("allies")):
         notes.append(f"{campaign.label(target)} is currently allied with the attacker.")
+    return notes
+
+
+def _truce_text(truce: Truce) -> str:
+    """``since 1475.6.21 (war score 41), ends around 1484.7.28 (estimate)``."""
+    parts = []
+    if truce.last_war:
+        score = f" (war score {truce.warscore})" if truce.warscore is not None else ""
+        parts.append(f"since {truce.last_war}{score}")
+    parts.append(
+        f"ends around {truce.estimated_end} (estimate)" if truce.estimated_end else "end unknown"
+    )
+    return ", ".join(parts)
+
+
+def _truce_warning(campaign: Campaign, check: WarCheck) -> str:
+    assert check.truce is not None
+    return (
+        f"Truce: {campaign.name(check.attacker)} and {campaign.name(check.target)} are under a "
+        f"truce {_truce_text(check.truce)}. Declaring war now means breaking it."
+    )
+
+
+def _participant_truces(
+    campaign: Campaign,
+    attacker: str,
+    target: str,
+    attackers: list[Participant],
+    defenders: list[Participant],
+) -> list[str]:
+    """Notes on participants that have a truce with the leader of the other side."""
+    notes = []
+    for people, enemy in ((defenders, attacker), (attackers, target)):
+        for person in people:
+            if person.tag in (attacker, target):
+                continue
+            truce = campaign.truce(person.tag, enemy)
+            if truce:
+                notes.append(
+                    f"{campaign.label(person.tag)} has a truce with {campaign.name(enemy)}: "
+                    f"{_truce_text(truce)}."
+                )
     return notes
 
 

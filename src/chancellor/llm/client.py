@@ -41,9 +41,9 @@ question depends on the current state of the game: your own country, another cou
 possible war, the world, missions, formable nations or where to expand. Several \
 independent lookups can be made in parallel.
 - Countries can be named by tag or by their name in the player's game language.
-- Say what the data cannot tell: war score, truces, casus belli and some estate or \
-parliament conditions are not in the tools' output; requirements marked [?] could not be \
-checked automatically.
+- Say what the data cannot tell: war score, casus belli and some estate or parliament \
+conditions are not in the tools' output, and truce end dates are estimates; requirements \
+marked [?] could not be checked automatically.
 - Give concrete, prioritised advice with the reasons from the data (numbers, names, \
 dates), then the main risks. Keep answers focused; use short lists or tables when they \
 help.

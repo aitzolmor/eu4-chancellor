@@ -170,3 +170,25 @@ def test_attacking_an_ally_keeps_sides_apart(campaign: Campaign):
     assert "HAB" not in roles(check.defenders)
     assert "CAS" not in roles(check.attackers)
     assert any("currently allied with the attacker" in note for note in check.notes)
+
+
+def test_truce_with_the_target_is_reported(campaign: Campaign):
+    campaign.country("HAB")["active_relations"] = {
+        "BUR": {"truce": True, "last_war": "1475.6.21", "last_warscore": 41}
+    }
+    check = check_war(campaign, "BUR")
+    assert check.truce is not None
+    assert (check.truce.last_war, check.truce.warscore) == ("1475.6.21", 41)
+    text = render_war_check(campaign, check)
+    assert (
+        "**Truce: Austria and Burgundy are under a truce since 1475.6.21 (war score 41), "
+        "ends around 1484.7.28 (estimate). Declaring war now means breaking it.**"
+    ) in text
+    assert check_war(campaign, "VEN").truce is None
+
+
+def test_participants_with_a_truce_with_the_other_side_are_noted(campaign: Campaign):
+    # France defends Burgundy but is under a truce with Austria; its end is unknown.
+    campaign.country("FRA")["active_relations"] = {"HAB": {"truce": True}}
+    notes = check_war(campaign, "BUR").notes
+    assert "France (FRA) has a truce with Austria: end unknown." in notes

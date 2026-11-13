@@ -185,3 +185,24 @@ def test_no_targets():
     result = find_targets(campaign, RULES, MissionLibrary(), DecisionLibrary())
     assert result.targets == []
     assert "No foreign-held provinces" in render_targets(campaign, result)
+
+
+def test_owners_under_a_truce_come_last_with_the_estimated_end(report):
+    campaign, _ = report
+    # HAB beat SAL two years ago with full war score: a 15-year truce.
+    campaign.country("HAB")["active_relations"] = {
+        "SAL": {"truce": True, "last_war": "1473.1.1", "last_warscore": 100}
+    }
+    missions = MissionLibrary(parse_mission_file(MISSIONS))
+    decisions = DecisionLibrary(parse_decision_file(DECISIONS))
+    result = find_targets(campaign, RULES, missions, decisions)
+    targets = {t.owner: t for t in result.targets}
+    assert targets["SAL"].truce is not None
+    assert targets["SAL"].truce.estimated_end == "1488.1.1"
+    order = [t.owner for t in result.targets]
+    assert order.index("VEN") < order.index("SAL")  # even a hard target beats a truced one
+    text = render_targets(campaign, result)
+    assert "| 2 | SAL (SAL) | 1 | 8 | cores | 5 vs 1 | 5.0x | truce until about 1488.1.1 |" in text
+    assert "| 1 | POL (POL) |" in text  # the weaker target without a truce goes first
+    hidden = render_targets(campaign, result, top=1)
+    assert "Not shown because of a truce: SAL (SAL) (truce until about 1488.1.1)." in hidden

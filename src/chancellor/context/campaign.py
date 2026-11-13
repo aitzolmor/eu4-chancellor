@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from dataclasses import dataclass
 from functools import cached_property
 from typing import Any
 
@@ -21,6 +22,22 @@ _MAX_CANDIDATES = 25
 _OWNS_LAND = re.compile(r"\bowned_provinces=\{\s*\d")
 _RAW_DEVELOPMENT = re.compile(r"\braw_development=(-?[\d.]+)")
 _REGIMENT = re.compile(r"\bregiment=\{")
+_AE_MODIFIER = '"aggressive_expansion"'
+
+
+@dataclass(frozen=True)
+class Grievance:
+    """Aggressive expansion one country holds against another.
+
+    Attributes:
+        tag: The country holding the grievance.
+        value: Aggressive expansion, as a positive number (the opinion penalty negated).
+        attitude: The holder's AI attitude key towards the other country, if any.
+    """
+
+    tag: str
+    value: float
+    attitude: str | None
 
 
 class CountryLookupError(LookupError):
@@ -65,6 +82,7 @@ class Campaign:
         self.loc = loc or Localisation()
         self._countries: dict[str, dict[str, Any] | None] = {}
         self._province_cache: dict[str, dict[str, Any] | None] = {}
+        self._grievances: dict[str, list[Grievance]] = {}
 
     @classmethod
     def from_raw(cls, raw: RawSave, loc: Localisation | None = None) -> Campaign:
@@ -169,6 +187,47 @@ class Campaign:
         block = self.gamestate.get("diplomacy", {})
         result = block.parse() if isinstance(block, LazyBlock) else block
         return result if isinstance(result, dict) else {}
+
+    def aggressive_expansion_towards(self, tag: str) -> list[Grievance]:
+        """Every living country's aggressive expansion against ``tag``, highest first.
+
+        AE is an ``aggressive_expansion`` opinion modifier in the holder's
+        ``active_relations``. Only blocks that mention both AE and the tag are opened, and
+        only down to that one relation, so scanning the whole world takes about a second.
+        """
+        if tag in self._grievances:
+            return self._grievances[tag]
+        needle = re.compile(rf"\b{re.escape(tag)}=\{{")
+        found = []
+        for holder, block in self.country_blocks.items():
+            if holder == tag or holder not in self.quick_stats:
+                continue
+            if isinstance(block, LazyBlock):
+                text, start, end = block.text, block.start, block.end
+                if text.find(_AE_MODIFIER, start, end) < 0 or not needle.search(text, start, end):
+                    continue
+                block = block.lazy()
+            relations = block.get("active_relations") if isinstance(block, dict) else None
+            if isinstance(relations, LazyBlock):
+                relations = relations.lazy()
+            relation = relations.get(tag) if isinstance(relations, dict) else None
+            if isinstance(relation, LazyBlock):
+                relation = relation.parse()
+            if not isinstance(relation, dict):
+                continue
+            attitude = relation.get("attitude")
+            for opinion in get_all(relation, "opinion"):
+                if isinstance(opinion, dict) and opinion.get("modifier") == "aggressive_expansion":
+                    found.append(
+                        Grievance(
+                            tag=holder,
+                            value=-float(opinion.get("current_opinion") or 0.0),
+                            attitude=str(attitude) if attitude else None,
+                        )
+                    )
+        found.sort(key=lambda g: -g.value)
+        self._grievances[tag] = found
+        return found
 
     def active_links(self, kind: str) -> list[dict[str, Any]]:
         """Diplomatic links of one kind (``guarantee``, ``dependency``, ...) still in force.

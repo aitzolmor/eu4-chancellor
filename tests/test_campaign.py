@@ -130,3 +130,37 @@ def test_quick_stats_matches_full_parse_with_armies_at_sea():
     lazy = Campaign({"player": "TUR"}, parse_lazy(EMBARKED))
     full = Campaign({"player": "TUR"}, parse(EMBARKED))
     assert lazy.quick_stats["TUR"] == full.quick_stats["TUR"] == (470.0, 5)
+
+
+# VEN and POL hold AE against HAB; POL also against TUR. MIL mentions HAB but has no AE.
+GRIEVANCES = """
+countries={
+    HAB={ owned_provinces={ 1 } }
+    TUR={ owned_provinces={ 2 } }
+    VEN={ owned_provinces={ 3 } active_relations={
+        HAB={ opinion={ modifier="aggressive_expansion" current_opinion=-62.898 }
+              attitude="attitude_rivalry" } } }
+    POL={ owned_provinces={ 4 } active_relations={
+        HAB={ opinion={ modifier="improved_relation" current_opinion=11.0 }
+              opinion={ modifier="aggressive_expansion" current_opinion=-48.898 }
+              attitude="attitude_outraged" }
+        TUR={ opinion={ modifier="aggressive_expansion" current_opinion=-5.0 } } } }
+    MIL={ owned_provinces={ 5 } active_relations={
+        HAB={ opinion={ modifier="improved_relation" current_opinion=20.0 } }
+        TUR={ opinion={ modifier="aggressive_expansion" current_opinion=-1.0 } } } }
+    DED={ active_relations={
+        HAB={ opinion={ modifier="aggressive_expansion" current_opinion=-90.0 } } } }
+}
+"""
+
+
+@pytest.mark.parametrize("parser", [parse, parse_lazy])
+def test_aggressive_expansion_towards(parser):
+    campaign = Campaign({"player": "HAB"}, parser(GRIEVANCES))
+    grievances = campaign.aggressive_expansion_towards("HAB")
+    assert [(g.tag, round(g.value, 3), g.attitude) for g in grievances] == [
+        ("VEN", 62.898, "attitude_rivalry"),
+        ("POL", 48.898, "attitude_outraged"),
+    ]  # MIL has no AE against HAB; DED no longer exists
+    assert [g.tag for g in campaign.aggressive_expansion_towards("TUR")] == ["POL", "MIL"]
+    assert campaign.aggressive_expansion_towards("POL") == []

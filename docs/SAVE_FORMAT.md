@@ -79,6 +79,8 @@ Other notable top-level keys: `players_countries`, `start_date`, `great_powers`,
 
 Values such as `manpower=33.343` are in thousands; `overextension_percentage=0.312` and
 `army_professionalism=0.445` are ratios. `sailors` is an absolute number.
+`overextension_percentage` is omitted when it is zero. `powers={ 450 79 425 }` holds the
+monarch power points (adm, dip, mil).
 
 #### Resolving references
 
@@ -112,6 +114,15 @@ at sea. Use `campaign.land_armies` / `count_regiments`.
 - `active_relations.<TAG>`: this country's view of another: `cached_sum` (opinion),
   `attitude` (`attitude_rivalry`, …), and the `opinion` modifiers. To get "their opinion
   of us", read the *other* country's `active_relations.<player tag>`.
+  - **Aggressive expansion** is one of those modifiers:
+    `opinion={ modifier="aggressive_expansion" current_opinion=-62.898 }`. The AE value
+    is the opinion negated. The game files give the coalition threshold
+    (`AE_COALITION_THRESHOLD = -50` in `common/defines.lua`) and the base decay
+    (`yearly_decay = 2` in `common/opinion_modifiers`). `Campaign.aggressive_expansion_towards`
+    scans every country for AE against one tag in about a second.
+  - **Truces** are here too: `truce=yes`, `last_war="1475.6.21"` (when the last war
+    ended) and `last_warscore=41`. They are symmetric (both countries carry them). The
+    truce end date is not stored.
 - `ledger`: `lastmonthincome` / `lastmonthexpense` totals and per-category arrays
   (`lastmonthincometable`, …). The index → category mapping is not documented yet.
 - `loan` (repeated): `amount`, `interest`, `expiry_date`, `lender`.
@@ -217,7 +228,7 @@ sea. Checked on 345 sampled countries across all local saves: identical to a ful
   when its capital province has it.
 - `coalition_against_us` is repeated once per member on the country being targeted
   (e.g. `coalition_against_us="VEN"`). Attacking any member brings in the whole coalition.
-- No truce data has been found on the country or its `active_relations` yet.
+- Truces live in `active_relations` (see *Estates, relations and money*).
 
 #### Dynamic countries
 

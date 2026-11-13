@@ -49,7 +49,8 @@ the chat agent as a tool (D-009).
   its relation to the player
 - [x] `chancellor war-check <name>`: who would defend the target (allies, guarantors,
   overlord, subjects, Emperor, coalitions), combined strength of each side, shared allies
-- [ ] War check: truces, casus belli available and AI willingness to answer calls to arms
+- [ ] War check: truces (data located, see SAVE_FORMAT), casus belli available and AI
+  willingness to answer calls to arms
 - [x] `chancellor world`: great powers, rankings, alliance networks, major wars, unions, HRE
 - [ ] Structured return types (dataclasses) shared by CLI rendering and agent tools
   (done for `war-check` and `world`; briefings still render directly to Markdown)
@@ -109,9 +110,11 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
   authority, reforms passed and which candidate each elector backs
 - [ ] HRE: the next imperial reform and its requirements (needs
   `common/imperial_reforms` from the game files)
-- [ ] Briefing: aggressive expansion per country and overextension; a 19-member
-  coalition is listed with no numbers to judge when it will dissolve
-- [ ] Briefing: monarch power (adm/dip/mil points), needed to plan cores and ideas
+- [x] Briefing: aggressive expansion held against the country (top holders, coalition
+  threshold, status) and overextension shown even at 0%
+- [x] Briefing: monarch power (adm/dip/mil points)
+- [ ] War check and targets: truces (found in `active_relations`); the Ottomans are the
+  top target although a peace was signed with them on the save date
 - [ ] Targets: flag owners defended by the player's own allies (Aragón is defended by
   the ally Castilla; that war would break the alliance)
 - [ ] Targets: when a mission needs N provinces of a region, say "N of M" instead of

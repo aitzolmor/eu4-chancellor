@@ -221,3 +221,65 @@ def test_elector_and_member_see_the_emperor(empire: Campaign):
 
 def test_countries_outside_the_empire_have_no_hre_section(empire: Campaign):
     assert "Holy Roman Empire" not in summarize(empire, "FRA")
+
+
+# --- aggressive expansion, overextension and monarch power -----------------------------
+
+AE_SAVE = """
+countries={
+    HAB={ owned_provinces={ 1 } capital=1 allies={ CAS } powers={ 450 79 425 }
+          coalition_against_us="VEN" overextension_percentage=0.288 }
+    VEN={ owned_provinces={ 2 } active_relations={ HAB={
+        opinion={ modifier="aggressive_expansion" current_opinion=-62.898 }
+        attitude="attitude_rivalry" } } }
+    LAN={ owned_provinces={ 3 } active_relations={ HAB={
+        opinion={ modifier="aggressive_expansion" current_opinion=-70.898 }
+        attitude="attitude_loyal" } } }
+    CAS={ owned_provinces={ 4 } active_relations={ HAB={
+        opinion={ modifier="aggressive_expansion" current_opinion=-10.0 } } } }
+    TUR={ owned_provinces={ 5 } }
+}
+diplomacy={ dependency={ first="HAB" second="LAN" subject_type="vassal" } }
+"""
+AE_NAMES = {
+    "HAB": "Austria",
+    "VEN": "Venice",
+    "LAN": "Florence",
+    "CAS": "Castile",
+    "attitude_rivalry": "Rivalry",
+    "attitude_loyal": "Loyal",
+}
+
+
+@pytest.fixture
+def ae() -> Campaign:
+    from chancellor.save.parser import parse_lazy
+
+    meta = {"player": "HAB", "date": "1475.6.21"}
+    return Campaign(meta, parse_lazy(AE_SAVE), Localisation(AE_NAMES))
+
+
+def test_aggressive_expansion_section(ae: Campaign):
+    briefing = summarize(ae)
+    section = briefing.split("## Aggressive expansion", 1)[1].split("\n## ", 1)[0]
+    assert "3 countries hold aggressive expansion (AE) against Austria; 2 at 50 or more" in (
+        section
+    )
+    assert "1 are in a coalition against it. AE decays by 2 a year at base." in section
+    rows = [line for line in section.splitlines() if line.startswith("| ") and "(" in line]
+    assert rows == [
+        "| Florence (LAN) | 71 | subject | Loyal |",
+        "| Venice (VEN) | 63 | in coalition | Rivalry |",
+        "| Castile (CAS) | 10 | ally |  |",
+    ]
+
+
+def test_no_aggressive_expansion_section_without_ae(ae: Campaign):
+    assert "Aggressive expansion" not in summarize(ae, "TUR")
+
+
+def test_overextension_and_monarch_power(ae: Campaign):
+    briefing = summarize(ae)
+    assert "- Overextension: 29%" in briefing
+    assert "- Monarch power (adm/dip/mil): 450/79/425" in briefing
+    assert "- Overextension: 0%" in summarize(ae, "TUR")  # the key is omitted at 0

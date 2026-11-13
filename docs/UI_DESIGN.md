@@ -154,7 +154,12 @@ as a calm instrument panel, not compete with the map.
 2. Watcher and live refresh. **Done** (`chancellor.watcher.SaveWatcher`).
 3. Alerts. **Done** (`chancellor.context.alerts`); "new missions or formables since the
    previous save" is left for later, since it needs the previous save's state.
-4. Docked layout with EU4 and Claude Desktop; undock.
+4. Docked layout with EU4 and Claude Desktop; undock. **Done** (`chancellor.app.layout`,
+   the panel's *Dock beside the game* button). Verified live on two screens (a cabled
+   1920×1080 monitor): panel and Claude Desktop land pixel-exact on the second screen
+   and undock restores them, maximized state included. Not verified yet: the one-screen
+   split (it resizes EU4's borderless window, which the game may not like), docking over
+   Miracast, the fallback when a screen drops, and docking automatically at start.
 5. Quick questions; overlay hotkey.
 6. API chat tab behind the chat-mode switch.
 7. Charts and history (Phase 5).

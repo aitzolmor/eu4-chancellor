@@ -73,3 +73,12 @@ def test_alerts_come_back_as_plain_values():
 def test_alerts_report_errors_to_the_page():
     result = PanelApi(_Provider(RuntimeError("No .eu4 files"))).alerts()
     assert result == {"ok": False, "error": "No .eu4 files"}
+
+
+def test_dock_reports_errors_to_the_page(monkeypatch):
+    from chancellor.app import layout
+
+    monkeypatch.setattr(layout.sys, "platform", "linux")
+    api = PanelApi(_Provider())
+    assert api.dock() == {"ok": False, "error": "Docking is only available on Windows."}
+    assert api.undock() == {"ok": True}  # nothing docked, nothing to undo

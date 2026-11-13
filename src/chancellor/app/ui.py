@@ -5,10 +5,10 @@ The page under ``app/web/`` is plain HTML, CSS and JavaScript. It calls the meth
 values, so the class is testable without a window. pywebview is an optional dependency
 (``pip install -e ".[ui]"``) and is imported only when the window opens.
 
-Build order steps 1-3: the header (country, date, save), alerts and the key numbers,
-refreshed
-when the game writes a new save (:class:`chancellor.watcher.SaveWatcher` fires a
-``save-changed`` event in the page). The chat runs in Claude Desktop; the paid API mode
+Build order steps 1-4: the header (country, date, save), alerts and the key numbers,
+refreshed when the game writes a new save (:class:`chancellor.watcher.SaveWatcher` fires
+a ``save-changed`` event in the page), and docking the panel and Claude Desktop beside
+the game (:mod:`chancellor.app.layout`). The chat runs in Claude Desktop; the paid API mode
 arrives later and only behind the player's own switch (D-020).
 """
 
@@ -20,6 +20,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from chancellor.app.layout import Docker, DockError, enable_dpi_awareness
 from chancellor.app.mcp_server import CampaignProvider
 from chancellor.config import Settings
 from chancellor.context.alerts import campaign_alerts
@@ -61,6 +62,7 @@ class PanelApi:
         self._clock = clock
         self._game_dir = game_dir
         self._reforms: ImperialReformLibrary | None = None
+        self._docker: Docker | None = None
 
     def status(self) -> dict[str, Any]:
         """The current campaign's key facts, or an error message for the page.
@@ -95,6 +97,26 @@ class PanelApi:
             self._reforms = ImperialReformLibrary.load(self._game_dir)
         return self._reforms
 
+    def dock(self) -> dict[str, Any]:
+        """Dock the panel and Claude Desktop beside the game.
+
+        Returns:
+            ``{"ok": True, "mode": "two_screens" | "one_screen", "game_found": bool,
+            "game_moved": bool}`` or ``{"ok": False, "error": "<message>"}``.
+        """
+        try:
+            if self._docker is None:
+                self._docker = Docker(WINDOW_TITLE)
+            return {"ok": True, **self._docker.dock()}
+        except (DockError, OSError) as exc:
+            return {"ok": False, "error": str(exc)}
+
+    def undock(self) -> dict[str, Any]:
+        """Put the docked windows back where they were."""
+        if self._docker is not None:
+            self._docker.undock()
+        return {"ok": True}
+
     def chat_mode(self) -> dict[str, Any]:
         """The chat mode in use. Always Claude Desktop until the API tab exists (D-020)."""
         return {"mode": "claude_desktop", "api_available": False}
@@ -111,6 +133,8 @@ def run_panel(settings: Settings, load: Callable[[Path], Campaign]) -> None:
         ImportError: If pywebview is not installed.
     """
     import webview  # optional dependency: pip install -e ".[ui]"
+
+    enable_dpi_awareness()  # before any window exists, so docking uses real pixels
 
     api = PanelApi(CampaignProvider(settings, load), game_dir=settings.game_dir)
     window = webview.create_window(

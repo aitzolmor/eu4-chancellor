@@ -104,8 +104,10 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
   ending within two years, losses, loans, overextension, war exhaustion, negative
   stability, monarch power near the cap, an imperial reform ready
 - [ ] Alerts: missions or formables that became available since the previous save
-- [ ] `app.layout`: docked layout (EU4 borderless, panel and Claude Desktop beside it) and
-  undock
+- [x] `app.layout`: docked layout (EU4 borderless, panel and Claude Desktop beside it) and
+  undock; verified on two screens
+- [ ] Docking: try the one-screen split with EU4 running, over Miracast, and when a screen
+  drops; dock automatically at start once it has proven reliable
 - [ ] Quick questions (copy to Claude Desktop, or send to the API tab) and the overlay hotkey
 - [ ] API chat tab behind the player's chat-mode switch (D-020), with a session counter of
   questions and tokens; conversation history within a session

@@ -134,6 +134,35 @@ window.addEventListener("save-changed", (event) => {
   load();
 });
 
+const DOCK_MODES = {
+  two_screens: "Docked: panel and Claude Desktop on the second screen.",
+  one_screen: "Docked: game on the left, panel and Claude Desktop on the right.",
+};
+
+async function dock() {
+  const note = $("dock-note");
+  note.classList.remove("error");
+  setText("dock-note", "Docking…");
+  const result = await window.pywebview.api.dock();
+  if (!result.ok) {
+    note.classList.add("error");
+    setText("dock-note", result.error);
+    return;
+  }
+  let text = DOCK_MODES[result.mode] ?? "Docked.";
+  if (!result.game_found) text += " EU4 is not running; start it in borderless windowed mode.";
+  setText("dock-note", text);
+  $("undock").hidden = false;
+}
+
+async function undock() {
+  await window.pywebview.api.undock();
+  $("undock").hidden = true;
+  setText("dock-note", "Windows are back where they were.");
+}
+
+$("dock").addEventListener("click", dock);
+$("undock").addEventListener("click", undock);
 $("refresh").addEventListener("click", load);
 $("retry").addEventListener("click", load);
 setInterval(() => lastStatus && renderMeta(lastStatus), 30_000);

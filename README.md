@@ -169,7 +169,9 @@ pip install -e ".[ui]"
 chancellor app
 ```
 
-Docking the game and the panel, alerts and charts are on the way; see
+**Dock beside the game** arranges the panel and Claude Desktop next to EU4: on your
+second screen if you have one, or in a column beside the game otherwise. **Undock** puts
+every window back. Run EU4 in borderless windowed mode. Charts are on the way; see
 [docs/UI_DESIGN.md](docs/UI_DESIGN.md).
 
 ## Limitations

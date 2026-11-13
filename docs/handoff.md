@@ -66,8 +66,9 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
 4. **Usability:**
    - run from any folder (today `.env` is read from the working directory);
    - the desktop app: designed on 2026-11-13 ([UI_DESIGN](UI_DESIGN.md), D-020,
-     D-021); steps 1-3 are built: the panel window (`chancellor app`), the save
-     watcher with live refresh, and alerts. Next is step 4, docking.
+     D-021); steps 1-4 are built: the panel window (`chancellor app`), the save
+     watcher with live refresh, alerts, and docking (verified on two screens). Next is
+     step 5, quick questions and the overlay hotkey.
 5. **Later phases:**
    - an evaluation set of real questions;
    - Phase 5: charts and trends across saves, PDX Tools evaluation;
@@ -153,6 +154,12 @@ The full reasoning is in [DECISIONS.md](DECISIONS.md).
   `window.destroy()`, which makes a quick end-to-end check.
 - **Screens.** The main laptop is 2240×1400 at 150% scaling (about 1493×933 logical);
   window placement must be per-monitor DPI aware.
+- **Docking across scalings.** A window moved from the 150% screen to a 100% one rescales
+  itself on arrival (`WM_DPICHANGED`), undoing a size set in the same call: Claude
+  Desktop ended at 2/3 size. `_Win32.place` moves first, then sizes with the invisible
+  borders of the new DPI (11 px at 150%, 7 px at 100%).
+- **"Claude Desktop" is this app.** The `claude.exe` window docking moves is the same
+  Claude app the Code tab runs in, so a live docking test moves the conversation window.
 
 ### MCP and Claude Desktop
 
@@ -186,13 +193,11 @@ The API key lives only in the git-ignored `.env`. Never print it, and never put 
    Austria-Hungary, where to expand. Note what changed, what is still wrong, and turn new
    findings into roadmap items. A Claude Code session can run it with the
    `mcp__eu4-chancellor__*` tools; Claude Desktop shows how Claude chains them itself.
-2. **Desktop app, build order step 4** ([UI_DESIGN](UI_DESIGN.md)): `app.layout`,
-   docking EU4, the panel and Claude Desktop with Win32 calls through `ctypes`
-   (per-monitor DPI aware). Two screens when Windows reports two (the second laptop
-   joins through *Project to this PC*, Miracast, an extended display), one-screen split
-   otherwise, and a fallback when the second screen drops. Needs the user at the
-   machine with EU4 and Claude Desktop open to try it. The API chat mode stays off
-   unless the player switches it on (D-020).
+2. **Desktop app, build order step 5** ([UI_DESIGN](UI_DESIGN.md)): quick questions
+   (copy a question to the clipboard and bring Claude Desktop to the front) and the
+   overlay hotkey. Docking (step 4) still needs live checks: the one-screen split with
+   EU4 running (it resizes the game's borderless window), Miracast, and a screen
+   dropping. The API chat mode stays off unless the player switches it on (D-020).
 3. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
    with the answers given through MCP.
 4. Remaining data gaps (casus belli, income breakdown, advisors and generals) or the

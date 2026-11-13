@@ -205,4 +205,24 @@ def test_owners_under_a_truce_come_last_with_the_estimated_end(report):
     assert "| 2 | SAL (SAL) | 1 | 8 | cores | 5 vs 1 | 5.0x | truce until about 1488.1.1 |" in text
     assert "| 1 | POL (POL) |" in text  # the weaker target without a truce goes first
     hidden = render_targets(campaign, result, top=1)
-    assert "Not shown because of a truce: SAL (SAL) (truce until about 1488.1.1)." in hidden
+    assert (
+        "Not shown because of a truce or an allied defender: "
+        "SAL (SAL) (truce until about 1488.1.1)." in hidden
+    )
+
+
+def test_owners_defended_by_your_own_ally_come_last(report):
+    campaign, _ = report
+    # SAL becomes a subject of BRA, which is allied with HAB: BRA must defend SAL.
+    campaign.country("SAL")["overlord"] = "BRA"
+    campaign.country("BRA")["subjects"] = ["SAL"]
+    missions = MissionLibrary(parse_mission_file(MISSIONS))
+    decisions = DecisionLibrary(parse_decision_file(DECISIONS))
+    result = find_targets(campaign, RULES, missions, decisions)
+    targets = {t.owner: t for t in result.targets}
+    assert targets["SAL"].allied_defenders == ["BRA"]
+    assert targets["SAL"].blocked and not targets["POL"].blocked
+    order = [t.owner for t in result.targets]
+    assert order.index("VEN") < order.index("SAL")
+    text = render_targets(campaign, result)
+    assert "| defended by your ally BRA |" in text

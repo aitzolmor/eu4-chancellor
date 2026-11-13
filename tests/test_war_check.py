@@ -192,3 +192,16 @@ def test_participants_with_a_truce_with_the_other_side_are_noted(campaign: Campa
     campaign.country("FRA")["active_relations"] = {"HAB": {"truce": True}}
     notes = check_war(campaign, "BUR").notes
     assert "France (FRA) has a truce with Austria: end unknown." in notes
+
+
+def test_ally_bound_to_defend_the_target_is_flagged(campaign: Campaign):
+    # SAV is allied with HAB; make it Burgundy's overlord so it must defend Burgundy.
+    campaign.country("BUR")["overlord"] = "SAV"
+    check = check_war(campaign, "BUR")
+    assert check.allied_defenders == ["SAV"]
+    assert "SAV" not in roles(check.attackers)
+    assert any(
+        "SAV" in note and "turns an ally into an enemy and ends the alliance" in note
+        for note in check.notes
+    )
+    assert check_war(campaign, "VEN").allied_defenders == []

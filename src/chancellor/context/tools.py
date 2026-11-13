@@ -61,7 +61,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "today: the target's allies, subjects, overlord, guarantors, the Holy Roman "
             "Emperor and coalitions, the attacker's allies and subjects, each marked "
             "certain/likely/possible, with regiments and manpower per side, and any truce "
-            "(declaring war would break it; end date estimated). Ignores casus belli."
+            "(declaring war would break it; end date estimated) and any ally of the attacker "
+            "bound to defend the target. Ignores casus belli."
         ),
         "input_schema": {
             "type": "object",
@@ -118,8 +119,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "Where a country should expand: provinces wanted by its available missions, "
             "visible formable nations, claims and cores, grouped by who holds them, with a "
             "war check against each owner (favourable, even and hard targets; owners under a "
-            "truce last; provinces held by subjects or allies listed apart). Omit `country` "
-            "for the player."
+            "truce or defended by your own allies last; provinces held by subjects or "
+            "allies listed apart). Omit `country` for the player."
         ),
         "input_schema": {
             "type": "object",

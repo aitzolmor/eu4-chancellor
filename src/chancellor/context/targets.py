@@ -77,6 +77,8 @@ class Target:
         defender_worst_case: Defending regiments including possible joiners.
         defenders: Main defenders (owner first), for display.
         truce: The country's truce with the owner, if any (war would break it).
+        allied_defenders: The country's allies bound to defend the owner (its overlord,
+            subjects or coalition); the war would turn them into enemies.
     """
 
     owner: str
@@ -91,6 +93,12 @@ class Target:
     defender_worst_case: int = 0
     defenders: list[str] = field(default_factory=list)
     truce: Truce | None = None
+    allied_defenders: list[str] = field(default_factory=list)
+
+    @property
+    def blocked(self) -> bool:
+        """Whether war has a cost beyond the fighting: breaking a truce or an alliance."""
+        return self.truce is not None or bool(self.allied_defenders)
 
     @property
     def odds(self) -> float:
@@ -269,7 +277,8 @@ def render_targets(campaign: Campaign, report: TargetReport, top: int = 15) -> s
             "## War targets",
             "",
             "Odds compare the regiments expected on each side if war were declared today "
-            "(certain and likely participants). Owners you have a truce with come last. "
+            "(certain and likely participants). Owners you have a truce with, or that "
+            "your own allies would defend, come last. "
             "Favourable odds (2x or more) first, then even ones; within each, the most "
             "development first.",
             "",
@@ -283,15 +292,17 @@ def render_targets(campaign: Campaign, report: TargetReport, top: int = 15) -> s
             lines.append(
                 f"| {index} | {label(target.owner)} | {len(target.provinces)} "
                 f"| {target.development:.0f} | {_reasons(target)} | {sides} "
-                f"| {target.odds:.1f}x | {_notes(target)} |"
+                f"| {target.odds:.1f}x | {_notes(campaign, target)} |"
             )
         if len(war) > top:
             lines += ["", f"{len(war) - top} more war targets not shown."]
-            truced = [t for t in war[top:] if t.truce]
-            if truced:
-                names = ", ".join(f"{label(t.owner)} ({_truce_note(t)})" for t in truced[:8])
-                more = f" and {len(truced) - 8} more" if len(truced) > 8 else ""
-                lines.append(f"Not shown because of a truce: {names}{more}.")
+            blocked = [t for t in war[top:] if t.blocked]
+            if blocked:
+                names = ", ".join(
+                    f"{label(t.owner)} ({_obstacles(campaign, t)})" for t in blocked[:8]
+                )
+                more = f" and {len(blocked) - 8} more" if len(blocked) > 8 else ""
+                lines.append(f"Not shown because of a truce or an allied defender: {names}{more}.")
 
     if hard:
         lines += [
@@ -306,7 +317,7 @@ def render_targets(campaign: Campaign, report: TargetReport, top: int = 15) -> s
                 f"| {label(target.owner)} | {len(target.provinces)} "
                 f"| {target.development:.0f} | {_reasons(target)} "
                 f"| {target.attacker_regiments} vs {target.defender_regiments} "
-                f"| {target.odds:.1f}x | {_notes(target)} |"
+                f"| {target.odds:.1f}x | {_notes(campaign, target)} |"
             )
         if len(hard) > _HARD_SHOWN:
             lines += ["", f"{len(hard) - _HARD_SHOWN} more hard targets not shown."]
@@ -315,8 +326,9 @@ def render_targets(campaign: Campaign, report: TargetReport, top: int = 15) -> s
         lines += ["", "## Held by your subjects, allies or overlord", ""]
         for target in peaceful:
             lines.append(
-                f"- {label(target.owner)} ({_notes(target)}): {len(target.provinces)} provinces, "
-                f"{target.development:.0f} development; wanted for {_reasons(target)}."
+                f"- {label(target.owner)} ({_notes(campaign, target)}): "
+                f"{len(target.provinces)} provinces, {target.development:.0f} development; "
+                f"wanted for {_reasons(target)}."
             )
 
     lines += ["", "## Details", ""]
@@ -393,23 +405,25 @@ def _target(
         target.defender_worst_case = check.totals("defenders", worst_case=True).regiments
         target.defenders = [p.tag for p in check.defenders]
         target.truce = check.truce
+        target.allied_defenders = check.allied_defenders
     return target
 
 
 def _attractiveness(target: Target) -> tuple[Any, ...]:
-    """Peaceful targets apart; war targets by truce, odds tier, then development.
+    """Peaceful targets apart; war targets by obstacles, odds tier, then development.
 
-    Owners under a truce come after every other war target. Ranking by raw odds alone
+    Owners under a truce or defended by the country's own allies come after every other
+    war target. Ranking by raw odds alone
     would put one-province minors above rich, slightly harder
     targets, so odds are bucketed: favourable (2x or more), even (1x-2x), unfavourable.
     """
     if target.peaceful:
         return (0, 0, 0, -target.development)
     tier = 0 if target.odds >= 2 else 1 if target.odds >= 1 else 2
-    return (1, target.truce is not None, tier, -target.development)
+    return (1, target.blocked, tier, -target.development)
 
 
-def _notes(target: Target) -> str:
+def _notes(campaign: Campaign, target: Target) -> str:
     notes = []
     if target.relation == "subject":
         notes.append("your subject: annex or integrate")
@@ -421,6 +435,18 @@ def _notes(target: Target) -> str:
         notes.append("in a coalition against you")
     if target.owner_at_war:
         notes.append("already at war")
+    obstacles = _obstacles(campaign, target)
+    if obstacles:
+        notes.append(obstacles)
+    return "; ".join(notes)
+
+
+def _obstacles(campaign: Campaign, target: Target) -> str:
+    """The notes that make a war costly beyond the fighting."""
+    notes = []
+    if target.allied_defenders:
+        allies = ", ".join(campaign.name(t) for t in target.allied_defenders)
+        notes.append(f"defended by your ally {allies}")
     if target.truce:
         notes.append(_truce_note(target))
     return "; ".join(notes)

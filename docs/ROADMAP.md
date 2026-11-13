@@ -115,8 +115,8 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
 - [x] Briefing: monarch power (adm/dip/mil points)
 - [x] War check and targets: truces (D-017); the Ottomans were the top target although a
   peace was signed with them on the save date
-- [ ] Targets: flag owners defended by the player's own allies (Aragón is defended by
-  the ally Castilla; that war would break the alliance)
+- [x] Targets and war check: flag owners defended by the player's own allies (Aragón is
+  defended by the ally Castilla; that war would break the alliance) (D-018)
 - [ ] Targets: when a mission needs N provinces of a region, say "N of M" instead of
   presenting the whole region (Relaciones ibéricas needs 4 Iberian provinces)
 - [ ] Checklists: describe trigger keys in words (`junior_union_with: ROOT`,

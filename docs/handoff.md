@@ -1,11 +1,11 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13** and updated
-the same day after the first play-test (PRs #1–#17 merged, truces in review;
-328 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
+the same day after the first play-test (PRs #1–#18 merged, allied defenders in
+review; 330 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-017),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-018),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -50,8 +50,8 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
 1. **Play-test findings** (first play-test done on 2026-11-13, list in
    [ROADMAP](ROADMAP.md) under *Play-test findings*). Done: armies at sea are counted
    (#15), the briefing shows the HRE (#16), aggressive expansion, overextension and
-   monarch power (#17), and war checks and targets know about truces. Left: targets
-   defended by the player's own allies, "N of M" region missions, readable checklists, the next imperial
+   monarch power (#17), war checks and targets know about truces (#18) and flag
+   targets defended by the player's own allies. Left: "N of M" region missions, readable checklists, the next imperial
    reform.
 2. **First live run of `chancellor chat`** with the real API key, to tune the system
    prompt and effort. It spends money, so ask the user before running it.
@@ -162,12 +162,14 @@ The API key lives only in the git-ignored `.env`. Never print it, and never put 
 
 ## Next step
 
-1. **Targets defended by the player's own allies.** On the play-test save Aragón is a
-   top war target, but it is defended by Castilla, Austria's ally: that war would break
-   the alliance and turn a 41-regiment ally into an enemy. Flag such owners in
-   `targets` (and in `check_war` notes), and consider demoting them like truces (D-017).
-2. Then the rest of the play-test list in the roadmap: "N of M" region missions,
-   readable checklists, the next imperial reform.
+1. **"N of M" for region missions in `targets`.** A mission such as Relaciones ibéricas
+   (`hab_spain_pu`) asks for 4 provinces in `iberia_region` (inside an `OR` with a
+   personal-union path), yet `targets` presents every Iberian province as wanted. Keep
+   the count from `num_of_provinces_owned_or_owned_by_non_sovereign_subjects_with` (and
+   similar counted conditions) and say "4 of 34 provinces" in the reasons; mention the
+   alternative branch when the count sits inside an `OR`.
+2. Then the rest of the play-test list in the roadmap: readable checklists, the next
+   imperial reform.
 3. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
    with the answers given through MCP.
 

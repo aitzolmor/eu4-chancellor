@@ -82,6 +82,8 @@ class WarCheck:
         neutral: Countries tied to both sides, unlikely to join either.
         notes: Extra facts worth considering (ongoing wars, HRE, coalitions, truces).
         truce: The truce between attacker and target, if any: declaring war breaks it.
+        allied_defenders: The attacker's allies that are bound to defend the target (its
+            overlord, subjects or coalition), so the war would turn them into enemies.
     """
 
     attacker: str
@@ -92,6 +94,7 @@ class WarCheck:
     neutral: list[Participant]
     notes: list[str]
     truce: Truce | None = None
+    allied_defenders: list[str] = field(default_factory=list)
 
     def totals(self, side: Literal["attackers", "defenders"], worst_case: bool) -> SideTotals:
         """Sum the strength of one side.
@@ -210,6 +213,14 @@ def check_war(campaign: Campaign, target: str, attacker: str | None = None) -> W
         return sorted(people, key=lambda p: (_LIKELIHOOD_ORDER[p.likelihood], -p.regiments))
 
     attacking, defending = build(attackers), build(defenders)
+    allied = set(as_list(att.get("allies")))
+    turned = [p for p in defending if p.tag in allied and p.tag != target]
+    for person in turned:
+        notes.append(
+            f"{person.name} ({person.tag}) is allied with {campaign.name(attacker)} but would "
+            f"defend {campaign.name(target)} ({', '.join(person.roles)}): this war turns an ally "
+            "into an enemy and ends the alliance."
+        )
     notes += _participant_truces(campaign, attacker, target, attacking, defending)
     return WarCheck(
         attacker=attacker,
@@ -220,6 +231,7 @@ def check_war(campaign: Campaign, target: str, attacker: str | None = None) -> W
         neutral=build(neutral),
         notes=notes,
         truce=campaign.truce(attacker, target),
+        allied_defenders=[p.tag for p in turned],
     )
 
 

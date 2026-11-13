@@ -81,7 +81,15 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   background: var(--accent-soft);
 }
 
-main { flex: 1; overflow-y: auto; }
+main {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding-right: 6px;
+  margin-right: -6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
 
 .state {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -95,6 +103,18 @@ main { flex: 1; overflow-y: auto; }
 }
 
 .section-title { margin-bottom: 8px; }
+.alerts { margin-bottom: 16px; }
+.quiet { margin: 0; color: var(--text-muted); font-size: 13px; }
+.alert-list { list-style: none; margin: 0; padding: 0; }
+.alert-list li {
+  display: flex; gap: 10px; align-items: baseline;
+  padding: 7px 0; font-size: 13px; border-top: 1px solid var(--border);
+}
+.alert-list li:first-child { border-top: none; }
+.alert-list .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; transform: translateY(-1px); }
+.dot.high { background: var(--danger); }
+.dot.medium { background: var(--accent); }
+.dot.info { background: #6f8fc7; }
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
 .cell {
   background: var(--surface);

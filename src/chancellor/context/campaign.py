@@ -262,6 +262,16 @@ class Campaign:
         )
         return Truce(other=other, last_war=last_war, warscore=warscore, estimated_end=estimated_end)
 
+    def truces(self, tag: str) -> list[Truce]:
+        """Every truce ``tag`` is under, soonest estimated end first (unknown ends last)."""
+        relations = (self.country(tag) or {}).get("active_relations") or {}
+        found = [
+            truce
+            for other in relations
+            if (truce := self.truce(tag, str(other))) is not None and self.exists(str(other))
+        ]
+        return sorted(found, key=lambda t: _date_key(t.estimated_end or "9999.1.1"))
+
     def aggressive_expansion_towards(self, tag: str) -> list[Grievance]:
         """Every living country's aggressive expansion against ``tag``, highest first.
 

@@ -152,7 +152,8 @@ as a calm instrument panel, not compete with the map.
 1. Panel window with the header and key numbers, reading the current save (no docking).
    **Done** (`chancellor app`).
 2. Watcher and live refresh. **Done** (`chancellor.watcher.SaveWatcher`).
-3. Alerts.
+3. Alerts. **Done** (`chancellor.context.alerts`); "new missions or formables since the
+   previous save" is left for later, since it needs the previous save's state.
 4. Docked layout with EU4 and Claude Desktop; undock.
 5. Quick questions; overlay hotkey.
 6. API chat tab behind the chat-mode switch.

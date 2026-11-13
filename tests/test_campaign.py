@@ -196,3 +196,21 @@ def test_truce_between_two_countries():
     assert campaign.truce("HAB", "TUR") == Truce("TUR", "1475.6.21", 41, "1484.7.28")
     assert campaign.truce("HAB", "VEN") is None  # an old war, no truce left
     assert campaign.truce("TUR", "HAB") is None  # nothing recorded on TUR's side here
+
+
+def test_truces_soonest_first():
+    save = """
+    countries={
+        HAB={ owned_provinces={ 1 } active_relations={
+            TUR={ last_war="1475.6.21" last_warscore=41 truce=yes }
+            FER={ last_war="1467.1.6" last_warscore=72 truce=yes }
+            OLD={ last_war="1470.1.1" last_warscore=0 truce=yes }
+            NOE={ truce=yes }
+            VEN={ last_war="1450.1.1" last_warscore=20 } } }
+        TUR={ owned_provinces={ 2 } } FER={ owned_provinces={ 3 } } NOE={ owned_provinces={ 4 } }
+        OLD={ }
+    }
+    """
+    campaign = Campaign({"player": "HAB"}, parse_lazy(save))
+    # FER ends 1479.3, TUR 1484.7, NOE has no war date; OLD no longer exists.
+    assert [t.other for t in campaign.truces("HAB")] == ["FER", "TUR", "NOE"]

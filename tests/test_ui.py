@@ -63,3 +63,13 @@ def test_save_changed_script_passes_the_name_as_json():
 def test_page_listens_for_new_saves():
     script = (WEB_DIR / "panel.js").read_text(encoding="utf-8")
     assert 'addEventListener("save-changed"' in script
+
+
+def test_alerts_come_back_as_plain_values():
+    result = PanelApi(_Provider()).alerts()
+    assert result == {"ok": True, "alerts": []}  # a quiet country
+
+
+def test_alerts_report_errors_to_the_page():
+    result = PanelApi(_Provider(RuntimeError("No .eu4 files"))).alerts()
+    assert result == {"ok": False, "error": "No .eu4 files"}

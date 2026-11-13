@@ -1,8 +1,8 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13** and updated
-the same day after the first play-test (PRs #1–#15 merged, the HRE briefing in review;
-313 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
+the same day after the first play-test (PRs #1–#16 merged, aggressive expansion in
+review; 318 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
 [ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-016),
@@ -49,13 +49,15 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
 
 1. **Play-test findings** (first play-test done on 2026-11-13, list in
    [ROADMAP](ROADMAP.md) under *Play-test findings*). Done: armies at sea are counted
-   (#15) and the briefing shows the HRE. Left: aggressive expansion and overextension,
-   monarch power, targets defended by the player's own allies, "N of M" region missions,
-   readable checklists, the next imperial reform.
+   (#15), the briefing shows the HRE (#16), aggressive expansion, overextension and
+   monarch power. Left: truces in war checks and targets, targets defended by the
+   player's own allies, "N of M" region missions, readable checklists, the next imperial
+   reform.
 2. **First live run of `chancellor chat`** with the real API key, to tune the system
    prompt and effort. It spends money, so ask the user before running it.
 3. **Data gaps that limit advice:**
-   - truces and available casus belli (not found in the save yet);
+   - available casus belli (not found in the save yet; truces were found, see
+     SAVE_FORMAT);
    - income and expense breakdown (ledger category indices not mapped);
    - advisors and generals in the briefing;
    - estate and parliament conditions in the checklists (about 37% `[?]` outside the
@@ -110,7 +112,8 @@ The full reasoning is in [DECISIONS.md](DECISIONS.md).
   - `coalition_against_us` is repeated once per member.
   - Rulers are references into the country history, and elective monarchies use
     `foreign_heir`; 0.6% of rulers still go unresolved.
-  - War score, truces and casus belli are not in the save.
+  - War score and casus belli are not in the save. Truces are, in `active_relations`
+    (`truce=yes`, `last_war`), but without an end date.
 - **Localisation.** Stat names live under `MODIFIER_X`, `x` or `X`, and some of those are
   long descriptions. Texts contain colour codes and `[Root.…]` placeholders.
 
@@ -160,11 +163,13 @@ The API key lives only in the git-ignored `.env`. Never print it, and never put 
 
 ## Next step
 
-1. **Aggressive expansion and overextension in the briefing.** The player has a
-   19-member coalition and no numbers to judge when it breaks up. First find where AE
-   lives in the save (probably opinion modifiers in `active_relations` of each country
-   towards the player), document it in SAVE_FORMAT, then show the top AE holders and the
-   coalition threshold.
+1. **Truces in the war check and the targets.** The save has them (`truce=yes` and
+   `last_war` in `active_relations`, symmetric). On the play-test save the Ottomans are
+   the top expansion target, yet a peace with them was signed on the save date. Show the
+   truce and when the last war ended in `check_war`, mark or demote truced owners in
+   `targets`, and drop "truces" from the "cannot know" lists in the MCP `INSTRUCTIONS`
+   and the chat system prompt. The end date is not stored; if an estimate is shown, base
+   it on the truce defines in `common/defines.lua` and say it is an estimate.
 2. Then the rest of the play-test list in the roadmap, most painful first.
 3. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
    with the answers given through MCP.

@@ -18,6 +18,11 @@ from chancellor.game.localisation import Localisation
 from chancellor.save.loader import RawSave
 from chancellor.save.parser import get_all
 
+# From the game files: ``AE_COALITION_THRESHOLD = -50`` in common/defines.lua and
+# ``yearly_decay = 2`` of the ``aggressive_expansion`` opinion modifier.
+AE_COALITION_THRESHOLD = 50
+AE_YEARLY_DECAY = 2
+
 _MONARCH_KEYS = (
     "monarch",
     "heir",
@@ -101,6 +106,7 @@ def summarize(campaign: Campaign, tag: str | None = None) -> str:
         _progress(ctx),
         _estates(ctx),
         _diplomacy(ctx),
+        _aggressive_expansion(ctx),
         _empire(ctx),
         _wars(ctx),
         _key_countries(ctx),
@@ -213,7 +219,8 @@ def _territory(ctx: _Context) -> str:
             ("Provinces owned", _count(c.get("owned_provinces"))),
             ("Cores", _count(c.get("core_provinces"))),
             ("Claims", _count(c.get("claim_provinces"))),
-            ("Overextension", _pct(c.get("overextension_percentage"))),
+            # The save omits the key when there is no overextension.
+            ("Overextension", _pct(c.get("overextension_percentage") or 0.0)),
             ("Average unrest", _num(c.get("average_unrest"), 2)),
             ("Average autonomy", _num(c.get("average_autonomy"))),
             ("Colonies", str(c["num_of_colonies"]) if c.get("num_of_colonies") else None),
@@ -234,8 +241,16 @@ def _progress(ctx: _Context) -> str:
             ),
             ("Idea groups", ", ".join(f"{ctx.text(k)} {v}/7" for k, v in ideas.items()) or None),
             ("Innovativeness", _num(c.get("innovativeness"))),
+            ("Monarch power (adm/dip/mil)", _monarch_power(c.get("powers"))),
         ],
     )
+
+
+def _monarch_power(powers: Any) -> str | None:
+    values = as_list(powers)
+    if len(values) != 3:
+        return None
+    return "/".join(str(v) for v in values)
 
 
 def _estates(ctx: _Context) -> str:
@@ -267,6 +282,41 @@ def _diplomacy(ctx: _Context) -> str:
             ("Trade embargoes against it", _tags(ctx, c.get("trade_embargoed_by"))),
         ],
     )
+
+
+def _aggressive_expansion(ctx: _Context, top: int = 12) -> str:
+    """Who holds aggressive expansion against the country, and how close to a coalition."""
+    grievances = ctx.campaign.aggressive_expansion_towards(ctx.tag)
+    if not grievances:
+        return ""
+    coalition = {str(t) for t in as_list(ctx.country.get("coalition_against_us"))}
+    over = sum(1 for g in grievances if g.value >= AE_COALITION_THRESHOLD)
+    lines = [
+        "## Aggressive expansion",
+        "",
+        f"{len(grievances)} countries hold aggressive expansion (AE) against "
+        f"{ctx.name(ctx.tag)}; {over} at {AE_COALITION_THRESHOLD} or more, the level at "
+        f"which they can join a coalition. {len(coalition)} are in a coalition against it. "
+        f"AE decays by {AE_YEARLY_DECAY} a year at base.",
+        "",
+        "| Country | AE | Status | Attitude |",
+        "| --- | --- | --- | --- |",
+    ]
+    allies = {str(t) for t in as_list(ctx.country.get("allies"))}
+    for g in grievances[:top]:
+        attitude = ctx.text(g.attitude) if g.attitude else ""
+        if g.tag in coalition:
+            status = "in coalition"
+        elif ctx.campaign.subject_type(ctx.tag, g.tag):
+            status = "subject"
+        elif g.tag in allies:
+            status = "ally"
+        else:
+            status = ""
+        lines.append(f"| {ctx.name(g.tag)} ({g.tag}) | {g.value:.0f} | {status} | {attitude} |")
+    if len(grievances) > top:
+        lines += ["", f"{len(grievances) - top} more with less AE not shown."]
+    return "\n".join(lines)
 
 
 def _empire(ctx: _Context) -> str:

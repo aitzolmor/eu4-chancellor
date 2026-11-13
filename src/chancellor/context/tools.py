@@ -41,8 +41,10 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "name": "get_country_briefing",
         "description": (
             "Briefing of one country from the current save: ruler, stability, economy, "
-            "military, territory, technology and ideas, estates, diplomacy, wars and the "
-            "countries around it. For any country other than the player's it also shows "
+            "military, territory and overextension, technology, ideas and monarch power, "
+            "estates, diplomacy, aggressive expansion held against it (who is near or in a "
+            "coalition), its place in the Holy Roman Empire, wars and the countries around "
+            "it. For any country other than the player's it also shows "
             "the relation to the player and a strength comparison. Omit `country` for the "
             "player's own country."
         ),

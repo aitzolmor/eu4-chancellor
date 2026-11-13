@@ -7,7 +7,8 @@ window is never moved: EU4 runs borderless at its own resolution and ignores res
 * With two screens the panel and Claude Desktop are **docked** on the screen the game is
   not on.
 * With one screen they form an **overlay** column on top of the game, on the side of the
-  floating icon, and are put away again when the player closes it.
+  floating icon (:mod:`chancellor.app.icon_window`), and are put away again when the
+  player closes it.
 
 :func:`plan_layout` decides where each window goes from the monitors alone. It is a pure
 function, so every layout rule is tested without touching real windows. :class:`Docker`
@@ -26,7 +27,7 @@ import sys
 import threading
 import time
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import PureWindowsPath
 from typing import Any
 
@@ -39,8 +40,6 @@ PANEL_WIDTH_SHARE = 1 / 3
 # logical pixels, so the column widens to whatever it accepts (Docker measures it).
 OVERLAY_WIDTH_SHARE = 0.40
 PANEL_HEIGHT_SHARE = 0.40
-# Pixels the pointer must travel before a press on the floating icon counts as a drag.
-DRAG_THRESHOLD = 4
 
 
 @dataclass(frozen=True)
@@ -170,17 +169,6 @@ class WindowState:
     maximized: bool
 
 
-@dataclass
-class _Drag:
-    """A drag of the floating icon in progress."""
-
-    icon: int
-    cursor: tuple[int, int]
-    start: Rect
-    moved: bool = False
-    done: threading.Event = field(default_factory=threading.Event)
-
-
 class DockError(RuntimeError):
     """Docking cannot be done, with a message for the player."""
 
@@ -203,7 +191,6 @@ class Docker:
         self.panel_title = panel_title
         self._saved: list[WindowState] = []
         self._api = _Win32()
-        self._drag: _Drag | None = None
 
     @property
     def docked(self) -> bool:
@@ -267,11 +254,11 @@ class Docker:
             self._api.restore(state)
         self._saved = []
 
-    def place_icon(self, title: str, size: int) -> None:
-        """Put the floating icon at the right edge of the game's screen, half-way down."""
-        icon = self._api.find_window(pid=os.getpid(), title=title)
-        if icon is None:
-            return
+    def icon_home(self, size: int) -> Rect:
+        """Where the floating icon first appears: right edge of the game's screen, mid-height.
+
+        ``size`` is in logical pixels; the returned rectangle is in physical pixels.
+        """
         monitors = self._api.monitors()
         game = self._api.find_window(exe=GAME_EXE)
         home = (monitor_at(monitors, self._api.window_rect(game)) if game else None) or next(
@@ -280,9 +267,7 @@ class Docker:
         work = home.work
         scaled = round(size * home.dpi / 96)
         margin = round(16 * home.dpi / 96)
-        target = Rect(work.right - scaled - margin, work.top + work.height // 2, scaled, scaled)
-        self._api.place(icon, target, topmost=True, frame=False)
-        self._api.make_round(icon)
+        return Rect(work.right - scaled - margin, work.top + work.height // 2, scaled, scaled)
 
     def keep_icon_in_view(
         self,
@@ -310,40 +295,6 @@ class Docker:
             if wanted != shown:
                 self._api.set_visible(icon, wanted)
                 shown = wanted
-
-    def begin_drag(self, title: str) -> None:
-        """The button went down on the floating icon: make it follow the pointer.
-
-        The page reports the press and the release. Python cannot watch the button
-        itself: when the game runs as administrator and is in front, Windows hides the
-        mouse buttons' state from normal programs, though the pointer's position and the
-        clicks on our own window still come through.
-        """
-        self.end_drag()
-        icon = self._api.find_window(pid=os.getpid(), title=title)
-        if icon is None:
-            return
-        drag = _Drag(icon, self._api.cursor(), self._api.window_rect(icon))
-        self._drag = drag
-        threading.Thread(target=self._follow, args=(drag,), name="icon-drag", daemon=True).start()
-
-    def end_drag(self) -> bool:
-        """The button was released. Returns whether the icon moved (a drag, not a click)."""
-        drag, self._drag = self._drag, None
-        if drag is None:
-            return False
-        drag.done.set()
-        return drag.moved
-
-    def _follow(self, drag: _Drag) -> None:
-        deadline = time.monotonic() + 120  # in case the release never arrives
-        while not drag.done.wait(0.008) and time.monotonic() < deadline:
-            x, y = self._api.cursor()
-            dx, dy = x - drag.cursor[0], y - drag.cursor[1]
-            if not drag.moved and max(abs(dx), abs(dy)) > DRAG_THRESHOLD:
-                drag.moved = True
-            if drag.moved:
-                self._api.move(drag.icon, drag.start.left + dx, drag.start.top + dy)
 
     def _game_in_front(self) -> bool:
         """The game (or this app) is the active window, or the game is not running."""
@@ -386,7 +337,6 @@ class _Win32:
     HWND_NOTOPMOST = -2
     HWND_BOTTOM = 1
     SWP_NOMOVE = 0x0002
-    VK_LBUTTON = 0x01
     SW_HIDE = 0
     SW_SHOWNOACTIVATE = 4
     SW_RESTORE = 9
@@ -408,9 +358,6 @@ class _Win32:
         self.kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
         self.dwmapi = ctypes.WinDLL("dwmapi")
         self.shcore = ctypes.WinDLL("shcore")
-        self.gdi32 = ctypes.WinDLL("gdi32")
-        self.gdi32.CreateEllipticRgn.argtypes = [ctypes.c_int] * 4
-        self.gdi32.CreateEllipticRgn.restype = wintypes.HRGN
         hwnd, uint, i = wintypes.HWND, wintypes.UINT, ctypes.c_int
         signatures = {
             "SetWindowPos": ([hwnd, hwnd, i, i, i, i, uint], wintypes.BOOL),
@@ -424,12 +371,8 @@ class _Win32:
             "GetWindowTextW": ([hwnd, wintypes.LPWSTR, i], i),
             "GetWindowThreadProcessId": ([hwnd, ctypes.POINTER(wintypes.DWORD)], wintypes.DWORD),
             "GetWindowLongW": ([hwnd, i], ctypes.c_long),
-            "GetCursorPos": ([ctypes.POINTER(wintypes.POINT)], wintypes.BOOL),
-            "GetAsyncKeyState": ([i], ctypes.c_short),
-            "SetWindowRgn": ([hwnd, wintypes.HRGN, wintypes.BOOL], i),
             "GetClientRect": ([hwnd, ctypes.POINTER(wintypes.RECT)], wintypes.BOOL),
             "GetForegroundWindow": ([], hwnd),
-            "ClientToScreen": ([hwnd, ctypes.POINTER(wintypes.POINT)], wintypes.BOOL),
         }
         for name, (arguments, result) in signatures.items():
             function = getattr(self.user32, name)
@@ -564,38 +507,6 @@ class _Win32:
         if self.user32.IsWindow(hwnd):
             flags = self.SWP_NOMOVE | self.SWP_NOSIZE | self.SWP_NOACTIVATE
             self.user32.SetWindowPos(hwnd, self.HWND_NOTOPMOST, 0, 0, 0, 0, flags)
-
-    def cursor(self) -> tuple[int, int]:
-        """The mouse pointer in physical screen pixels."""
-        point = self.wintypes.POINT()
-        self.user32.GetCursorPos(ctypes.byref(point))
-        return point.x, point.y
-
-    def left_button_down(self) -> bool:
-        """Whether the left mouse button is held right now."""
-        return bool(self.user32.GetAsyncKeyState(self.VK_LBUTTON) & 0x8000)
-
-    def move(self, hwnd: int, left: int, top: int) -> None:
-        """Move a window without resizing, activating or changing its stacking."""
-        flags = self.SWP_NOSIZE | self.SWP_NOZORDER | self.SWP_NOACTIVATE
-        self.user32.SetWindowPos(hwnd, None, left, top, 0, 0, flags)
-
-    def make_round(self, hwnd: int) -> None:
-        """Clip a window to the circle of its client area, where the page draws its circle.
-
-        Clipping to the outer rectangle instead would leave the strip between the page
-        and the window's edge showing at the corners.
-        """
-        outer = self.window_rect(hwnd)
-        client = self.wintypes.RECT()
-        self.user32.GetClientRect(hwnd, ctypes.byref(client))
-        origin = self.wintypes.POINT(0, 0)
-        self.user32.ClientToScreen(hwnd, ctypes.byref(origin))
-        left, top = origin.x - outer.left, origin.y - outer.top
-        region = self.gdi32.CreateEllipticRgn(
-            left, top, left + client.right + 1, top + client.bottom + 1
-        )
-        self.user32.SetWindowRgn(hwnd, region, True)  # the window now owns the region
 
     def foreground(self) -> tuple[int, int]:
         """The active window and the process that owns it."""

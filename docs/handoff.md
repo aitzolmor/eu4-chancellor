@@ -5,7 +5,7 @@ the same day after the first play-test (PRs #1–#21 merged, the next imperial
 reform in review; 347 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-022),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-023),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -172,10 +172,14 @@ The full reasoning is in [DECISIONS.md](DECISIONS.md).
   them the call failed silently and the overlay was neither on top nor resized.
 - **pywebview and hidden windows.** A window created with `hidden=True` is centred on
   its first `show()`, which can land after our move; the overlay places it once
-  visible, then again 0.3 s later. pywebview's default `min_size` (200×100) also applies
-  to a 64 px icon unless set. Destroying windows from inside a pending `js_api` call
-  hangs; `PanelApi.quit` does it on another thread, and the panel's `closing` handler
-  must not cancel a quit.
+  visible, then again 0.3 s later. Destroying windows from inside a pending `js_api`
+  call hangs; `PanelApi.quit` does it on another thread, and the panel's `closing`
+  handler must not cancel a quit.
+- **Web views cannot be round.** WebView2 paints outside a window region
+  (`SetWindowRgn`), so a pywebview window always shows square corners; transparency and
+  colour keys do not help. Anything that must not be rectangular is a native layered
+  window (D-023). Check such claims by sampling screen pixels with and without the
+  window (`GetPixel` on the screen DC), as was done here.
 - **Diagnosing the live app.** A run that logs the button state, cursor, foreground
   window and icon actions (only on change) found the elevation problem in one try;
   keep that approach for input issues.

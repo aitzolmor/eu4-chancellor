@@ -102,6 +102,9 @@ class _Window:
     def evaluate_js(self, script: str) -> None:
         self.calls.append(script)
 
+    def set_open(self, open_: bool) -> None:  # the floating icon's method
+        self.calls.append(f"set_open {open_}")
+
 
 def test_layout_mode_follows_the_windows():
     api = PanelApi(_Provider())
@@ -111,15 +114,9 @@ def test_layout_mode_follows_the_windows():
     assert api.layout_mode() == {"mode": "overlay"}
 
 
-def test_icon_needs_the_panel_and_windows(monkeypatch):
-    from chancellor.app import layout
-
+def test_overlay_needs_the_panel_window():
     api = PanelApi(_Provider())
     assert api.toggle_overlay() == {"ok": False, "error": "The panel window is not ready yet."}
-    monkeypatch.setattr(layout.sys, "platform", "linux")
-    error = {"ok": False, "error": "Docking is only available on Windows."}
-    assert api.icon_down() == error
-    assert api.icon_up() == error
 
 
 def test_quit_closes_every_window_off_the_calling_thread():

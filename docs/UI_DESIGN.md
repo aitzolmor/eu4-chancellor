@@ -55,7 +55,9 @@ Claude Desktop the rest). *Dock beside the game* arranges them; *Undock* puts th
 over the game, always on top, and can be dragged anywhere. A click opens an overlay
 column on the icon's side of the screen: the panel on top, Claude Desktop below, both
 above the game. Another click, *Back to the game* or `Esc` puts them away (Claude
-Desktop drops behind the game). The icon is shown only while the game is the active
+Desktop drops behind the game). A right-click offers *Close Chancellor*. The icon is a
+native window with real per-pixel transparency (D-023), so only the circle shows. It
+is shown only while the game is the active
 window, while the overlay is open, or when the game is not running; it hides when the
 player switches to another program.
 

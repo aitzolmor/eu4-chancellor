@@ -23,6 +23,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from chancellor.app.icon_window import FloatingIcon
 from chancellor.app.layout import Docker, DockError, enable_dpi_awareness
 from chancellor.app.mcp_server import CampaignProvider
 from chancellor.config import Settings
@@ -160,11 +161,11 @@ class PanelApi:
             return {"ok": False, "error": str(exc)}
         icon = self._windows.get("icon")
         if icon is not None:  # keep the icon in step when the panel closed the overlay
-            icon.evaluate_js(f"window.setOpen && window.setOpen({json.dumps(self._overlay_open)})")
+            icon.set_open(self._overlay_open)
         return {"ok": True, "open": self._overlay_open}
 
     def quit(self) -> dict[str, Any]:
-        """Close the app (the floating icon's close button).
+        """Close the app (the floating icon's "Close Chancellor" menu).
 
         The windows are destroyed on another thread: destroying the icon from inside its
         own pending call would wait on itself.
@@ -180,24 +181,6 @@ class PanelApi:
             self._docker.undock()
         for window in list(self._windows.values()):
             window.destroy()
-
-    def icon_down(self) -> dict[str, Any]:
-        """The page saw the button go down on the floating icon: start following."""
-        try:
-            self._get_docker().begin_drag(ICON_TITLE)
-        except (DockError, OSError) as exc:
-            return {"ok": False, "error": str(exc)}
-        return {"ok": True}
-
-    def icon_up(self) -> dict[str, Any]:
-        """The page saw the button go up: end the drag, or open or close on a click."""
-        try:
-            dragged = self._get_docker().end_drag()
-        except (DockError, OSError) as exc:
-            return {"ok": False, "error": str(exc)}
-        if dragged:
-            return {"ok": True, "dragged": True, "open": self._overlay_open}
-        return self.toggle_overlay()
 
     def _keep_icon_in_view(self) -> None:
         """Hide the floating icon while the game is not in front (see layout)."""
@@ -259,28 +242,16 @@ def run_panel(settings: Settings, load: Callable[[Path], Campaign]) -> None:
         hidden=one_screen,
     )
     api._attach(panel=panel)
-    if one_screen:
-        icon = webview.create_window(
+    if one_screen and docker is not None:
+        icon = FloatingIcon(
             ICON_TITLE,
-            url=str(WEB_DIR / "icon.html"),
-            js_api=api,
-            width=ICON_SIZE,
-            height=ICON_SIZE,
-            min_size=(ICON_SIZE, ICON_SIZE),  # pywebview's default minimum is 200×100
-            resizable=False,
-            frameless=True,
-            easy_drag=False,  # dragged by PanelApi.icon_down / icon_up instead
-            on_top=True,
-            transparent=True,
-            shadow=False,
-            focus=False,  # clicking the icon must not take the focus from the game
-            background_color=BACKGROUND,
+            docker.icon_home(ICON_SIZE),
+            on_click=api.toggle_overlay,
+            on_quit=api.quit,
         )
         api._attach(icon=icon)
         # Closing the panel in overlay mode only puts it away; the icon quits the app.
         panel.events.closing += lambda: _put_away_instead(api)
-        if docker is not None:  # the window exists (and can be found) once it has loaded
-            icon.events.loaded += lambda: docker.place_icon(ICON_TITLE, ICON_SIZE)
 
     watcher = (
         SaveWatcher(settings.save_dir, lambda path: panel.evaluate_js(save_changed_script(path)))
@@ -294,6 +265,7 @@ def run_panel(settings: Settings, load: Callable[[Path], Campaign]) -> None:
         if watcher is not None:
             watcher.start()
         if one_screen:
+            api._windows["icon"].start()
             threading.Thread(target=api._keep_icon_in_view, name="icon-view", daemon=True).start()
 
     webview.start(started)

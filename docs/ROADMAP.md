@@ -95,7 +95,8 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
 - [ ] First live run with a real API key; tune the system prompt and effort
 - [x] Desktop app design: hybrid chat (D-020), pywebview shell (D-021), layout and views
   in [UI_DESIGN.md](UI_DESIGN.md)
-- [ ] `app.ui`: pywebview panel with the header (country, date, save) and key numbers
+- [x] `app.ui`: pywebview panel with the header (country, date, save) and key numbers
+  (`chancellor app`, optional `ui` extra)
 - [ ] `watcher`: background save watching with live refresh of the panel (the terminal chat
   checks before each question)
 - [ ] Alerts: truces ending, coalition and AE, overextension, imperial reform ready, new

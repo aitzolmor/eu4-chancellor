@@ -151,6 +151,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     sub.add_parser(
+        "app",
+        help="Open the Chancellor panel, a desktop window to keep beside the game.",
+        description=(
+            "Open the desktop panel with your campaign at a glance. Needs the optional "
+            'UI dependency: pip install -e ".[ui]".'
+        ),
+    )
+
+    sub.add_parser(
         "clear-cache",
         help="Delete cached game data (it is rebuilt automatically when needed).",
     )
@@ -246,6 +255,22 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return _load_campaign(options, settings)[0]
 
             build_server(CampaignProvider(settings, load_path)).run("stdio")
+            return 0
+        if args.command == "app":
+            settings = load_settings()
+
+            def load_panel_save(path: Path) -> Campaign:
+                options = argparse.Namespace(save=path, language=None)
+                return _load_campaign(options, settings)[0]
+
+            try:
+                from chancellor.app.ui import run_panel
+
+                run_panel(settings, load_panel_save)
+            except ImportError as exc:
+                raise CliError(
+                    f'The panel needs pywebview ({exc}). Install it with: pip install -e ".[ui]"'
+                ) from exc
             return 0
         if args.command == "mcp-config":
             from chancellor.app.mcp_server import desktop_config_json

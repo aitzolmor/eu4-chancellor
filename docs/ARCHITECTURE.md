@@ -31,6 +31,7 @@ flowchart LR
 | `game.localisation` | Readable names from the game's localisation files; detects the player's language | 1 |
 | `context.campaign` | Shared, cached view of one loaded save: countries, wars, names, country lookup by name | 2 |
 | `context.summarizer` | Build a compact, LLM-friendly Markdown briefing from any country's perspective | 1–2 |
+| `context.status` | The campaign at a glance as plain values (`CampaignStatus`) for the desktop panel | 4 |
 | `app.cli` | Command-line entry point (`chancellor`) | 1 |
 | `app.clipboard` | Dependency-free clipboard copy (Win32 API, `pbcopy`, `wl-copy`/`xclip`) | 1 |
 | `context.war_check` | Who would fight in a hypothetical war and how strong each side is (`WarCheck` dataclass + Markdown renderer) | 2 |

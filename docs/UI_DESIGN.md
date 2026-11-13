@@ -41,7 +41,24 @@ Rules for the API mode:
 
 ## Screen layout
 
-Designed for 1920×1080 and up; widths are proportions so 2560×1440 scales the same way.
+The developer's setup (2026-11-13): a main laptop at 2240×1400 with 150% scaling (about
+1493×933 logical pixels), where EU4 runs borderless, and at times a second laptop at
+1920×1080 showing a window from the first. With one screen, a 30% column is only about
+450 logical pixels, too narrow for Claude Desktop, so the layout depends on how many
+screens Windows reports:
+
+- **Two screens** (preferred when available): EU4 keeps the whole main screen; the
+  Chancellor panel and Claude Desktop share the second screen side by side (panel about
+  a third, Claude Desktop the rest).
+- **One screen**: the split below, with the panel and Claude Desktop stacked in the
+  right-hand column; the overlay mode suits it better when the column is too narrow.
+
+All placement works in physical pixels with a per-monitor DPI-aware process, so the
+150% scaling does not shift windows. Whether the second laptop appears to Windows as a
+real monitor (an extended display) or only as a remote window is still to be confirmed;
+only an extended display can host docked windows.
+
+One-screen split (proportions, so any resolution scales the same way):
 
 ```
 ┌──────────────────────────────────────────────┬──────────────────────┐
@@ -123,15 +140,17 @@ as a calm instrument panel, not compete with the map.
 
 ## Open questions
 
-- Claude Desktop's minimum window width may not fit a narrow column on 1920 px screens;
-  check it on the user's machine before fixing the split.
+- Claude Desktop's minimum window width may not fit the one-screen column at 150%
+  scaling; measure it before fixing the split.
+- How the second laptop is connected (extended display or remote window); see *Screen
+  layout*.
 - Whether a global hotkey can be registered while EU4 has focus without elevated rights
   (`RegisterHotKey` should work; to be verified).
-- Multi-monitor setups: dock on the monitor EU4 is on.
 
 ## Build order
 
 1. Panel window with the header and key numbers, reading the current save (no docking).
+   **Done** (`chancellor app`).
 2. Watcher and live refresh.
 3. Alerts.
 4. Docked layout with EU4 and Claude Desktop; undock.

@@ -66,7 +66,8 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
 4. **Usability:**
    - run from any folder (today `.env` is read from the working directory);
    - the desktop app: designed on 2026-11-13 ([UI_DESIGN](UI_DESIGN.md), D-020,
-     D-021), not built yet. Next is the panel window (build order step 1).
+     D-021); step 1, the panel window (`chancellor app`), is built. Next is step 2,
+     the save watcher with live refresh.
 5. **Later phases:**
    - an evaluation set of real questions;
    - Phase 5: charts and trends across saves, PDX Tools evaluation;
@@ -143,6 +144,15 @@ The full reasoning is in [DECISIONS.md](DECISIONS.md).
   - GitHub's Windows runners sometimes queue for 30+ minutes.
 - **Tests and the cache.** The tests used to write into the real game-data cache;
   `tests/conftest.py` now redirects it to a temporary folder.
+- **Previewing the panel page.** The in-app browser shows `file://` pages as static
+  snapshots without their CSS and JS. Serve `src/chancellor/app/web` with
+  `python -m http.server` (a local `.claude/launch.json`, not committed) and inject a stub
+  `window.pywebview.api` that returns a real `PanelApi.status()` result.
+- **Testing the real window.** `webview.start(func)` runs `func` in a thread once the
+  window is up; it can read the page with `window.evaluate_js(...)` and close it with
+  `window.destroy()`, which makes a quick end-to-end check.
+- **Screens.** The main laptop is 2240×1400 at 150% scaling (about 1493×933 logical);
+  window placement must be per-monitor DPI aware.
 
 ### MCP and Claude Desktop
 
@@ -176,10 +186,12 @@ The API key lives only in the git-ignored `.env`. Never print it, and never put 
    Austria-Hungary, where to expand. Note what changed, what is still wrong, and turn new
    findings into roadmap items. A Claude Code session can run it with the
    `mcp__eu4-chancellor__*` tools; Claude Desktop shows how Claude chains them itself.
-2. **Desktop app, build order step 1** ([UI_DESIGN](UI_DESIGN.md)): the pywebview panel
-   with the header and key numbers. It does not depend on the play-test, so it can go
-   ahead before or after it. The API chat mode stays off unless the player switches it
-   on (D-020).
+2. **Desktop app, build order step 2** ([UI_DESIGN](UI_DESIGN.md)): watch the save
+   folder and refresh the panel when the game saves (today the panel has a refresh
+   button). It does not depend on the play-test. Also ask the user how the second
+   laptop shows its window (a Windows extended display, or a remote window): only an
+   extended display can host docked windows (step 4). The API chat mode stays off
+   unless the player switches it on (D-020).
 3. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
    with the answers given through MCP.
 4. Remaining data gaps (casus belli, income breakdown, advisors and generals) or the

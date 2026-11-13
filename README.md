@@ -156,6 +156,20 @@ answered from your save, at no extra cost beyond your plan.
 
 Every tool call reads the newest save, so just save the game before asking.
 
+## Desktop panel (early preview)
+
+A small window to keep beside the game, with your campaign at a glance: country, date,
+save, treasury, manpower, stability, monarch power and wars. Chat with the Chancellor in
+Claude Desktop next to it; the panel reads the same save.
+
+```bash
+pip install -e ".[ui]"
+chancellor app
+```
+
+Docking the game and the panel, alerts and charts are on the way; see
+[docs/UI_DESIGN.md](docs/UI_DESIGN.md).
+
 ## Limitations
 
 - **Ironman saves** are binary and need a token file that is not publicly distributed.

@@ -23,6 +23,7 @@ dependencies = ["anthropic>=2.8", "mcp>=2.3"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.6"]
+ui = ["pywebview>=6"]
 
 [project.scripts]
 chancellor = "chancellor.app.cli:main"

@@ -53,6 +53,10 @@ The game and the assistant should feel like a single application. Embedding a ch
 EU4 is not possible (mods cannot make network requests), so the approach is the reverse:
 the assistant becomes the workspace and arranges the game around it.
 
+The chat itself runs in Claude Desktop by default (covered by the Claude subscription);
+an API-driven chat inside the window is available only when the player switches it on
+(D-020). The design is in [UI_DESIGN.md](UI_DESIGN.md).
+
 Realistic options, in order of preference:
 
 | Approach | Description | Assessment |

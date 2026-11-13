@@ -39,7 +39,7 @@ saves cover the real use case.
 
 ## D-005 — Web-based desktop UI
 
-**Date:** 2026-11-11 · **Status:** Proposed
+**Date:** 2026-11-11 · **Status:** Superseded by D-021
 
 The UI must host a chat, charts (Phase 4) and possibly an embedded PDX Tools tab. A
 web-based desktop shell (e.g. `pywebview`) keeps the backend in Python while giving access
@@ -248,3 +248,41 @@ country (ROOT)", keeping the scope name so nested scopes stay unambiguous. Every
 is kept as it is: rare triggers stay precise, and the table grows only when a play-test
 shows a key that matters. `value` is not phrased because it also appears in effects and
 variables.
+
+## D-020 — Hybrid chat: Claude Desktop by default, the API only on the player's request
+
+**Date:** 2026-11-13 · **Status:** Accepted
+
+The vision placed an API-driven chat inside the Chancellor's window. Since D-016 the same
+tools also work in Claude Desktop through MCP, covered by the player's subscription,
+while the API bills every question. The desktop app is therefore hybrid:
+
+- **By default the chat is Claude Desktop**, docked beside the game. The Chancellor's
+  window does what Claude Desktop cannot: arrange the windows, show the campaign's state
+  and alerts, and later charts.
+- **The API chat is a mode the player switches on**, with a visible control in the
+  window. It is never on by default, never chosen by the app, and never a fallback when
+  Claude Desktop is unavailable. Turning it on asks for confirmation once per session,
+  and while it is on the window says so and counts the questions and tokens.
+
+`ChancellorAgent` stays the engine of the API mode; the terminal `chancellor chat`
+remains for development. Details in [UI_DESIGN](UI_DESIGN.md).
+
+## D-021 — pywebview shell with a plain web frontend
+
+**Date:** 2026-11-13 · **Status:** Accepted (supersedes D-005)
+
+The window needs web-grade layout and, in Phase 5, chart libraries, while the backend is
+Python. Options considered:
+
+| Shell | For | Against |
+| --- | --- | --- |
+| **pywebview** (Edge WebView2 on Windows) | Python in-process, small, WebView2 ships with Windows 11, frameless and on-top windows | Fewer widgets than Qt; the JS bridge is basic |
+| PySide6 + QtWebEngine | Mature, rich native widgets | ~200 MB of dependencies, licensing to watch |
+| Electron or Tauri | Strong tooling for web UIs | A second runtime (Node or Rust) plus a Python sidecar and IPC |
+
+pywebview wins: one language for the backend, a light dependency, and the page talks
+to Python through `js_api` calls and `evaluate_js` events. The frontend is plain HTML,
+CSS and JavaScript modules with no build step; libraries are vendored so the app works
+offline. If the frontend outgrows that, a bundler can be added later without touching
+the backend contract. Window docking uses Win32 through `ctypes` (D-006).

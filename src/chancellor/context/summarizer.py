@@ -14,7 +14,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from chancellor.context.campaign import Campaign, as_list, count_regiments, land_armies
+from chancellor.game.imperial_reforms import IMPERIAL_REFORM_COST, ImperialReformLibrary
 from chancellor.game.localisation import Localisation
+from chancellor.game.modifiers import format_effect
 from chancellor.save.loader import RawSave
 from chancellor.save.parser import get_all
 
@@ -40,6 +42,7 @@ class _Context:
     campaign: Campaign
     tag: str
     country: dict[str, Any]
+    reforms: ImperialReformLibrary | None = None
 
     @property
     def date(self) -> str:
@@ -77,12 +80,16 @@ def summarize_save(raw: RawSave, loc: Localisation | None = None, tag: str | Non
     return summarize(Campaign.from_raw(raw, loc), tag)
 
 
-def summarize(campaign: Campaign, tag: str | None = None) -> str:
+def summarize(
+    campaign: Campaign, tag: str | None = None, reforms: ImperialReformLibrary | None = None
+) -> str:
     """Produce a briefing of a country and its surroundings.
 
     Args:
         campaign: The loaded save.
         tag: Country to describe. Defaults to the player.
+        reforms: Imperial reforms from the game files; when given, the Holy Roman Empire
+            section also shows the next reform and what it grants.
 
     Returns:
         Markdown briefing.
@@ -94,7 +101,7 @@ def summarize(campaign: Campaign, tag: str | None = None) -> str:
     country = campaign.country(tag)
     if country is None:
         raise KeyError(f"Country {tag} is not in the save")
-    ctx = _Context(campaign=campaign, tag=tag, country=country)
+    ctx = _Context(campaign=campaign, tag=tag, country=country, reforms=reforms)
 
     sections = [
         _header(ctx),
@@ -342,8 +349,47 @@ def _empire(ctx: _Context) -> str:
                 "Imperial reforms passed",
                 f"{len(reforms)}: {', '.join(reforms)}" if reforms else "none",
             ),
+            (
+                "Next reform",
+                _next_reforms(ctx, [str(r) for r in as_list(empire.get("passed_reform"))]),
+            ),
             ("Electors", _elector_preferences(ctx, electors)),
         ],
+    )
+
+
+_REFORM_SCOPES = {
+    "emperor": "Emperor",
+    "member": "members",
+    "all": "every country",
+    "province": "HRE provinces",
+    "emperor_per_prince": "Emperor per prince",
+}
+
+
+def _next_reforms(ctx: _Context, passed: list[str]) -> str | None:
+    """The reforms that can be proposed now, what they grant and what they cost."""
+    if ctx.reforms is None:
+        return None
+    dlc = "Emperor" in [str(d) for d in as_list(ctx.campaign.meta.get("dlc_enabled"))]
+    reforms = ctx.reforms.next_reforms(passed, has_emperor_dlc=dlc)
+    if not reforms:
+        return "none left"
+    parts = []
+    for reform in reforms:
+        effects = "; ".join(
+            f"{_REFORM_SCOPES.get(scope, scope)}: "
+            + ", ".join(format_effect(stat, value, ctx.loc) for stat, value in stats)
+            for scope, stats in reform.modifiers.items()
+        )
+        title = _reform_title(ctx, reform.name)
+        branch = "" if reform.branch == "mainline" else f" ({reform.branch.replace('_', ' ')})"
+        parts.append(f"{title}{branch}" + (f" ({effects})" if effects else ""))
+    authority = ctx.campaign.empire.get("imperial_influence")
+    have = f", now {_num(authority)}" if isinstance(authority, int | float) else ""
+    return (
+        " or ".join(parts)
+        + f". Needs {IMPERIAL_REFORM_COST} imperial authority{have}, and the electors' votes"
     )
 
 

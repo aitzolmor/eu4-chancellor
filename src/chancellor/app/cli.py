@@ -19,6 +19,7 @@ from chancellor.context.war_check import check_war, render_war_check
 from chancellor.context.world import render_world, world_overview
 from chancellor.game.cache import cache_dir, clear_cache
 from chancellor.game.decisions import DecisionLibrary
+from chancellor.game.imperial_reforms import ImperialReformLibrary
 from chancellor.game.localisation import Localisation, detect_language
 from chancellor.game.missions import MissionLibrary
 from chancellor.game.modifiers import ModifierLibrary
@@ -184,12 +185,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     try:
         if args.command == "summary":
-            campaign, save_path = _load_campaign(args, load_settings())
-            return _emit(args, summarize(campaign), f"Briefing for {save_path.name}")
+            settings = load_settings()
+            campaign, save_path = _load_campaign(args, settings)
+            briefing = summarize(campaign, reforms=_imperial_reforms(settings))
+            return _emit(args, briefing, f"Briefing for {save_path.name}")
         if args.command == "country":
-            campaign, save_path = _load_campaign(args, load_settings())
+            settings = load_settings()
+            campaign, save_path = _load_campaign(args, settings)
             tag = campaign.resolve_country(" ".join(args.name))
-            return _emit(args, summarize(campaign, tag), f"Briefing of {campaign.label(tag)}")
+            briefing = summarize(campaign, tag, reforms=_imperial_reforms(settings))
+            return _emit(args, briefing, f"Briefing of {campaign.label(tag)}")
         if args.command == "war-check":
             campaign, _ = _load_campaign(args, load_settings())
             target = campaign.resolve_country(" ".join(args.target))
@@ -279,6 +284,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _fail(str(exc))
     print(f"'{args.command}' is not implemented yet. See docs/ROADMAP.md.", file=sys.stderr)
     return 1
+
+
+def _imperial_reforms(settings: Settings) -> ImperialReformLibrary | None:
+    """Imperial reforms for briefings, or ``None`` without the game files."""
+    return ImperialReformLibrary.load(settings.game_dir) if settings.game_dir else None
 
 
 def _load_campaign(args: argparse.Namespace, settings: Settings) -> tuple[Campaign, Path]:

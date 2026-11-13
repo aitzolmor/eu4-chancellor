@@ -108,8 +108,8 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
   checks and target odds missed them (Ottomans showed 31 regiments instead of 47)
 - [x] Briefing: the country's role in the HRE (Emperor, elector or member), imperial
   authority, reforms passed and which candidate each elector backs
-- [ ] HRE: the next imperial reform and its requirements (needs
-  `common/imperial_reforms` from the game files)
+- [x] HRE: the next imperial reform, what it grants and the authority it needs
+  (`game.imperial_reforms`)
 - [x] Briefing: aggressive expansion held against the country (top holders, coalition
   threshold, status) and overextension shown even at 0%
 - [x] Briefing: monarch power (adm/dip/mil points)

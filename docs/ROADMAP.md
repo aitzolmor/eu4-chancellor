@@ -101,6 +101,22 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
 - [ ] Conversation history within a session
 - [ ] Evaluation set of real questions with expected reasoning
 
+### Play-test findings (2026-11-13, Austria 1475 save, through the MCP tools)
+
+- [x] Count armies carried by fleets: they sit inside `navy` blocks, so briefings, war
+  checks and target odds missed them (Ottomans showed 31 regiments instead of 47)
+- [ ] Briefing: the player's role in the HRE (Emperor, imperial authority, reforms
+  passed); Austria is the Emperor and the briefing does not say so
+- [ ] Briefing: aggressive expansion per country and overextension; a 19-member
+  coalition is listed with no numbers to judge when it will dissolve
+- [ ] Briefing: monarch power (adm/dip/mil points), needed to plan cores and ideas
+- [ ] Targets: flag owners defended by the player's own allies (Aragón is defended by
+  the ally Castilla; that war would break the alliance)
+- [ ] Targets: when a mission needs N provinces of a region, say "N of M" instead of
+  presenting the whole region (Relaciones ibéricas needs 4 Iberian provinces)
+- [ ] Checklists: describe trigger keys in words (`junior_union_with: ROOT`,
+  `NOT: num_of_cities: 40`) and localise decision titles left as keys
+
 ## Phase 5 — Charts and insight
 
 Goal: visual analysis of the campaign inside the workspace.

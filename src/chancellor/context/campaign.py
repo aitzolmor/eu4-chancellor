@@ -138,7 +138,8 @@ class Campaign:
         Fully parsing ~1,400 country blocks takes tens of seconds, so world-wide rankings
         use regular expressions over the raw blocks instead (about 1-2 s). The values
         match a full parse: ``raw_development`` only appears at the top of a country
-        block, and every ``regiment={`` belongs to one of its armies.
+        block, and every ``regiment={`` belongs to one of its armies (armies at sea sit
+        inside a ``navy`` block, see :func:`land_armies`).
         """
         stats: dict[str, tuple[float, int]] = {}
         for tag, block in self.country_blocks.items():
@@ -151,8 +152,7 @@ class Campaign:
                 regiments = len(_REGIMENT.findall(text, start, end))
                 stats[tag] = (development, regiments)
             elif isinstance(block, dict) and block.get("owned_provinces"):
-                armies = [a for a in get_all(block, "army") if isinstance(a, dict)]
-                regiments = sum(len(get_all(a, "regiment")) for a in armies)
+                regiments = count_regiments(block)
                 stats[tag] = (float(block.get("raw_development") or 0.0), regiments)
         return stats
 
@@ -329,6 +329,24 @@ def as_list(value: Any) -> list[Any]:
     if value is None:
         return []
     return list(value) if isinstance(value, list) else [value]
+
+
+def land_armies(country: dict[str, Any]) -> list[dict[str, Any]]:
+    """Every land army of a parsed country block, including armies at sea.
+
+    An army carried by a fleet is stored inside that fleet's ``navy`` block rather than
+    at the top of the country, so reading only ``army`` misses it.
+    """
+    armies = [a for a in get_all(country, "army") if isinstance(a, dict)]
+    for navy in get_all(country, "navy"):
+        if isinstance(navy, dict):
+            armies.extend(a for a in get_all(navy, "army") if isinstance(a, dict))
+    return armies
+
+
+def count_regiments(country: dict[str, Any]) -> int:
+    """Land regiments of a parsed country block, including those aboard ships."""
+    return sum(len(get_all(a, "regiment")) for a in land_armies(country))
 
 
 def _date_key(date: str) -> tuple[int, ...]:

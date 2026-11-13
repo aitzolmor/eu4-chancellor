@@ -3,9 +3,16 @@ from pathlib import Path
 
 import pytest
 
-from chancellor.context.campaign import Campaign, CountryLookupError, normalize
+from chancellor.context.campaign import (
+    Campaign,
+    CountryLookupError,
+    count_regiments,
+    land_armies,
+    normalize,
+)
 from chancellor.game.localisation import Localisation
 from chancellor.save.loader import load_save
+from chancellor.save.parser import parse, parse_lazy
 
 FIXTURE = Path(__file__).parent / "fixtures" / "mini_save.txt"
 NAMES = {
@@ -100,3 +107,26 @@ def test_resolve_not_found_without_suggestions(campaign: Campaign):
 def test_resolve_empty_query(campaign: Campaign):
     with pytest.raises(CountryLookupError):
         campaign.resolve_country("   ")
+
+
+# TUR has one army on land and one carried by a fleet, which the save nests in ``navy``.
+EMBARKED = """
+countries={
+    TUR={ owned_provinces={ 1 } raw_development=470.000
+          army={ name="Land" regiment={ } regiment={ } }
+          navy={ name="Fleet" ship={ } ship={ }
+                 army={ name="At sea" regiment={ } regiment={ } regiment={ } } } }
+}
+"""
+
+
+def test_land_armies_include_armies_at_sea():
+    country = parse(EMBARKED)["countries"]["TUR"]
+    assert [a["name"] for a in land_armies(country)] == ["Land", "At sea"]
+    assert count_regiments(country) == 5
+
+
+def test_quick_stats_matches_full_parse_with_armies_at_sea():
+    lazy = Campaign({"player": "TUR"}, parse_lazy(EMBARKED))
+    full = Campaign({"player": "TUR"}, parse(EMBARKED))
+    assert lazy.quick_stats["TUR"] == full.quick_stats["TUR"] == (470.0, 5)

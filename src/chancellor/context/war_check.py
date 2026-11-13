@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-from chancellor.context.campaign import Campaign, as_list
+from chancellor.context.campaign import Campaign, as_list, count_regiments
 from chancellor.save.parser import get_all
 
 Likelihood = Literal["certain", "likely", "possible"]
@@ -289,14 +289,13 @@ def _participant(
     campaign: Campaign, tag: str, roles: list[str], likelihood: Likelihood
 ) -> Participant:
     country = campaign.country(tag) or {}
-    armies = [a for a in get_all(country, "army") if isinstance(a, dict)]
     tech = country.get("technology") or {}
     return Participant(
         tag=tag,
         name=campaign.name(tag),
         roles=list(dict.fromkeys(roles)),
         likelihood=likelihood,
-        regiments=sum(len(get_all(a, "regiment")) for a in armies),
+        regiments=count_regiments(country),
         manpower=float(country.get("manpower") or 0.0),
         max_manpower=float(country.get("max_manpower") or 0.0),
         development=float(country.get("raw_development") or 0.0),

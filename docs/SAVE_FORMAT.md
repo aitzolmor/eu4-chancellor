@@ -100,6 +100,11 @@ Values such as `manpower=33.343` are in thousands; `overextension_percentage=0.3
 `navy` has the same shape with `ship`. Totals by unit category are cached in
 `num_subunits_type_and_cat={ infantry={ normal=28 } cavalry={…} … }`.
 
+**An army carried by a fleet is nested inside that fleet:** `navy={ … ship={…} army={ …
+regiment={…} } }`, not at the top of the country block. Reading only the top-level `army`
+keys misses it. In the 1475 Austria save the Ottoman main army (16 of 47 regiments) was
+at sea. Use `campaign.land_armies` / `count_regiments`.
+
 #### Estates, relations and money
 
 - `estate` (repeated): `type` (`estate_church`, …), `loyalty`, `territory` (land share %),
@@ -193,8 +198,9 @@ powers with their score (`value`).
 Parsing every country block takes tens of seconds, so `Campaign.quick_stats` scans the
 raw blocks with regular expressions instead (~2 s for ~1,400 tags). A country exists if
 its `owned_provinces={` list is non-empty. `raw_development=` appears once, at the top of a
-country block, and each `regiment={` belongs to one of its armies. Checked on 345 sampled
-countries across all local saves: identical to a full parse.
+country block, and each `regiment={` belongs to one of its armies, including armies at
+sea. Checked on 345 sampled countries across all local saves: identical to a full parse
+(once armies nested in `navy` are counted too).
 
 #### Holy Roman Empire and coalitions
 

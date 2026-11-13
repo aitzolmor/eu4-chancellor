@@ -159,8 +159,9 @@ Every tool call reads the newest save, so just save the game before asking.
 ## Desktop panel (early preview)
 
 A small window to keep beside the game, with your campaign at a glance: country, date,
-save, treasury, manpower, stability, monarch power and wars. Chat with the Chancellor in
-Claude Desktop next to it; the panel reads the same save.
+save, treasury, manpower, stability, monarch power and wars. It refreshes by itself when
+you save. Chat with the Chancellor in Claude Desktop next to it; the panel reads the
+same save.
 
 ```bash
 pip install -e ".[ui]"

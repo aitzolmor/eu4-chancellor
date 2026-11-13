@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 
-from chancellor.app.ui import WEB_DIR, PanelApi
+from chancellor.app.ui import WEB_DIR, PanelApi, save_changed_script
 from chancellor.context.campaign import Campaign
 from chancellor.save.parser import parse_lazy
 
@@ -52,3 +52,14 @@ def test_page_and_script_agree_on_element_ids():
     used |= set(re.findall(r'setText\("([\w-]+)"', script))
     assert used <= ids, f"panel.js uses ids missing from index.html: {used - ids}"
     assert 'href="panel.css"' in html and 'src="panel.js"' in html
+
+
+def test_save_changed_script_passes_the_name_as_json():
+    script = save_changed_script(Path('Austria "1476".eu4'))
+    assert script.startswith("window.dispatchEvent(new CustomEvent('save-changed'")
+    assert '{"save": "Austria \\"1476\\".eu4"}' in script
+
+
+def test_page_listens_for_new_saves():
+    script = (WEB_DIR / "panel.js").read_text(encoding="utf-8")
+    assert 'addEventListener("save-changed"' in script

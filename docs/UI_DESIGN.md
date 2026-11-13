@@ -54,9 +54,9 @@ screens Windows reports:
   right-hand column; the overlay mode suits it better when the column is too narrow.
 
 All placement works in physical pixels with a per-monitor DPI-aware process, so the
-150% scaling does not shift windows. Whether the second laptop appears to Windows as a
-real monitor (an extended display) or only as a remote window is still to be confirmed;
-only an extended display can host docked windows.
+150% scaling does not shift windows. The second laptop receives the main laptop's
+screen through Windows' *Project to this PC* (Miracast), which Windows treats as an
+extended display, so it can host docked windows; to be verified when docking is built.
 
 One-screen split (proportions, so any resolution scales the same way):
 
@@ -142,8 +142,8 @@ as a calm instrument panel, not compete with the map.
 
 - Claude Desktop's minimum window width may not fit the one-screen column at 150%
   scaling; measure it before fixing the split.
-- How the second laptop is connected (extended display or remote window); see *Screen
-  layout*.
+- Miracast displays add latency and can drop; docking should survive the second screen
+  disappearing (fall back to the one-screen layout).
 - Whether a global hotkey can be registered while EU4 has focus without elevated rights
   (`RegisterHotKey` should work; to be verified).
 
@@ -151,7 +151,7 @@ as a calm instrument panel, not compete with the map.
 
 1. Panel window with the header and key numbers, reading the current save (no docking).
    **Done** (`chancellor app`).
-2. Watcher and live refresh.
+2. Watcher and live refresh. **Done** (`chancellor.watcher.SaveWatcher`).
 3. Alerts.
 4. Docked layout with EU4 and Claude Desktop; undock.
 5. Quick questions; overlay hotkey.

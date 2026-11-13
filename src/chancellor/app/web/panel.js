@@ -96,6 +96,13 @@ async function load() {
   }
 }
 
+// Python's SaveWatcher fires this once the game has finished writing a new save.
+window.addEventListener("save-changed", (event) => {
+  const name = event.detail?.save;
+  setText("meta", name ? `New save ${name}, reading…` : "New save, reading…");
+  load();
+});
+
 $("refresh").addEventListener("click", load);
 $("retry").addEventListener("click", load);
 setInterval(() => lastStatus && renderMeta(lastStatus), 30_000);

@@ -97,8 +97,9 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
   in [UI_DESIGN.md](UI_DESIGN.md)
 - [x] `app.ui`: pywebview panel with the header (country, date, save) and key numbers
   (`chancellor app`, optional `ui` extra)
-- [ ] `watcher`: background save watching with live refresh of the panel (the terminal chat
-  checks before each question)
+- [x] `watcher`: background save watching with live refresh of the panel; a save is
+  reported once it has stopped changing (the terminal chat still checks before each
+  question)
 - [ ] Alerts: truces ending, coalition and AE, overextension, imperial reform ready, new
   missions or formables
 - [ ] `app.layout`: docked layout (EU4 borderless, panel and Claude Desktop beside it) and

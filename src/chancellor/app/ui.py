@@ -5,13 +5,15 @@ The page under ``app/web/`` is plain HTML, CSS and JavaScript. It calls the meth
 values, so the class is testable without a window. pywebview is an optional dependency
 (``pip install -e ".[ui]"``) and is imported only when the window opens.
 
-Build order step 1: the header (country, date, save) and the key numbers. The chat runs
-in Claude Desktop; the paid API mode arrives later and only behind the player's own
-switch (D-020).
+Build order steps 1-2: the header (country, date, save) and the key numbers, refreshed
+when the game writes a new save (:class:`chancellor.watcher.SaveWatcher` fires a
+``save-changed`` event in the page). The chat runs in Claude Desktop; the paid API mode
+arrives later and only behind the player's own switch (D-020).
 """
 
 from __future__ import annotations
 
+import json
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -21,6 +23,7 @@ from chancellor.app.mcp_server import CampaignProvider
 from chancellor.config import Settings
 from chancellor.context.campaign import Campaign
 from chancellor.context.status import campaign_status
+from chancellor.watcher import SaveWatcher
 
 WEB_DIR = Path(__file__).parent / "web"
 WINDOW_TITLE = "Chancellor"
@@ -79,7 +82,7 @@ def run_panel(settings: Settings, load: Callable[[Path], Campaign]) -> None:
     import webview  # optional dependency: pip install -e ".[ui]"
 
     api = PanelApi(CampaignProvider(settings, load))
-    webview.create_window(
+    window = webview.create_window(
         WINDOW_TITLE,
         url=str(WEB_DIR / "index.html"),
         js_api=api,
@@ -88,4 +91,17 @@ def run_panel(settings: Settings, load: Callable[[Path], Campaign]) -> None:
         min_size=MIN_SIZE,
         background_color=BACKGROUND,
     )
-    webview.start()
+    watcher = (
+        SaveWatcher(settings.save_dir, lambda path: window.evaluate_js(save_changed_script(path)))
+        if settings.save_dir is not None
+        else None
+    )
+    if watcher is not None:
+        window.events.closed += watcher.stop
+    webview.start(watcher.start if watcher is not None else None)
+
+
+def save_changed_script(path: Path) -> str:
+    """JavaScript that tells the page a new save is ready (the page then reloads)."""
+    detail = json.dumps({"save": path.name})
+    return f"window.dispatchEvent(new CustomEvent('save-changed', {{detail: {detail}}}))"

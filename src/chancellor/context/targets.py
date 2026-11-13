@@ -5,7 +5,8 @@ Crosses three things that are otherwise separate queries:
 1. **Where to go.** Provinces named by the country's available missions, by the
    requirements of the formable nations it can see, by its claims and by cores it does
    not own. Province ids, areas and regions in those conditions are expanded to
-   provinces using the game's geography.
+   provinces using the game's geography. When a condition only counts provinces ("own
+   4 provinces in Iberia"), the reason says so ("any 4 of 54 provinces in Iberia").
 2. **Who holds them.** Wanted provinces are grouped by their current owner.
 3. **How hard it is.** A :func:`chancellor.context.war_check.check_war` against each
    owner gives the expected and worst-case strength of both sides. Subjects, allies,
@@ -58,6 +59,23 @@ _TARGET_GEOGRAPHY_KEYS = {"area", "region"}
 _GEOGRAPHY_SUFFIXES = ("_area", "_region")
 _MAX_GEOGRAPHY = 120  # ignore huge scopes such as whole continents
 _HARD_SHOWN = 8
+
+
+@dataclass(frozen=True)
+class Quota:
+    """A counted requirement: own ``needed`` of the provinces in some areas or regions.
+
+    Attributes:
+        needed: How many provinces the condition asks for.
+        scope: The area or region names the provinces come from.
+        size: How many provinces those scopes hold.
+        optional: Whether the requirement sits inside an ``OR``, so other paths exist.
+    """
+
+    needed: int
+    scope: tuple[str, ...]
+    size: int
+    optional: bool
 
 
 @dataclass
@@ -157,17 +175,24 @@ def find_targets(
             if reason not in reasons:
                 reasons.append(reason)
 
+    def want_script(script: Any, reason: str) -> None:
+        by_quota: dict[Quota | None, list[int]] = {}
+        for province, quota in wanted_provinces(script, rules).items():
+            by_quota.setdefault(quota, []).append(province)
+        for quota, provinces in by_quota.items():
+            want(provinces, reason + (f" ({_describe_quota(campaign, quota)})" if quota else ""))
+
     tree = mission_tree(campaign, missions, tag)
     for column in tree.columns:
         for state in column.missions:
             if state.status == "available":
-                want(provinces_in(state.mission.trigger, rules), f"mission: {state.title}")
+                want_script(state.mission.trigger, f"mission: {state.title}")
 
     for check in check_decisions(campaign, rules, decisions, tag, missions, formables_only=True):
         if check.visible is not True:  # only formables the country certainly sees
             continue
         forms = campaign.name(check.decision.forms or "")
-        want(provinces_in(check.decision.allow, rules), f"formable: {forms}")
+        want_script(check.decision.allow, f"formable: {forms}")
 
     owned = {p for p in as_list(country.get("owned_provinces")) if isinstance(p, int)}
     want([p for p in as_list(country.get("claim_provinces")) if isinstance(p, int)], "claims")
@@ -194,6 +219,11 @@ def find_targets(
 
 
 def provinces_in(script: Any, rules: GameRules) -> set[int]:
+    """Province ids a condition asks to own; see :func:`wanted_provinces`."""
+    return set(wanted_provinces(script, rules))
+
+
+def wanted_provinces(script: Any, rules: GameRules) -> dict[int, Quota | None]:
     """Province ids a condition asks to own, with areas and regions expanded.
 
     Only ownership counts: ``owns``-style conditions, province counts
@@ -201,39 +231,86 @@ def provinces_in(script: Any, rules: GameRules) -> set[int]:
     conditions are about ownership (``owned_by``, ``is_core``, ...). A region merely
     mentioned for another reason is not a target. Continents and superregions are too
     broad to be targets and are ignored.
-    """
-    found: set[int] = set()
 
-    def walk(node: Any, counting: bool) -> None:
+    Returns:
+        Each wanted province with the :class:`Quota` it counts towards, or ``None`` when
+        the condition names it on its own. A province named on its own anywhere is
+        ``None``.
+    """
+    found: dict[int, Quota | None] = {}
+
+    def add(provinces: Iterable[int], quota: Quota | None = None) -> None:
+        for province in provinces:
+            if quota is None or province not in found:
+                found[province] = quota
+
+    def walk(node: Any, in_or: bool) -> None:
         if isinstance(node, Repeated | list):
             for item in node:
-                walk(item, counting)
+                walk(item, in_or)
             return
         if not isinstance(node, dict):
             return
         for key, value in node.items():
             for item in value if isinstance(value, Repeated) else [value]:
                 if key in _PROVINCE_VALUE_KEYS:
-                    found.update(v for v in as_list(item) if isinstance(v, int))
+                    add(v for v in as_list(item) if isinstance(v, int))
                 elif key in _COUNT_KEYS:
-                    walk(item, True)
+                    _count(item, in_or)
                     continue
-                elif counting and key in _TARGET_GEOGRAPHY_KEYS:
-                    for name in as_list(item):
-                        if isinstance(name, str):
-                            found.update(_geography(name, rules))
                 elif key.lstrip("-").isdigit() and _about_ownership(item):
-                    found.add(int(key.lstrip("-")))
+                    add([int(key.lstrip("-"))])
                 elif (
                     key.endswith(_GEOGRAPHY_SUFFIXES)
                     and key in rules.geography
                     and _about_ownership(item)
                 ):
-                    found.update(_geography(key, rules))
-                walk(item, counting)
+                    add(_geography(key, rules))
+                walk(item, in_or or key == "OR")
+
+    def _count(block: Any, in_or: bool) -> None:
+        """A counted condition: its areas and regions, and how many it asks for."""
+        names: list[str] = []
+        _scopes(block, names)
+        provinces: set[int] = set()
+        for name in names:
+            provinces |= _geography(name, rules)
+        needed = block.get("value") if isinstance(block, dict) else None
+        if not provinces:
+            return
+        quota = (
+            Quota(needed, tuple(names), len(provinces), in_or)
+            if isinstance(needed, int) and needed < len(provinces)
+            else None
+        )
+        add(sorted(provinces), quota)
 
     walk(script, False)
     return found
+
+
+def _scopes(node: Any, names: list[str]) -> None:
+    """Collect the area and region names inside a counted condition."""
+    if isinstance(node, Repeated | list):
+        for item in node:
+            _scopes(item, names)
+        return
+    if not isinstance(node, dict):
+        return
+    for key, value in node.items():
+        for item in value if isinstance(value, Repeated) else [value]:
+            if key in _TARGET_GEOGRAPHY_KEYS:
+                names.extend(n for n in as_list(item) if isinstance(n, str) and n not in names)
+            else:
+                _scopes(item, names)
+
+
+def _describe_quota(campaign: Campaign, quota: Quota) -> str:
+    """``any 4 of 34 provinces in Iberia; one of several ways``."""
+    names = [campaign.text(name) for name in quota.scope]
+    where = ", ".join(names) if len(names) <= 2 else f"{names[0]}, {names[1]} and nearby"
+    text = f"any {quota.needed} of {quota.size} provinces in {where}"
+    return text + ("; one of several ways" if quota.optional else "")
 
 
 def _about_ownership(block: Any) -> bool:
@@ -372,6 +449,18 @@ def _target(
         for reason in wanted[province]:
             if reason not in reasons:
                 reasons.append(reason)
+    # "form Alemania" (a named province) next to "form Alemania (any 50 of 119 ...)":
+    # merge them into "form Alemania (specific provinces, plus any 50 of 119 ...)".
+    named = {r for r in reasons if any(o.startswith(f"{r} (") for o in reasons)}
+    merged = []
+    for reason in reasons:
+        if reason in named:
+            continue
+        base, _, detail = reason.partition(" (")
+        if base in named and detail:
+            reason = f"{base} (specific provinces, plus {detail}"
+        merged.append(reason)
+    reasons = merged
     development = 0.0
     for province in provinces:
         data = campaign.province(province) or {}

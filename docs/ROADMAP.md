@@ -105,8 +105,10 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
 
 - [x] Count armies carried by fleets: they sit inside `navy` blocks, so briefings, war
   checks and target odds missed them (Ottomans showed 31 regiments instead of 47)
-- [ ] Briefing: the player's role in the HRE (Emperor, imperial authority, reforms
-  passed); Austria is the Emperor and the briefing does not say so
+- [x] Briefing: the country's role in the HRE (Emperor, elector or member), imperial
+  authority, reforms passed and which candidate each elector backs
+- [ ] HRE: the next imperial reform and its requirements (needs
+  `common/imperial_reforms` from the game files)
 - [ ] Briefing: aggressive expansion per country and overextension; a 19-member
   coalition is listed with no numbers to judge when it will dissolve
 - [ ] Briefing: monarch power (adm/dip/mil points), needed to plan cores and ideas

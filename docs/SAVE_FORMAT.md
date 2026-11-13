@@ -205,6 +205,14 @@ sea. Checked on 345 sampled countries across all local saves: identical to a ful
 #### Holy Roman Empire and coalitions
 
 - `empire.emperor` is the Emperor's tag; `empire.electors` lists electors.
+- `empire.imperial_influence` is the imperial authority (e.g. `59.683`).
+  `empire.passed_reform` is repeated once per reform passed (e.g.
+  `emperor_reichsreform`); its readable name is the localisation key `<reform>_title`.
+  The reforms, their order (`required_reform`) and their branches (`gui_container`,
+  `disabled_by`) are in `common/imperial_reforms/00_hre_emperor.txt`.
+- `empire.old_emperor` (repeated) records past reigns with `country` and `date`.
+- Each elector's country block has `is_elector=yes` and `preferred_emperor="HAB"`, the
+  candidate it currently backs.
 - Membership is per province: `provinces.-<id>.hre=yes`. A country counts as a member
   when its capital province has it.
 - `coalition_against_us` is repeated once per member on the country being targeted

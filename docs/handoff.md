@@ -1,8 +1,8 @@
 # Handoff — project state
 
-Snapshot for picking the work up in a new session. Written on **2026-11-13**, with `main`
-at `8669567` (PRs #1–#13 merged, 308 tests passing, CI green on Ubuntu and Windows with
-Python 3.11 and 3.12).
+Snapshot for picking the work up in a new session. Written on **2026-11-13** and updated
+the same day after the first play-test (PRs #1–#15 merged, the HRE briefing in review;
+313 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
 [ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-016),
@@ -47,8 +47,11 @@ Shared foundations:
 
 In priority order. The full list is in [ROADMAP](ROADMAP.md).
 
-1. **Play-test with real questions** in Claude Desktop through MCP, which costs nothing
-   extra. Fix whatever the answers show to be missing or wrong (see *Next step*).
+1. **Play-test findings** (first play-test done on 2026-11-13, list in
+   [ROADMAP](ROADMAP.md) under *Play-test findings*). Done: armies at sea are counted
+   (#15) and the briefing shows the HRE. Left: aggressive expansion and overextension,
+   monarch power, targets defended by the player's own allies, "N of M" region missions,
+   readable checklists, the next imperial reform.
 2. **First live run of `chancellor chat`** with the real API key, to tune the system
    prompt and effort. It spends money, so ask the user before running it.
 3. **Data gaps that limit advice:**
@@ -157,23 +160,15 @@ The API key lives only in the git-ignored `.env`. Never print it, and never put 
 
 ## Next step
 
-**Play-test the Chancellor in Claude Desktop during a real session** (no API cost):
+1. **Aggressive expansion and overextension in the briefing.** The player has a
+   19-member coalition and no numbers to judge when it breaks up. First find where AE
+   lives in the save (probably opinion modifiers in `active_relations` of each country
+   towards the player), document it in SAVE_FORMAT, then show the top AE holders and the
+   coalition threshold.
+2. Then the rest of the play-test list in the roadmap, most painful first.
+3. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
+   with the answers given through MCP.
 
-1. Save the game. Ask the Chancellor 5–10 real questions, for example:
-   - "How is my campaign going?"
-   - "Is attacking Venice worth it?"
-   - "What should Austria do in the next 50 years?"
-   - "Can I form Germany?"
-   - "Where should I expand?"
-2. For each question, note:
-   - which tools Claude called;
-   - what it got wrong or could not answer;
-   - which missing data mattered.
-
-   Keep the notes in `notes/` (git-ignored; Spanish is fine there).
-3. Turn the findings into roadmap items. Likely candidates: tool descriptions or
-   `INSTRUCTIONS` wording, output length, and the data gaps listed in *What is missing*.
-   Then fix the most painful one first.
-
-After that, with the user's go-ahead for the cost, do the first live `chancellor chat`
-run and compare its answers with Claude Desktop's.
+**Tip:** a Claude Code session on this machine has the `eu4-chancellor` MCP tools too
+(`mcp__eu4-chancellor__*`), so play-tests can be run from here at no API cost. They read
+the newest save, so ask the user to save first when the campaign has moved on.

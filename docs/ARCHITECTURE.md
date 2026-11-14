@@ -35,7 +35,7 @@ flowchart LR
 | `context.alerts` | Ranked alerts (wars, coalitions, truces, economy, stability, imperial reform) for the panel | 4 |
 | `app.cli` | Command-line entry point (`chancellor`) | 1 |
 | `app.clipboard` | Dependency-free clipboard copy (Win32 API, `pbcopy`, `wl-copy`/`xclip`) | 1 |
-| `context.war_check` | Who would fight in a hypothetical war and how strong each side is (`WarCheck` dataclass + Markdown renderer) | 2 |
+| `context.war_check` | Who would fight in a hypothetical war, how strong each side is and the coalition risk (`WarCheck`, `CoalitionRisk` + Markdown renderer) | 2 |
 | `context.world` | World overview: great powers, rankings, alliance networks, wars, unions, HRE (`WorldOverview` dataclass + renderer) | 2 |
 | `game.missions` | Mission series from the game's `missions/` folder (`MissionLibrary`) | 3 |
 | `game.modifiers` | Named modifiers and the stats they change (`ModifierLibrary`, `format_effect`) | 3 |

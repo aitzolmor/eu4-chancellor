@@ -146,10 +146,12 @@ The first round of fixes held up: the briefing now covers the HRE, aggressive ex
 overextension and monarch power, and truces and allied defenders are filtered. New
 findings, most harmful first:
 
-- [ ] War check and targets: coalition risk. With the coalition dissolved, Venice
-  (AE 74), Switzerland (83) and Milan (82) rank as easy targets although 34 countries
-  hold 50+ AE; show the owner's AE and how many nearby countries are at or near the
-  coalition threshold, then estimate the AE a conquest would add
+- [x] War check and targets: coalition risk. With the coalition dissolved, Venice
+  (AE 74), Switzerland (83) and Milan (82) ranked as easy targets although 34 countries
+  hold 50+ AE; both now show the owner's AE and its neighbours at or near the
+  coalition threshold, and high-risk targets rank last among unblocked ones (D-024)
+- [ ] Estimate the AE a conquest would add (province development, distance, culture,
+  religion, HRE), so the risk can say how many provinces are safe to take
 - [ ] Checklists: never truncate an unmet branch. Austria-Hungary's only failing
   requirement (an `if`/`else` on administrative technology, 20 here) printed as an
   empty "Otherwise:" and "…"

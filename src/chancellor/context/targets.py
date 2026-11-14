@@ -25,7 +25,7 @@ from typing import Any
 from chancellor.context.campaign import Campaign, Truce, as_list
 from chancellor.context.decisions import check_decisions
 from chancellor.context.missions import mission_tree
-from chancellor.context.war_check import check_war
+from chancellor.context.war_check import COALITION_AE, CoalitionRisk, check_war
 from chancellor.game.decisions import DecisionLibrary
 from chancellor.game.missions import MissionLibrary
 from chancellor.game.rules import GameRules
@@ -97,6 +97,7 @@ class Target:
         truce: The country's truce with the owner, if any (war would break it).
         allied_defenders: The country's allies bound to defend the owner (its overlord,
             subjects or coalition); the war would turn them into enemies.
+        coalition_risk: How close taking land from the owner brings a coalition.
     """
 
     owner: str
@@ -112,6 +113,12 @@ class Target:
     defenders: list[str] = field(default_factory=list)
     truce: Truce | None = None
     allied_defenders: list[str] = field(default_factory=list)
+    coalition_risk: CoalitionRisk | None = None
+
+    @property
+    def risky(self) -> bool:
+        """Whether taking land here is likely to bring a coalition."""
+        return self.coalition_risk is not None and self.coalition_risk.level == "high"
 
     @property
     def blocked(self) -> bool:
@@ -354,13 +361,17 @@ def render_targets(campaign: Campaign, report: TargetReport, top: int = 15) -> s
             "## War targets",
             "",
             "Odds compare the regiments expected on each side if war were declared today "
-            "(certain and likely participants). Owners you have a truce with, or that "
-            "your own allies would defend, come last. "
+            "(certain and likely participants). Coalition risk reads the aggressive "
+            "expansion (AE) the owner and its neighbours already hold against you: high "
+            f"when the owner is at {COALITION_AE:.0f}+ (a coalition can form) or several "
+            "neighbours are. Owners you have a truce with, or that your own allies would "
+            "defend, come last; high coalition risk comes after the rest. "
             "Favourable odds (2x or more) first, then even ones; within each, the most "
             "development first.",
             "",
-            "| # | Held by | Provinces | Dev | Wanted for | You vs defenders | Odds | Notes |",
-            "| --- | --- | --- | --- | --- | --- | --- | --- |",
+            "| # | Held by | Provinces | Dev | Wanted for | You vs defenders | Odds "
+            "| Coalition risk | Notes |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
         ]
         for index, target in enumerate(war[:top], 1):
             sides = f"{target.attacker_regiments} vs {target.defender_regiments}"
@@ -369,7 +380,7 @@ def render_targets(campaign: Campaign, report: TargetReport, top: int = 15) -> s
             lines.append(
                 f"| {index} | {label(target.owner)} | {len(target.provinces)} "
                 f"| {target.development:.0f} | {_reasons(target)} | {sides} "
-                f"| {target.odds:.1f}x | {_notes(campaign, target)} |"
+                f"| {target.odds:.1f}x | {_risk(target)} | {_notes(campaign, target)} |"
             )
         if len(war) > top:
             lines += ["", f"{len(war) - top} more war targets not shown."]
@@ -380,6 +391,11 @@ def render_targets(campaign: Campaign, report: TargetReport, top: int = 15) -> s
                 )
                 more = f" and {len(blocked) - 8} more" if len(blocked) > 8 else ""
                 lines.append(f"Not shown because of a truce or an allied defender: {names}{more}.")
+            risky = [t for t in war[top:] if t.risky and not t.blocked]
+            if risky:
+                names = "; ".join(f"{label(t.owner)}: {_risk(t)}" for t in risky[:8])
+                more = f" and {len(risky) - 8} more" if len(risky) > 8 else ""
+                lines.append(f"Not shown because of a high coalition risk: {names}{more}.")
 
     if hard:
         lines += [
@@ -495,21 +511,22 @@ def _target(
         target.defenders = [p.tag for p in check.defenders]
         target.truce = check.truce
         target.allied_defenders = check.allied_defenders
+        target.coalition_risk = check.coalition_risk
     return target
 
 
 def _attractiveness(target: Target) -> tuple[Any, ...]:
-    """Peaceful targets apart; war targets by obstacles, odds tier, then development.
+    """Peaceful targets apart; war targets by obstacles, risk, odds tier, then development.
 
     Owners under a truce or defended by the country's own allies come after every other
-    war target. Ranking by raw odds alone
-    would put one-province minors above rich, slightly harder
+    war target, and owners with a high coalition risk after the remaining ones. Ranking
+    by raw odds alone would put one-province minors above rich, slightly harder
     targets, so odds are bucketed: favourable (2x or more), even (1x-2x), unfavourable.
     """
     if target.peaceful:
-        return (0, 0, 0, -target.development)
+        return (0, 0, 0, 0, -target.development)
     tier = 0 if target.odds >= 2 else 1 if target.odds >= 1 else 2
-    return (1, target.blocked, tier, -target.development)
+    return (1, target.blocked, target.risky, tier, -target.development)
 
 
 def _notes(campaign: Campaign, target: Target) -> str:
@@ -528,6 +545,20 @@ def _notes(campaign: Campaign, target: Target) -> str:
     if obstacles:
         notes.append(obstacles)
     return "; ".join(notes)
+
+
+def _risk(target: Target) -> str:
+    """``high (owner 74 AE; 5 neighbours 50+)``."""
+    risk = target.coalition_risk
+    if risk is None:
+        return ""
+    facts = []
+    if risk.target_ae >= 1:
+        facts.append(f"owner {int(risk.target_ae)} AE")
+    hot = len(risk.neighbours_at_threshold)
+    if hot:
+        facts.append(f"{hot} neighbour{'s' if hot > 1 else ''} {COALITION_AE:.0f}+")
+    return risk.level + (f" ({'; '.join(facts)})" if facts else "")
 
 
 def _obstacles(campaign: Campaign, target: Target) -> str:

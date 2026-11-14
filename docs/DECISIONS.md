@@ -335,3 +335,29 @@ option to run: no browser process for a 64 px button. It handles the mouse itsel
 messages arrive even while the game runs as administrator. The picture is drawn in pure
 Python (`render_icon`, anti-aliased from exact distances, three cached states), so it is
 tested on any platform. The panel stays a web view, where HTML is worth its cost.
+
+## D-024 — Coalition risk is read from the AE already held, not estimated from a peace
+
+**Date:** 2026-11-14 · **Status:** Accepted
+
+The second play-test found the countries most outraged by Austria (Venice 74 AE,
+Switzerland 83, Milan 82) ranked as the easiest targets once the old coalition had
+dissolved. War checks and targets now carry a coalition risk
+(`war_check.CoalitionRisk`), read from the aggressive expansion (AE) the target and its
+neighbours (the save's `neighbours` list) already hold against the attacker. The
+attacker's allies and subjects are left out, since they cannot join a coalition against
+it.
+
+- **High:** the target is at the coalition threshold (50, `AE_COALITION_THRESHOLD` in
+  `defines.lua`), or three or more of its neighbours are.
+- **Medium:** the target is at 35 or more, one neighbour is at 50, or two neighbours
+  are at 35-50. A conquest usually adds tens of AE to exactly these countries, so they
+  can cross 50 in a single war.
+- **Low:** otherwise.
+
+Targets with a high risk rank after every other unblocked war target, and the ones
+pushed out of the table are named. The AE a peace deal would add is not estimated yet:
+it depends on the casus belli, distance, culture, religion and HRE membership of every
+country in range, and the casus belli is not in the save. The thresholds are a
+heuristic: AI coalition decisions also weigh opinion, distance and threat, which are
+not modelled.

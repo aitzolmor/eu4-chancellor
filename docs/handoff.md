@@ -1,11 +1,11 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
-updated on **2026-11-14** after the second play-test (PRs #1–#30 merged;
-393 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
+updated on **2026-11-14** after the second play-test (PRs #1–#31 merged;
+399 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-023),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-024),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -56,10 +56,10 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
 
 1. **Second play-test findings** (done on 2026-11-14 on the 1483 save; list in
    [ROADMAP](ROADMAP.md) under *Play-test findings (2026-11-14)*). The first round's
-   fixes held up. The worst new gap: war checks and targets ignore coalition risk, so
-   the countries most outraged by Austria rank as the easiest targets. Next worst: a
-   checklist truncated the only unmet requirement, and a mission of another country
-   read like the player's own.
+   fixes held up. The worst new gap, coalition risk, is fixed (D-024): war checks and
+   targets read the AE the target and its neighbours hold. Next worst: a checklist
+   truncated the only unmet requirement, and a mission of another country read like
+   the player's own.
 2. **First live run of `chancellor chat`** with the real API key, to tune the system
    prompt and effort. It spends money, so ask the user before running it.
 3. **Data gaps that limit advice:**
@@ -218,9 +218,8 @@ Done on 2026-11-14: docking over Miracast works (the second laptop is an ordinar
 extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
 (`notes/2026-11-14-playtest.md`, findings in ROADMAP).
 
-1. **Coalition risk in war checks and targets** (the top play-test finding): show
-   the owner's AE and how many nearby countries sit at or near 50, rank targets with
-   it, then estimate the AE a conquest would add.
+1. **Coalition risk** is in war checks and targets (D-024). Still open: estimating the
+   AE a conquest would add (ROADMAP).
 2. **Checklist fixes:** never truncate an unmet branch; name the owner of another
    country's mission. Then the smaller findings (ally reliability, "up to N"
    defenders, formable noise).

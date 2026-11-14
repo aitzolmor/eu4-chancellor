@@ -205,3 +205,59 @@ def test_ally_bound_to_defend_the_target_is_flagged(campaign: Campaign):
         for note in check.notes
     )
     assert check_war(campaign, "VEN").allied_defenders == []
+
+
+def _ae(campaign: Campaign, holder: str, value: float) -> None:
+    """Give ``holder`` an aggressive expansion opinion of ``-value`` towards HAB."""
+    relations = campaign.country(holder).setdefault("active_relations", {})
+    relations["HAB"] = {"opinion": {"modifier": "aggressive_expansion", "current_opinion": -value}}
+
+
+def test_coalition_risk_is_low_without_aggressive_expansion(campaign: Campaign):
+    risk = check_war(campaign, "POL").coalition_risk
+    assert risk is not None
+    assert (risk.level, risk.target_ae, risk.neighbours) == ("low", 0.0, [])
+    assert risk.in_coalition  # VEN and GEN are in one in this world
+
+
+def test_coalition_risk_reads_the_target_and_its_neighbours(campaign: Campaign):
+    campaign.country("POL")["neighbours"] = ["ENG", "BUR", "CAS"]
+    _ae(campaign, "POL", 41)  # near the threshold
+    _ae(campaign, "ENG", 55)  # one neighbour at it
+    _ae(campaign, "CAS", 90)  # an ally of HAB: cannot join a coalition, left out
+    risk = check_war(campaign, "POL").coalition_risk
+    assert risk.level == "medium"
+    assert risk.target_ae == 41
+    assert [(g.tag, g.value) for g in risk.neighbours] == [("ENG", 55.0)]
+    assert risk.at_threshold == 1
+    assert risk.years_below_threshold is None
+
+
+def test_coalition_risk_is_high_when_the_target_is_at_the_threshold(campaign: Campaign):
+    _ae(campaign, "POL", 74)
+    risk = check_war(campaign, "POL").coalition_risk
+    assert risk.level == "high"
+    assert risk.years_below_threshold == 13  # 24 above 50 at 2 a year
+
+
+def test_coalition_risk_is_high_with_several_neighbours_at_the_threshold(campaign: Campaign):
+    campaign.country("POL")["neighbours"] = ["ENG", "BUR", "VEN"]
+    for tag in ("ENG", "BUR", "VEN"):
+        _ae(campaign, tag, 50)
+    assert check_war(campaign, "POL").coalition_risk.level == "high"
+
+
+def test_coalition_risk_is_rendered(campaign: Campaign):
+    campaign.country("POL")["neighbours"] = ["ENG", "BUR"]
+    _ae(campaign, "POL", 74)
+    _ae(campaign, "ENG", 55)
+    _ae(campaign, "BUR", 40)
+    text = render_war_check(campaign, check_war(campaign, "POL"))
+    assert "## Coalition risk" in text
+    assert (
+        "**High**: the target holds 74 AE against Austria (at or above the coalition "
+        "threshold of 50; about 13 years to fall below it at the base decay); 1 of its "
+        "neighbours is already at 50+ (ENG 55); 1 more neighbour is at 35-50, where one war "
+        "can push it over (Burgundy 40). Worldwide, 2 countries that are not your allies or "
+        "subjects are at 50+ AE; a coalition against you already exists."
+    ) in text

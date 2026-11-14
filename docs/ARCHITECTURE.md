@@ -60,6 +60,8 @@ flowchart LR
 | `app.budget` | The API budget: running total across sessions, the cap for the next question (D-028) | 4 |
 | `app.api_chat` | The panel's API chat: switched on by the player, answers on a worker thread, streamed to the page as events | 4 |
 | `context.power` | Monarch power: costs of the next technologies with their parts, ideas, stability, generals; monthly gain; months to each technology; leaders and advisors (D-029) | 4 |
+| `context.ae` | The AE of taking given provinces, per receiving country, and who would cross 50 (D-030) | 4 |
+| `game.ae_rules` | Its rules: AE per development, casus belli factors, prestige, administrative efficiency, culture/religion/Empire factors, province positions | 4 |
 | `game.power_rules` | The cost rules behind it, read from `defines.lua`, technologies, institutions, advisor types, idea groups, event and static modifiers | 4 |
 | `llm.cost` | Prices per model and the cost of a response from its usage, cache writes and reads included | 4 |
 | `app.hotkey` | System-wide shortcut: `parse_hotkey` (pure) and `GlobalHotkey` (`RegisterHotKey` on its own message-loop thread) | 4 |

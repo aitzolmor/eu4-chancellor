@@ -22,6 +22,7 @@ _MAX_CANDIDATES = 25
 _OWNS_LAND = re.compile(r"\bowned_provinces=\{\s*\d")
 _RAW_DEVELOPMENT = re.compile(r"\braw_development=(-?[\d.]+)")
 _REGIMENT = re.compile(r"\bregiment=\{")
+_OWNER = re.compile(r'\bowner="?([A-Z0-9]{3})"?')
 _AE_MODIFIER = '"aggressive_expansion"'
 
 
@@ -363,6 +364,27 @@ class Campaign:
         block = self.gamestate.get("provinces", {})
         result = block.lazy() if isinstance(block, LazyBlock) else block
         return result if isinstance(result, dict) else {}
+
+    @cached_property
+    def province_owners(self) -> dict[int, str]:
+        """Owner of every owned province, without fully parsing the provinces.
+
+        Read with a regular expression on each raw block: a province's own ``owner``
+        comes before its history, where older owners are recorded.
+        """
+        owners: dict[int, str] = {}
+        for key, block in self._provinces.items():
+            number = str(key).lstrip("-")
+            if not number.isdigit():
+                continue
+            if isinstance(block, LazyBlock):
+                match = _OWNER.search(block.text, block.start, block.end)
+                owner = match.group(1) if match else None
+            else:
+                owner = block.get("owner") if isinstance(block, dict) else None
+            if isinstance(owner, str):
+                owners[int(number)] = owner
+        return owners
 
     def province(self, province_id: int | str) -> dict[str, Any] | None:
         """Fully parsed province (ids are stored negated, e.g. ``-219``), cached."""

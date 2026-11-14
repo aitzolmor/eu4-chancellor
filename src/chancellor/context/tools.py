@@ -14,6 +14,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any
 
+from chancellor.context.ae import render_ae_section
 from chancellor.context.campaign import Campaign, CountryLookupError
 from chancellor.context.decisions import check_decisions, render_decisions
 from chancellor.context.missions import mission_tree, render_missions
@@ -21,6 +22,7 @@ from chancellor.context.summarizer import summarize
 from chancellor.context.targets import find_targets, render_targets
 from chancellor.context.war_check import check_war, render_war_check
 from chancellor.context.world import render_world, world_overview
+from chancellor.game.ae_rules import AeRules
 from chancellor.game.decisions import DecisionLibrary
 from chancellor.game.imperial_reforms import ImperialReformLibrary
 from chancellor.game.missions import MissionLibrary
@@ -70,7 +72,9 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "(declaring war would break it; end date estimated), any ally of the attacker "
             "bound to defend the target, and the coalition risk: aggressive expansion the "
             "target and its neighbours already hold against the attacker (50 is the "
-            "coalition threshold). Ignores casus belli."
+            "coalition threshold), and an estimate of the AE that taking the provinces the "
+            "attacker has claims or cores on would add to each country nearby (who would "
+            "cross 50). Ignores casus belli."
         ),
         "input_schema": {
             "type": "object",
@@ -204,7 +208,11 @@ class Toolbox:
     def _check_war(self, args: dict[str, Any]) -> str:
         target = self._tag(args["target"])
         attacker = self._tag(args.get("attacker"))
-        return render_war_check(self.campaign, check_war(self.campaign, target, attacker))
+        text = render_war_check(self.campaign, check_war(self.campaign, target, attacker))
+        if self.game_dir is None:
+            return text
+        section = render_ae_section(self.campaign, self._ae_rules, self._rules, target, attacker)
+        return f"{text}\n{section}"
 
     def _get_world_overview(self, args: dict[str, Any]) -> str:
         return render_world(self.campaign, world_overview(self.campaign))
@@ -256,6 +264,10 @@ class Toolbox:
     @cached_property
     def _modifiers(self) -> ModifierLibrary:
         return ModifierLibrary.load(self._game_dir())
+
+    @cached_property
+    def _ae_rules(self) -> AeRules:
+        return AeRules.load(self._game_dir())
 
     @cached_property
     def _power_rules(self) -> PowerRules | None:

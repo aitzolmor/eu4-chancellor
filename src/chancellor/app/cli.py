@@ -10,6 +10,7 @@ from pathlib import Path
 from chancellor import __version__
 from chancellor.app.clipboard import ClipboardError, copy_to_clipboard
 from chancellor.config import Settings, load_settings
+from chancellor.context.ae import render_ae_section
 from chancellor.context.campaign import Campaign, CountryLookupError
 from chancellor.context.decisions import check_decisions, render_decisions
 from chancellor.context.missions import mission_tree, render_missions
@@ -17,6 +18,7 @@ from chancellor.context.summarizer import summarize
 from chancellor.context.targets import find_targets, render_targets
 from chancellor.context.war_check import check_war, render_war_check
 from chancellor.context.world import render_world, world_overview
+from chancellor.game.ae_rules import AeRules
 from chancellor.game.cache import cache_dir, clear_cache
 from chancellor.game.decisions import DecisionLibrary
 from chancellor.game.imperial_reforms import ImperialReformLibrary
@@ -213,15 +215,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             return _emit(args, briefing, f"Briefing of {campaign.label(tag)}")
         if args.command == "war-check":
-            campaign, _ = _load_campaign(args, load_settings())
+            settings = load_settings()
+            campaign, _ = _load_campaign(args, settings)
             target = campaign.resolve_country(" ".join(args.target))
             attacker = campaign.resolve_country(args.attacker) if args.attacker else None
-            check = check_war(campaign, target, attacker)
-            return _emit(
-                args,
-                render_war_check(campaign, check),
-                f"War check against {campaign.label(target)}",
-            )
+            text = render_war_check(campaign, check_war(campaign, target, attacker))
+            if settings.game_dir is not None:
+                ae_rules = AeRules.load(settings.game_dir)
+                rules = GameRules.load(settings.game_dir)
+                text += "\n" + render_ae_section(campaign, ae_rules, rules, target, attacker)
+            return _emit(args, text, f"War check against {campaign.label(target)}")
         if args.command == "world":
             campaign, save_path = _load_campaign(args, load_settings())
             overview = world_overview(campaign, top=max(1, args.top))

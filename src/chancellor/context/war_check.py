@@ -14,11 +14,23 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-from chancellor.context.campaign import Campaign, Truce, as_list, count_regiments
+from chancellor.context.campaign import Campaign, Grievance, Truce, as_list, count_regiments
 from chancellor.save.parser import get_all
 
 Likelihood = Literal["certain", "likely", "possible"]
 _LIKELIHOOD_ORDER = {"certain": 0, "likely": 1, "possible": 2}
+
+RiskLevel = Literal["low", "medium", "high"]
+
+# common/defines.lua (1.37): AE_COALITION_THRESHOLD = -50, the AE opinion at which a
+# country can join a coalition. AE decays by 2 a year at base (see summarizer).
+COALITION_AE = 50.0
+AE_YEARLY_DECAY = 2.0
+# A conquest usually adds tens of AE to the target and its neighbours, so countries
+# this far below the threshold can cross it in a single war.
+NEAR_COALITION_AE = 35.0
+# Neighbours at the threshold that make the risk high on their own.
+_HIGH_RISK_NEIGHBOURS = 3
 
 # Subject types with `joins_overlords_wars = no` in common/subject_types (game 1.37).
 # Every other type inherits `joins_overlords_wars = yes` from the default.
@@ -70,6 +82,50 @@ class SideTotals:
 
 
 @dataclass
+class CoalitionRisk:
+    """How close a war on the target brings the attacker to a coalition.
+
+    Conquering land adds aggressive expansion (AE) mostly to the target and the countries
+    around it, so the risk is read from the AE they already hold against the attacker.
+    The attacker's own subjects and allies are left out: they cannot join a coalition
+    against it. The AE a peace deal would add is not estimated.
+
+    Attributes:
+        level: ``"high"`` when the target is already at the coalition threshold or
+            several neighbours are; ``"medium"`` when the target is close to it or one
+            neighbour is at it; ``"low"`` otherwise.
+        target_ae: AE the target holds against the attacker (0 if none).
+        neighbours: The target's neighbours holding AE against the attacker, highest
+            first.
+        at_threshold: Countries in the world at or above the threshold (50).
+        in_coalition: Whether a coalition against the attacker already exists.
+    """
+
+    level: RiskLevel
+    target_ae: float
+    neighbours: list[Grievance]
+    at_threshold: int
+    in_coalition: bool
+
+    @property
+    def neighbours_at_threshold(self) -> list[Grievance]:
+        """Neighbours of the target that can already join a coalition."""
+        return [g for g in self.neighbours if g.value >= COALITION_AE]
+
+    @property
+    def neighbours_near_threshold(self) -> list[Grievance]:
+        """Neighbours a single war could push over the threshold."""
+        return [g for g in self.neighbours if NEAR_COALITION_AE <= g.value < COALITION_AE]
+
+    @property
+    def years_below_threshold(self) -> int | None:
+        """Years until the target's AE decays below the threshold at the base rate."""
+        if self.target_ae < COALITION_AE:
+            return None
+        return int((self.target_ae - COALITION_AE) // AE_YEARLY_DECAY) + 1
+
+
+@dataclass
 class WarCheck:
     """Expected participants and strength of a hypothetical war.
 
@@ -84,6 +140,7 @@ class WarCheck:
         truce: The truce between attacker and target, if any: declaring war breaks it.
         allied_defenders: The attacker's allies that are bound to defend the target (its
             overlord, subjects or coalition), so the war would turn them into enemies.
+        coalition_risk: How close conquering from the target brings a coalition.
     """
 
     attacker: str
@@ -95,6 +152,7 @@ class WarCheck:
     notes: list[str]
     truce: Truce | None = None
     allied_defenders: list[str] = field(default_factory=list)
+    coalition_risk: CoalitionRisk | None = None
 
     def totals(self, side: Literal["attackers", "defenders"], worst_case: bool) -> SideTotals:
         """Sum the strength of one side.
@@ -232,7 +290,88 @@ def check_war(campaign: Campaign, target: str, attacker: str | None = None) -> W
         notes=notes,
         truce=campaign.truce(attacker, target),
         allied_defenders=[p.tag for p in turned],
+        coalition_risk=coalition_risk(campaign, attacker, target),
     )
+
+
+def coalition_risk(campaign: Campaign, attacker: str, target: str) -> CoalitionRisk:
+    """Read the coalition risk of taking land from ``target``; see :class:`CoalitionRisk`.
+
+    Args:
+        campaign: The loaded save.
+        attacker: The country that would conquer.
+        target: The country losing land.
+    """
+    att = campaign.country(attacker) or {}
+    friends = {*as_list(att.get("subjects")), *as_list(att.get("allies")), attacker}
+    grievances = {
+        g.tag: g for g in campaign.aggressive_expansion_towards(attacker) if g.tag not in friends
+    }
+    target_ae = grievances[target].value if target in grievances else 0.0
+    around = {str(t) for t in as_list((campaign.country(target) or {}).get("neighbours"))}
+    neighbours = sorted(
+        (g for tag, g in grievances.items() if tag in around and tag != target),
+        key=lambda g: -g.value,
+    )
+    at_threshold = sum(1 for g in grievances.values() if g.value >= COALITION_AE)
+    risk = CoalitionRisk(
+        level="low",
+        target_ae=target_ae,
+        neighbours=neighbours,
+        at_threshold=at_threshold,
+        in_coalition=bool(_coalition(att)),
+    )
+    hot = len(risk.neighbours_at_threshold)
+    if target_ae >= COALITION_AE or hot >= _HIGH_RISK_NEIGHBOURS:
+        risk.level = "high"
+    elif target_ae >= NEAR_COALITION_AE or hot or len(risk.neighbours_near_threshold) >= 2:
+        risk.level = "medium"
+    return risk
+
+
+def describe_coalition_risk(campaign: Campaign, risk: CoalitionRisk, attacker: str) -> str:
+    """One paragraph on the coalition risk, e.g. for the war check's Markdown."""
+    target_part = (
+        f"the target holds {int(risk.target_ae)} AE against {campaign.name(attacker)}"
+        if risk.target_ae
+        else "the target holds no AE against you"
+    )
+    if risk.years_below_threshold:
+        target_part += (
+            f" (at or above the coalition threshold of {COALITION_AE:.0f}; about "
+            f"{risk.years_below_threshold} years to fall below it at the base decay)"
+        )
+    hot = risk.neighbours_at_threshold
+    near = risk.neighbours_near_threshold
+    parts = [f"**{risk.level.capitalize()}**: {target_part}"]
+    if hot:
+        parts.append(
+            f"{len(hot)} of its neighbours {'is' if len(hot) == 1 else 'are'} already at "
+            f"{COALITION_AE:.0f}+ ({_grievance_list(campaign, hot)})"
+        )
+    if near:
+        parts.append(
+            f"{len(near)} {'more ' if hot else ''}"
+            f"{'neighbour is' if len(near) == 1 else 'neighbours are'} at "
+            f"{NEAR_COALITION_AE:.0f}-{COALITION_AE:.0f}, where one war can push "
+            f"{'it' if len(near) == 1 else 'them'} over ({_grievance_list(campaign, near)})"
+        )
+    text = "; ".join(parts) + "."
+    text += (
+        f" Worldwide, {risk.at_threshold} countries that are not your allies or subjects "
+        f"are at {COALITION_AE:.0f}+ AE"
+    )
+    exists = (
+        "; a coalition against you already exists."
+        if risk.in_coalition
+        else (" and no coalition exists yet.")
+    )
+    return text + exists
+
+
+def _grievance_list(campaign: Campaign, grievances: list[Grievance], limit: int = 6) -> str:
+    shown = ", ".join(f"{campaign.name(g.tag)} {int(g.value)}" for g in grievances[:limit])
+    return shown + (f" and {len(grievances) - limit} more" if len(grievances) > limit else "")
 
 
 def render_war_check(campaign: Campaign, check: WarCheck) -> str:
@@ -263,6 +402,19 @@ def render_war_check(campaign: Campaign, check: WarCheck) -> str:
     lines += [
         "",
         "Expected counts certain and likely participants; worst case adds possible ones.",
+    ]
+    if check.coalition_risk:
+        lines += [
+            "",
+            "## Coalition risk",
+            "",
+            "Taking land adds aggressive expansion (AE), mostly to the target and its "
+            "neighbours; at 50 they can join a coalition. The AE of the peace deal itself "
+            "is not estimated.",
+            "",
+            describe_coalition_risk(campaign, check.coalition_risk, check.attacker),
+        ]
+    lines += [
         "",
         "## Defenders",
         "",

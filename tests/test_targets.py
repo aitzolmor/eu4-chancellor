@@ -210,7 +210,7 @@ def test_render(report):
     text = render_targets(campaign, result)
     assert text.startswith("# Expansion targets: Austria (HAB), 1475.1.1")
     assert "## War targets" in text
-    assert "| 1 | SAL (SAL) | 1 | 8 | cores | 5 vs 1 | 5.0x |  |" in text
+    assert "| 1 | SAL (SAL) | 1 | 8 | cores | 5 vs 1 | 5.0x | low |  |" in text
     assert "## Hard targets (defenders outnumber you)" in text
     assert (
         "| Venice (VEN) | 2 | 15 | hab venice | 5 vs 6 | 0.8x | in a coalition against you |"
@@ -245,7 +245,10 @@ def test_owners_under_a_truce_come_last_with_the_estimated_end(report):
     order = [t.owner for t in result.targets]
     assert order.index("VEN") < order.index("SAL")  # even a hard target beats a truced one
     text = render_targets(campaign, result)
-    assert "| 2 | SAL (SAL) | 1 | 8 | cores | 5 vs 1 | 5.0x | truce until about 1488.1.1 |" in text
+    assert (
+        "| 2 | SAL (SAL) | 1 | 8 | cores | 5 vs 1 | 5.0x | low | truce until about 1488.1.1 |"
+        in text
+    )
     assert "| 1 | POL (POL) |" in text  # the weaker target without a truce goes first
     hidden = render_targets(campaign, result, top=1)
     assert (
@@ -312,3 +315,23 @@ def test_reasons_describe_quotas_and_merge_named_provinces():
     assert targets["VEN"].reasons == [
         "mission: hab venice (specific provinces, plus any 1 of 2 provinces in Veneto)"
     ]
+
+
+def test_owners_with_a_high_coalition_risk_come_after_the_rest(report):
+    campaign, _ = report
+    # SAL already holds 60 AE against HAB: one more war can start a coalition.
+    campaign.country("SAL")["active_relations"] = {
+        "HAB": {"opinion": {"modifier": "aggressive_expansion", "current_opinion": -60.0}}
+    }
+    campaign._grievances.clear()  # the fixture's report already read AE once
+    missions = MissionLibrary(parse_mission_file(MISSIONS))
+    decisions = DecisionLibrary(parse_decision_file(DECISIONS))
+    result = find_targets(campaign, RULES, missions, decisions)
+    targets = {t.owner: t for t in result.targets}
+    assert targets["SAL"].risky and not targets["POL"].risky
+    order = [t.owner for t in result.targets]
+    assert order.index("POL") < order.index("SAL")  # weaker, but no coalition risk
+    text = render_targets(campaign, result)
+    assert "| 2 | SAL (SAL) | 1 | 8 | cores | 5 vs 1 | 5.0x | high (owner 60 AE) |  |" in text
+    hidden = render_targets(campaign, result, top=1)
+    assert "Not shown because of a high coalition risk: SAL (SAL): high (owner 60 AE)." in hidden

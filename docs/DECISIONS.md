@@ -548,3 +548,31 @@ formable region 145, not 119); the cache format was bumped.
 
 Coring cost waits for a tooltip: the one province without a core was already being
 cored, and the game shows no cost breakdown then.
+
+## D-032 — The wiki as a local, searchable source, from the player's own export
+
+**Date:** 2026-11-14 · **Status:** Accepted
+
+The answer-quality plan keeps Claude as the orchestrator; after the computed mechanics
+(D-029 to D-031) comes knowledge it can look up for how mechanics work and for strategy.
+No model trained on the game is known, so the source is the community wiki.
+
+- **Getting the pages.** The wiki answers automated requests, its API included, with a
+  bot challenge, and anonymous `Special:Export` with 403. The app does not work around
+  that. The player, logged in, exports pages in their own browser (current revision
+  only, a list of titles plus the `Guides` category) and `chancellor wiki-import` reads
+  the XML. Nothing from the wiki goes into the repository; results link to their page.
+- **Index.** Pages become plain sections (`wiki.wikitext`: headings kept, templates and
+  markup dropped, tables as rows, the game version each section was last checked for,
+  inherited from its parent section) in a SQLite FTS5 table with English stemming and
+  BM25 ranking (`wiki.store`), kept with the app's state. Redirect titles are added to
+  their target's title field, so "aggressive expansion" finds the section on
+  "Relations". No embeddings: they would need a paid API or a heavy local model, and
+  game terms match well by word. The first import (109 pages, 38 of them redirects) gave
+  2030 sections in under a second and 3.4 MB; searches take milliseconds.
+- **Tool.** `search_wiki` (MCP, API chat, `chancellor wiki-search`) returns the best few
+  sections, cut to about 1200 characters, each with its link and checked version. The
+  tool description and both system prompts say to query in English game terms, to let
+  the save and the computed numbers win over the wiki, to cite the page and to flag
+  sections checked for much older versions. The prompts now also say to use the computed
+  mechanics instead of rules of thumb and to skip advice every player already follows.

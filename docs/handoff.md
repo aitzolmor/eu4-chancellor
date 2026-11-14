@@ -1,8 +1,8 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
-updated on **2026-11-14** after the second play-test (PRs #1–#31 merged;
-399 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
+updated on **2026-11-14** after the second play-test (PRs #1–#32 merged;
+400 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
 [ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-024),
@@ -57,9 +57,9 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
 1. **Second play-test findings** (done on 2026-11-14 on the 1483 save; list in
    [ROADMAP](ROADMAP.md) under *Play-test findings (2026-11-14)*). The first round's
    fixes held up. The worst new gap, coalition risk, is fixed (D-024): war checks and
-   targets read the AE the target and its neighbours hold. Next worst: a checklist
-   truncated the only unmet requirement, and a mission of another country read like
-   the player's own.
+   targets read the AE the target and its neighbours hold. The two checklist findings
+   are fixed too: unmet requirements are shown whole, and another country's mission
+   is named with its owner. The smaller findings remain.
 2. **First live run of `chancellor chat`** with the real API key, to tune the system
    prompt and effort. It spends money, so ask the user before running it.
 3. **Data gaps that limit advice:**
@@ -220,9 +220,8 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
 
 1. **Coalition risk** is in war checks and targets (D-024). Still open: estimating the
    AE a conquest would add (ROADMAP).
-2. **Checklist fixes:** never truncate an unmet branch; name the owner of another
-   country's mission. Then the smaller findings (ally reliability, "up to N"
-   defenders, formable noise).
+2. **Smaller play-test findings:** ally reliability, "up to N" defenders, formable
+   noise (the checklist fixes are done).
 3. **Desktop app, build order step 5** ([UI_DESIGN](UI_DESIGN.md)): quick questions
    (copy a question to the clipboard and bring Claude Desktop to the front) and a hotkey
    for the overlay; then follow screens appearing or dropping while the app runs and

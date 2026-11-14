@@ -165,3 +165,47 @@ def test_rules_load(tmp_path: Path):
     assert rules.geography["x_superregion"] == frozenset({1, 2, 3})
     assert rules.geography["europe"] == frozenset({1, 2, 3})
     assert rules.geography["colonial_x"] == frozenset({900, 901})
+
+
+# Shaped like form_austria_hungary: the only failing requirement is a nested if/else.
+NESTED = """
+country_decisions = {
+    form_union = {
+        potential = { tag = HAB }
+        allow = {
+            if = {
+                limit = { NOT = { has_country_flag = no_tech_needed } }
+                if = {
+                    limit = { mission_completed = hun_multicultural }
+                    adm_tech = 15
+                }
+                else = { adm_tech = 20 }
+            }
+            mission_completed = hab_multicultural
+        }
+        effect = { change_tag = AUH }
+    }
+}
+"""
+
+
+def test_unmet_requirements_are_never_cut(rules):
+    world = WORLD.replace("BRA={", "HUN={ owned_provinces={ 153 } } BRA={")
+    names = {
+        **NAMES,
+        "HUN": "Hungary",
+        "hun_multicultural_title": "Multicultural Empire",
+        "hab_multicultural_title": "Multicultural Empire",
+    }
+    campaign = Campaign({"player": "HAB", "date": "1475.1.1"}, parse(world), Localisation(names))
+    library = DecisionLibrary(parse_decision_file(NESTED))
+    text = render_decisions(campaign, "HAB", check_decisions(campaign, rules, library, "HAB"))
+    assert "…" not in text.split("- Effect:")[0]
+    assert "    - Otherwise:" in text
+    assert "      - Administrative technology 20 or more" in text
+    # Another country's mission is named with its owner; the country's own is not.
+    assert (
+        "Mission completed: Multicultural Empire (a mission of Hungary (HUN), "
+        "`hun_multicultural`)" in text
+    )
+    assert "- [ ] Mission completed: Multicultural Empire\n" in text

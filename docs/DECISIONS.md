@@ -457,3 +457,36 @@ counted. The chat now treats money as a hard limit:
 Development and tests use fake clients; live calls happen only with the player's
 go-ahead, from their own terminal (the Claude Desktop MSIX container keeps a separate
 `state.json`, see the handoff).
+
+## D-029 — Game mechanics are computed in the tools, checked against the game's tooltips
+
+**Date:** 2026-11-14 · **Status:** Accepted
+
+The first live answer of the API chat had the facts right and the advice wrong: it
+suggested spending ~390 military points on a technology that cost 1194, or on generals
+the country did not need. The model filled in game rules from memory. Rather than a
+second model trained on the game (no such model is known, and there is no data to train
+one) Claude stays the orchestrator, and the tools state the mechanics so the advice can
+rest on them.
+
+The first mechanics are monarch power (`context.power`, rules in `game.power_rules`): the
+cost of the next technology in each category with its parts, the next idea, stability,
+a general, the monthly gain with its sources, the months until each technology, and the
+leaders and advisors. They appear in the country briefing.
+
+Every rule is read from the game files where it lives; the one rule that is not there
+(+1 monthly power at 50 power projection) is a named constant. The numbers were checked
+against the game's tooltips for Austria on 1483.3.2, and the test suite rebuilds that
+case: technology 677 / 653 / 1194, +6 / +8 / +8 a month, three leaders without upkeep.
+The calibration found what reading the files alone got wrong: the level bought after
+level N is block N of the technology file; the game counts whole years ahead; the
+neighbour bonus is a flat -5%, not -5% per neighbour; ideas only discount technology of
+their own category; corruption and innovativeness are cut to a thousandth. Two parts are
+still estimates and say so: technology cost changes from idea bonuses, policies,
+government reforms and estate privileges are not read, and the free leader pool omits
+the land force limit, so it is stated as a minimum. The months until a technology let
+its ahead-of-time penalty shrink as its year approaches, which can be sooner than the
+game's own estimate (it keeps today's cost).
+
+Checking numbers against tooltips also answers how to evaluate the Chancellor without a
+game expert: the player can read a tooltip even when they cannot judge a strategy.

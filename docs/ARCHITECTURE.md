@@ -59,6 +59,8 @@ flowchart LR
 | `app.state` | Small state kept between sessions (the icon's place, the overlay side, the API spending) as JSON next to the cache | 4 |
 | `app.budget` | The API budget: running total across sessions, the cap for the next question (D-028) | 4 |
 | `app.api_chat` | The panel's API chat: switched on by the player, answers on a worker thread, streamed to the page as events | 4 |
+| `context.power` | Monarch power: costs of the next technologies with their parts, ideas, stability, generals; monthly gain; months to each technology; leaders and advisors (D-029) | 4 |
+| `game.power_rules` | The cost rules behind it, read from `defines.lua`, technologies, institutions, advisor types, idea groups, event and static modifiers | 4 |
 | `llm.cost` | Prices per model and the cost of a response from its usage, cache writes and reads included | 4 |
 | `app.hotkey` | System-wide shortcut: `parse_hotkey` (pure) and `GlobalHotkey` (`RegisterHotKey` on its own message-loop thread) | 4 |
 | `app.icon_window` | The floating icon: `render_icon` (pure-Python, anti-aliased drawing) and `FloatingIcon` (native layered window, its own message loop, drag, click, right-click menu) | 4 |

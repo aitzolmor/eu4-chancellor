@@ -1,11 +1,11 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
-updated on **2026-11-14** after the second play-test (PRs #1–#36 merged;
-455 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
+updated on **2026-11-14** after the second play-test (PRs #1–#37 merged;
+465 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-028),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-029),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -70,7 +70,6 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
 3. **Data gaps that limit advice:**
    - available casus belli (not found in the save yet);
    - income and expense breakdown (ledger category indices not mapped);
-   - advisors and generals in the briefing;
    - estate and parliament conditions in the checklists (about 37% `[?]` outside the
      formables, about 6% for the formables).
 4. **Usability:**
@@ -202,6 +201,13 @@ The full reasoning is in [DECISIONS.md](DECISIONS.md).
   colour keys do not help. Anything that must not be rectangular is a native layered
   window (D-023). Check such claims by sampling screen pixels with and without the
   window (`GetPixel` on the screen DC), as was done here.
+- **Checking game mechanics.** The game's tooltips show the exact figure and its parts
+  (technology cost, monthly power, leader pool), and the user can read them without
+  knowing strategy. That is how D-029 was calibrated: a level's year is the block after
+  the current level in `common/technologies`, years ahead are whole years, the
+  neighbour bonus is a flat -5%, ideas only discount their own category, and
+  corruption and innovativeness are cut to a thousandth. Ask for a screenshot of the
+  tooltip rather than guessing.
 - **Diagnosing the live app.** A run that logs the button state, cursor, foreground
   window and icon actions (only on change) found the elevation problem in one try;
   keep that approach for input issues.
@@ -240,11 +246,19 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
    docking follow-ups (D-027: screens dropping and returning, the icon's place, the
    overlay side, the "…" menu), and step 6, the API chat tab on a budget (D-028:
    Sonnet 5.5, $0.50 cap per question, $5 in all).
-3. **Answer quality** (ROADMAP): the first live answer gave generic advice. An
-   evaluation set of real questions, then game knowledge in the prompt or tools. Any
-   live comparison needs the user's go-ahead; mind the 5 EUR balance.
-4. Remaining data gaps (casus belli, income breakdown, advisors and generals), or the
-   watches idea, whichever the play-test shows matters more.
+3. **Answer quality** (ROADMAP): the first live answer gave generic advice. The plan
+   agreed with the user (2026-11-14): Claude stays the orchestrator and the "expert" is
+   knowledge it can look up, not another model. First layer done: game mechanics
+   computed in the tools (D-029, monarch power). Next: more mechanics where advice goes
+   wrong (development, coring, AE of a conquest), then the wiki as a searchable source,
+   then player feedback on answers. The user is no expert, so validate numbers against
+   the game's tooltips (they can read those), not strategy. Any live API check needs
+   the user's go-ahead; mind the 5 EUR balance.
+4. Remaining data gaps (casus belli, income breakdown), or the watches idea, whichever
+   the play-test shows matters more.
+5. **Real-time data** (discussed 2026-11-14, not started): monthly autosaves already
+   feed the panel; a small mod writing values to `game.log` with the `log` effect is
+   worth a prototype; reading the game's memory is ruled out.
 
 **Tip:** a Claude Code session on this machine has the `eu4-chancellor` MCP tools too
 (`mcp__eu4-chancellor__*`), so play-tests can be run from here at no API cost. They read

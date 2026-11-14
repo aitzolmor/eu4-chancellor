@@ -25,6 +25,7 @@ from chancellor.game.decisions import DecisionLibrary
 from chancellor.game.imperial_reforms import ImperialReformLibrary
 from chancellor.game.missions import MissionLibrary
 from chancellor.game.modifiers import ModifierLibrary
+from chancellor.game.power_rules import PowerRules
 from chancellor.game.rules import GameRules
 
 
@@ -42,7 +43,10 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "name": "get_country_briefing",
         "description": (
             "Briefing of one country from the current save: ruler, stability, economy, "
-            "military, territory and overextension, technology, ideas and monarch power, "
+            "military, territory and overextension, technology and ideas, monarch power "
+            "with what it buys (estimated cost of the next technology in each category with "
+            "its parts, ideas, stability, generals; monthly gain; months until each next "
+            "technology; leaders and advisors), "
             "estates, diplomacy, aggressive expansion held against it (who is near or in a "
             "coalition), its place in the Holy Roman Empire (with the next imperial reform), "
             "wars and the countries around "
@@ -193,7 +197,9 @@ class Toolbox:
 
     def _get_country_briefing(self, args: dict[str, Any]) -> str:
         tag = self._tag(args.get("country"))
-        return summarize(self.campaign, tag, reforms=self._imperial_reforms)
+        return summarize(
+            self.campaign, tag, reforms=self._imperial_reforms, power_rules=self._power_rules
+        )
 
     def _check_war(self, args: dict[str, Any]) -> str:
         target = self._tag(args["target"])
@@ -250,6 +256,11 @@ class Toolbox:
     @cached_property
     def _modifiers(self) -> ModifierLibrary:
         return ModifierLibrary.load(self._game_dir())
+
+    @cached_property
+    def _power_rules(self) -> PowerRules | None:
+        """Optional: without the game files the briefing leaves out what points buy."""
+        return PowerRules.load(self.game_dir) if self.game_dir else None
 
     @cached_property
     def _imperial_reforms(self) -> ImperialReformLibrary | None:

@@ -23,6 +23,7 @@ from chancellor.game.imperial_reforms import ImperialReformLibrary
 from chancellor.game.localisation import Localisation, detect_language
 from chancellor.game.missions import MissionLibrary
 from chancellor.game.modifiers import ModifierLibrary
+from chancellor.game.power_rules import PowerRules
 from chancellor.game.rules import GameRules
 from chancellor.save.loader import SaveFormatError, find_current_save, load_save
 
@@ -196,13 +197,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "summary":
             settings = load_settings()
             campaign, save_path = _load_campaign(args, settings)
-            briefing = summarize(campaign, reforms=_imperial_reforms(settings))
+            briefing = summarize(
+                campaign, reforms=_imperial_reforms(settings), power_rules=_power_rules(settings)
+            )
             return _emit(args, briefing, f"Briefing for {save_path.name}")
         if args.command == "country":
             settings = load_settings()
             campaign, save_path = _load_campaign(args, settings)
             tag = campaign.resolve_country(" ".join(args.name))
-            briefing = summarize(campaign, tag, reforms=_imperial_reforms(settings))
+            briefing = summarize(
+                campaign,
+                tag,
+                reforms=_imperial_reforms(settings),
+                power_rules=_power_rules(settings),
+            )
             return _emit(args, briefing, f"Briefing of {campaign.label(tag)}")
         if args.command == "war-check":
             campaign, _ = _load_campaign(args, load_settings())
@@ -314,6 +322,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 def _imperial_reforms(settings: Settings) -> ImperialReformLibrary | None:
     """Imperial reforms for briefings, or ``None`` without the game files."""
     return ImperialReformLibrary.load(settings.game_dir) if settings.game_dir else None
+
+
+def _power_rules(settings: Settings) -> PowerRules | None:
+    """Monarch power cost rules for briefings, or ``None`` without the game files."""
+    return PowerRules.load(settings.game_dir) if settings.game_dir else None
 
 
 def _load_campaign(args: argparse.Namespace, settings: Settings) -> tuple[Campaign, Path]:

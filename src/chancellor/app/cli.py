@@ -29,6 +29,7 @@ from chancellor.game.modifiers import ModifierLibrary
 from chancellor.game.power_rules import PowerRules
 from chancellor.game.rules import GameRules
 from chancellor.save.loader import SaveFormatError, find_current_save, load_save
+from chancellor.wiki.store import import_exports, render_hits, search, wiki_path
 
 
 class CliError(Exception):
@@ -168,6 +169,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="Delete cached game data (it is rebuilt automatically when needed).",
     )
 
+    wiki_import = sub.add_parser(
+        "wiki-import",
+        help="Index pages exported from the game wiki (Special:Export XML files).",
+        description=(
+            "The wiki blocks automated downloads: log in, open Special:Export in your "
+            "browser, export the pages you want (current revision only) and pass the XML "
+            "files here. The index replaces any earlier one and stays on this computer."
+        ),
+    )
+    wiki_import.add_argument("files", nargs="+", type=Path, help="Exported XML files.")
+
+    wiki_search = sub.add_parser("wiki-search", help="Search the imported wiki.")
+    wiki_search.add_argument("query", nargs="+", help="English game terms.")
+    wiki_search.add_argument("--max", type=int, default=4, help="Results to show (default 4).")
+
     chat = sub.add_parser(
         "chat",
         help="Chat with the Chancellor about your campaign (needs an Anthropic API key).",
@@ -195,6 +211,26 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "clear-cache":
         removed = clear_cache()
         print(f"Removed {removed} cached file(s) from {cache_dir()}.", file=sys.stderr)
+        return 0
+    if args.command == "wiki-import":
+        missing = [str(f) for f in args.files if not f.is_file()]
+        if missing:
+            print(f"error: no such file: {', '.join(missing)}", file=sys.stderr)
+            return 2
+        report = import_exports(args.files)
+        print(
+            f"Indexed {report.pages} pages ({report.redirects} redirects, {report.chunks} "
+            f"sections) into {wiki_path()}.",
+            file=sys.stderr,
+        )
+        return 0
+    if args.command == "wiki-search":
+        query = " ".join(args.query)
+        try:
+            print(render_hits(query, search(query, max(1, args.max))))
+        except FileNotFoundError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
         return 0
     try:
         if args.command == "summary":

@@ -60,6 +60,8 @@ flowchart LR
 | `app.budget` | The API budget: running total across sessions, the cap for the next question (D-028) | 4 |
 | `app.api_chat` | The panel's API chat: switched on by the player, answers on a worker thread, streamed to the page as events | 4 |
 | `context.power` | Monarch power: costs of the next technologies with their parts, ideas, stability, generals; monthly gain; months to each technology; leaders and advisors (D-029) | 4 |
+| `wiki.wikitext` | Wiki pages to plain sections: headings, the game version each was checked for, no markup (D-032) | 4 |
+| `wiki.store` | Import `Special:Export` XML into a local SQLite FTS5 index (redirects as aliases); search with BM25 | 4 |
 | `context.development` | What developing each province costs, cheapest first, with its parts (D-031) | 4 |
 | `game.development_rules` | Its rules: static modifiers, centres of trade, institutions, golden bulls, imperial reforms, event modifiers, climate | 4 |
 | `game.terrain` | Each province's terrain from `map/provinces.bmp`, `terrain.bmp` and `terrain.txt` (sampled, cached) | 4 |

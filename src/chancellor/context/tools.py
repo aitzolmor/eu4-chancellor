@@ -30,6 +30,9 @@ from chancellor.game.missions import MissionLibrary
 from chancellor.game.modifiers import ModifierLibrary
 from chancellor.game.power_rules import PowerRules
 from chancellor.game.rules import GameRules
+from chancellor.wiki.store import render_hits, search
+
+WIKI_RESULTS = 4
 
 
 class ToolInputError(ValueError):
@@ -143,6 +146,32 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "search_wiki",
+        "description": (
+            "Search the Europa Universalis 4 Wiki (a local copy the player imported) for how "
+            "game mechanics work and for strategy: guides, idea groups, diplomacy, warfare, "
+            "estates, the Holy Roman Empire, country pages such as Austria. Write the query "
+            "with English game terms (e.g. 'coalition', 'core creation cost', 'Austria "
+            "strategy'), even when the player writes in another language. Each result gives "
+            "the page, section, link and the game version it was last checked for. Numbers "
+            "from the save and the computed mechanics in the other tools take precedence; use "
+            "the wiki for how things work and for strategy, cite the page, and say so when it "
+            "was checked for a much older version than 1.37."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "English game terms to look for."},
+                "max_results": {
+                    "type": "integer",
+                    "description": "How many sections to return (1-8, default 4).",
+                },
+            },
+            "required": ["query"],
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -159,6 +188,7 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
     "get_missions": {"country": _Field(str), "brief": _Field(bool)},
     "get_decisions": {"country": _Field(str), "formables_only": _Field(bool)},
     "get_expansion_targets": {"country": _Field(str)},
+    "search_wiki": {"query": _Field(str, required=True), "max_results": _Field(int)},
 }
 
 
@@ -240,6 +270,14 @@ class Toolbox:
             formables_only=bool(args.get("formables_only")),
         )
         return render_decisions(self.campaign, tag, checks, self._modifiers)
+
+    def _search_wiki(self, args: dict[str, Any]) -> str:
+        query = str(args["query"])
+        limit = min(max(int(args.get("max_results") or WIKI_RESULTS), 1), 8)
+        try:
+            return render_hits(query, search(query, limit))
+        except FileNotFoundError as exc:
+            return str(exc)
 
     def _get_expansion_targets(self, args: dict[str, Any]) -> str:
         tag = self._tag(args.get("country"))

@@ -490,3 +490,28 @@ game's own estimate (it keeps today's cost).
 
 Checking numbers against tooltips also answers how to evaluate the Chancellor without a
 game expert: the player can read a tooltip even when they cannot judge a strategy.
+
+## D-030 — The war check estimates the AE of taking the claimed provinces
+
+**Date:** 2026-11-14 · **Status:** Accepted (completes D-024)
+
+D-024 read the AE countries already hold but not what a conquest would add, so it could
+not say how much land was safe to take. The war check now estimates it (`context.ae`,
+rules in `game.ae_rules`) for the target's provinces the attacker has claims or cores
+on: the base AE per province (development capped at 30, times 0.6, times the casus belli
+factor: 1 for a claim, 0.25 for a core, less the attacker's prestige and administrative
+efficiency), then what each country within reach receives (more for the loser's
+religion and the province's culture or culture group and inside the Empire, less with
+distance; two thirds for the attacker's allies, a tenth for its subjects), with the AE
+it holds now and after, and who would cross 50.
+
+The numbers come from the game files; how they combine follows the game wiki's
+formula, written for 1.24. Two parts are not documented for 1.37: the distance falloff
+(`1 / (1 + 0.75 x distance / 100)`, distance rounded down to hundreds and capped at 400)
+and which distant countries receive nothing (here: none beyond 400 map units). The
+output says so, and the estimate is to be checked against a peace deal in the player's
+next war, the way D-029 was checked against tooltips.
+
+To measure distances cheaply, `Campaign.province_owners` reads every province's owner
+with a regular expression instead of parsing the provinces; an estimate takes about
+three seconds. The expansion targets do not run it for every owner yet, for that cost.

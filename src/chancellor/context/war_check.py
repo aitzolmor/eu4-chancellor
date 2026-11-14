@@ -423,8 +423,8 @@ def render_war_check(campaign: Campaign, check: WarCheck) -> str:
             "## Coalition risk",
             "",
             "Taking land adds aggressive expansion (AE), mostly to the target and its "
-            "neighbours; at 50 they can join a coalition. The AE of the peace deal itself "
-            "is not estimated.",
+            "neighbours; at 50 they can join a coalition. What a conquest would add is "
+            "estimated below, when the game files are available.",
             "",
             describe_coalition_risk(campaign, check.coalition_risk, check.attacker),
         ]

@@ -131,9 +131,11 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
     power buys (technology costs with their parts, matching the game's tooltip exactly
     for Austria in 1483; ideas, stability, generals), the monthly gain, the months to
     each technology, leaders and advisors
-  - [ ] More mechanics where advice went wrong: development cost, coring cost, the AE a
-    conquest adds; technology cost changes from idea bonuses, policies, reforms and
-    estate privileges
+  - [x] The AE a conquest adds (D-030), in the war check; to be checked against a peace
+    deal in game (distance falloff and reach)
+  - [ ] More mechanics where advice went wrong: development cost (needs each province's
+    terrain, read from the map images), coring cost; technology cost changes from idea
+    bonuses, policies, reforms and estate privileges
   - [ ] Strategy knowledge: the wiki as a searchable source (`search_wiki`)
   - [ ] Player feedback on answers (thumbs up or down with a note) to find bad advice
 
@@ -171,8 +173,8 @@ findings, most harmful first:
   (AE 74), Switzerland (83) and Milan (82) ranked as easy targets although 34 countries
   hold 50+ AE; both now show the owner's AE and its neighbours at or near the
   coalition threshold, and high-risk targets rank last among unblocked ones (D-024)
-- [ ] Estimate the AE a conquest would add (province development, distance, culture,
-  religion, HRE), so the risk can say how many provinces are safe to take
+- [x] Estimate the AE a conquest would add (province development, distance, culture,
+  religion, HRE), so the risk can say how many provinces are safe to take (D-030)
 - [x] Checklists: never truncate an unmet branch. Austria-Hungary's only failing
   requirement (an `if`/`else` on administrative technology, 20 here) printed as an
   empty "Otherwise:" and "…"

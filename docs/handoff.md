@@ -1,11 +1,11 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
-updated on **2026-11-14** after the second play-test (PRs #1–#37 merged;
-465 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
+updated on **2026-11-14** after the second play-test (PRs #1–#38 merged;
+472 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-029),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-030),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -240,8 +240,8 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
 (`notes/2026-11-14-playtest.md`, findings in ROADMAP).
 
 1. **Every second play-test finding is fixed** (coalition risk D-024, ally reliability
-   D-025, checklists, formables, display). Still open: estimating the AE a conquest
-   would add (ROADMAP). A third play-test can wait for a later save.
+   D-025, checklists, formables, display), and the war check now estimates the AE a
+   conquest would add (D-030). A third play-test can wait for a later save.
 2. **Desktop app:** step 5 (quick questions, hotkey) is done (D-026), and so are the
    docking follow-ups (D-027: screens dropping and returning, the icon's place, the
    overlay side, the "…" menu), and step 6, the API chat tab on a budget (D-028:
@@ -249,8 +249,12 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
 3. **Answer quality** (ROADMAP): the first live answer gave generic advice. The plan
    agreed with the user (2026-11-14): Claude stays the orchestrator and the "expert" is
    knowledge it can look up, not another model. First layer done: game mechanics
-   computed in the tools (D-029, monarch power). Next: more mechanics where advice goes
-   wrong (development, coring, AE of a conquest), then the wiki as a searchable source,
+   computed in the tools (D-029, monarch power; D-030, AE of a conquest). **Check D-030
+   in the user's next war**: the peace screen shows the AE of each demanded province;
+   compare with `war-check` for that enemy (the distance falloff and the reach are the
+   wiki's 1.24 rules). Next: more mechanics where advice goes wrong (development cost,
+   which needs each province's terrain from the map images; coring cost), then the wiki
+   as a searchable source,
    then player feedback on answers. The user is no expert, so validate numbers against
    the game's tooltips (they can read those), not strategy. Any live API check needs
    the user's go-ahead; mind the 5 EUR balance.

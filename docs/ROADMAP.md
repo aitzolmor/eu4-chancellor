@@ -158,13 +158,15 @@ findings, most harmful first:
 - [x] Checklists: name the owner when `mission_completed` refers to another country's
   mission. `hun_a_multicultural_empire` read as "Imperio multicultural", the same title
   as Austria's own `hab_multicultural_empire`
-- [ ] War check: ally reliability. Castile counts as "likely" with an opinion of +4;
-  lower allies with poor opinion or trust to "possible"
-- [ ] Targets: name the countries behind "up to N" (Ragusa's possible defender is the
+- [x] War check: ally reliability. Castile counted as "likely" with an opinion of +4;
+  allies with an opinion below 25 or trust below 30 are now "possible" (D-025)
+- [x] Targets: name the countries behind "up to N" (Ragusa's possible defender is the
   Ottomans)
-- [ ] Decisions: formables marked "may apply" that are out of reach (Great Britain and
-  the Byzantine Empire for Austria) add noise; rank or hide them
-- [ ] Small: subject roles mix English and localised names; national ideas shown as
+- [x] Decisions: formables marked "may apply" that are out of reach. Great Britain
+  showed because `has_government_attribute` was not checkable; the evaluator now reads
+  the attributes from `common/government_reforms`. The Byzantine Empire is genuinely
+  visible to Austria and stays
+- [x] Small: subject roles mix English and localised names; national ideas shown as
   "0/7" like an idea group; average unrest not rounded
 
 ## Phase 5 — Charts and insight

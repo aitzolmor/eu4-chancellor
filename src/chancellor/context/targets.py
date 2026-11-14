@@ -94,6 +94,8 @@ class Target:
         defender_regiments: Expected regiments defending the owner.
         defender_worst_case: Defending regiments including possible joiners.
         defenders: Main defenders (owner first), for display.
+        possible_defenders: Defenders that only might join (guarantors, the Emperor,
+            reluctant allies), strongest first: the gap to the worst case.
         truce: The country's truce with the owner, if any (war would break it).
         allied_defenders: The country's allies bound to defend the owner (its overlord,
             subjects or coalition); the war would turn them into enemies.
@@ -111,6 +113,7 @@ class Target:
     defender_regiments: int = 0
     defender_worst_case: int = 0
     defenders: list[str] = field(default_factory=list)
+    possible_defenders: list[str] = field(default_factory=list)
     truce: Truce | None = None
     allied_defenders: list[str] = field(default_factory=list)
     coalition_risk: CoalitionRisk | None = None
@@ -376,7 +379,7 @@ def render_targets(campaign: Campaign, report: TargetReport, top: int = 15) -> s
         for index, target in enumerate(war[:top], 1):
             sides = f"{target.attacker_regiments} vs {target.defender_regiments}"
             if target.defender_worst_case > target.defender_regiments:
-                sides += f" (up to {target.defender_worst_case})"
+                sides += f" (up to {target.defender_worst_case}{_possible(campaign, target)})"
             lines.append(
                 f"| {index} | {label(target.owner)} | {len(target.provinces)} "
                 f"| {target.development:.0f} | {_reasons(target)} | {sides} "
@@ -509,6 +512,9 @@ def _target(
         target.defender_regiments = check.totals("defenders", worst_case=False).regiments
         target.defender_worst_case = check.totals("defenders", worst_case=True).regiments
         target.defenders = [p.tag for p in check.defenders]
+        target.possible_defenders = [
+            p.tag for p in check.defenders if p.likelihood == "possible" and p.regiments
+        ]
         target.truce = check.truce
         target.allied_defenders = check.allied_defenders
         target.coalition_risk = check.coalition_risk
@@ -545,6 +551,15 @@ def _notes(campaign: Campaign, target: Target) -> str:
     if obstacles:
         notes.append(obstacles)
     return "; ".join(notes)
+
+
+def _possible(campaign: Campaign, target: Target, shown: int = 2) -> str:
+    """``: Otomanos, Suiza`` — who makes up the worst case."""
+    names = [campaign.name(t) for t in target.possible_defenders[:shown]]
+    if not names:
+        return ""
+    more = len(target.possible_defenders) - shown
+    return ": " + ", ".join(names) + (f" +{more}" if more > 0 else "")
 
 
 def _risk(target: Target) -> str:

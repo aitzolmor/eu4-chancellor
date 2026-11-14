@@ -227,3 +227,14 @@ def test_explain_groups_if_chains(evaluator: Evaluator):
     results = evaluator.explain(script)
     assert [(r, k) for r, k, _ in results] == [(True, "tag"), (True, "if")]
     assert set(results[1][2]) == {"if", "else"}
+
+
+def test_government_attributes(rules: GameRules, evaluator: Evaluator):
+    assert evaluator.country({"has_government_attribute": "english_parliament"}) is None
+    rules.government_attributes = {
+        "austrian_archduchy_reform": {"is_elective": True},
+        "monarchy_mechanic": {"maybe_attribute": False},
+    }
+    assert evaluator.country({"has_government_attribute": "is_elective"}) is True
+    assert evaluator.country({"has_government_attribute": "maybe_attribute"}) is None
+    assert evaluator.country({"has_government_attribute": "english_parliament"}) is False

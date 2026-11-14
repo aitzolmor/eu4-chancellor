@@ -1,8 +1,8 @@
 # Handoff — project state
 
-Snapshot for picking the work up in a new session. Written on **2026-11-13** and updated
-the same day after the first play-test (PRs #1–#21 merged, the next imperial
-reform in review; 347 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
+Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
+updated on **2026-11-14** before a fresh session (PRs #1–#29 merged, nothing open;
+393 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
 [ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-023),
@@ -10,18 +10,22 @@ Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For de
 
 ## What we were doing
 
-Phase 4: getting the Chancellor in front of the player while they play. The last two
-pieces merged were:
+Phase 4: getting the Chancellor in front of the player while they play.
 
-- **`chancellor chat` (#12):** a terminal chat on the Anthropic API (billed per question).
-  The user has created an API key and put it in the local `.env`. **No live API call has
-  been made yet.**
-- **`chancellor mcp` (#13):** an MCP server, so Claude Desktop can use the same tools with
-  the user's Claude subscription (no API key, no per-question billing). The user added it
-  to `claude_desktop_config.json`. The first attempt failed because the `mcpServers`
-  block had been pasted *inside* `"preferences"` and wrapped in extra braces. After the
-  fix, the server is **confirmed working from the Claude app**: `get_save_status`
-  returned `Austria1475_06_21.eu4`, 1475.6.21, Austria (HAB).
+- **2026-11-13, tools:** the first play-test through the MCP tools found ten issues;
+  all are fixed (#15–#22): armies at sea counted, HRE section with the next imperial
+  reform, aggressive expansion, overextension and monarch power, truces (estimated end,
+  D-017), targets defended by the player's own allies (D-018), "any N of M provinces"
+  for region missions, triggers in words (D-019).
+- **2026-11-13, desktop app** (`chancellor app`, [UI_DESIGN](UI_DESIGN.md)): hybrid chat
+  with the paid API only on the player's switch (D-020), pywebview panel (D-021) with
+  live refresh and alerts, docking on two screens, and on one screen a native, round
+  floating icon that opens the panel and Claude Desktop as an overlay (D-022, D-023).
+  Verified live by the user, with EU4 running as administrator.
+- **Ideas recorded, not scheduled:** goal-based watches, goals and a campaign journal
+  for the panel (ROADMAP, *Ideas / later*).
+- `chancellor chat` (#12) still has **never made a live API call**; the user's key is in
+  `.env`. Ask before any call: it is billed.
 
 ## What is finished
 
@@ -209,26 +213,30 @@ The API key lives only in the git-ignored `.env`. Never print it, and never put 
 
 ## Next step
 
-1. **Second play-test through MCP, planned for the morning of 2026-11-14.** The user
-   cannot play before the evening of 2026-11-13; they will advance the campaign that
-   night and save, so the play-test runs on a newer save than 1475.6.21. Before it:
-   - check `get_save_status` shows the new save (ask the user to save if not);
-   - ask the user to restart Claude Desktop fully, so its MCP server loads the new code.
+The user is at home on 2026-11-14 with EU4 open on a newer save, Claude Desktop
+restarted, and a second laptop ready to join through *Project to this PC* (Miracast).
 
+1. **Docking over Miracast (quick).** Once the user has extended the screen to the
+   second laptop, check Windows reports two monitors (`chancellor.app.layout._Win32().
+   monitors()`, per-monitor DPI aware), then have them run `chancellor app` and press
+   *Dock beside the game*. Note anything Miracast changes (latency, DPI, the screen
+   dropping). The app decides one or two screens at start.
+2. **Second play-test through MCP** on the new save. Check `get_save_status` first.
    Ask the same questions as the first play-test (`notes/2026-11-13-playtest.md`): how
    the campaign is going, attacking Venice, the next 50 years, forming Germany or
-   Austria-Hungary, where to expand. Note what changed, what is still wrong, and turn new
-   findings into roadmap items. A Claude Code session can run it with the
-   `mcp__eu4-chancellor__*` tools; Claude Desktop shows how Claude chains them itself.
-2. **Desktop app, build order step 5** ([UI_DESIGN](UI_DESIGN.md)): quick questions
-   (copy a question to the clipboard and bring Claude Desktop to the front), and a
-   hotkey for the overlay. Docking still needs: Miracast, a screen appearing or dropping
-   while the app runs, and remembering the icon's position. The API chat mode stays off
-   unless the player switches it on (D-020).
-3. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
+   Austria-Hungary, where to expand. Compare with the first answers, note what is still
+   wrong or missing, and turn new findings into roadmap items. A Claude Code session can
+   run it with the `mcp__eu4-chancellor__*` tools; Claude Desktop shows how Claude
+   chains them itself.
+3. **Desktop app, build order step 5** ([UI_DESIGN](UI_DESIGN.md)): quick questions
+   (copy a question to the clipboard and bring Claude Desktop to the front) and a hotkey
+   for the overlay; then follow screens appearing or dropping while the app runs and
+   remember the icon's position. The API chat mode stays off unless the player switches
+   it on (D-020).
+4. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
    with the answers given through MCP.
-4. Remaining data gaps (casus belli, income breakdown, advisors and generals) or the
-   docked window, whichever the play-test shows matters more.
+5. Remaining data gaps (casus belli, income breakdown, advisors and generals), or the
+   watches idea, whichever the play-test shows matters more.
 
 **Tip:** a Claude Code session on this machine has the `eu4-chancellor` MCP tools too
 (`mcp__eu4-chancellor__*`), so play-tests can be run from here at no API cost. They read

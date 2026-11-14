@@ -33,8 +33,8 @@ Rules for the API mode:
   Claude Desktop is missing or busy.
 - Turning it on asks for confirmation once per session, saying it is billed per question
   and showing the model and effort in use.
-- While it is on, the header shows a visible "API, billed" badge and a running count of
-  questions and tokens for the session.
+- While it is on, the header shows a badge with what has been spent of the budget
+  (D-028), and each answer shows what it cost.
 - Without `ANTHROPIC_API_KEY` the switch is disabled, with a tooltip saying why.
 - The choice is remembered only for the session; every launch starts in Claude Desktop
   mode.
@@ -178,5 +178,7 @@ as a calm instrument panel, not compete with the map.
    screens: a question is copied and Claude Desktop comes forward, and the hotkey works
    with EU4 (running as administrator) in front. The overlay toggle through the hotkey
    reuses the floating icon's code path; it was not tried separately on one screen.
-6. API chat tab behind the chat-mode switch.
+6. API chat tab behind the chat-mode switch, on a budget (D-028). **Done**
+   (`chancellor.app.api_chat`, `llm.cost`, `app.budget`); the page was checked with a
+   stubbed bridge.
 7. Charts and history (Phase 5).

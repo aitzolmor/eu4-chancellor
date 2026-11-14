@@ -1,6 +1,7 @@
 """Small pieces of the desktop app's state kept between sessions.
 
-Where the floating icon was left, and the side of the screen the overlay opens on.
+Where the floating icon was left, the side of the screen the overlay opens on, and the
+running total spent on the API (:mod:`chancellor.app.budget`).
 
 Stored as JSON next to the game-data cache, not inside it, so ``chancellor
 clear-cache`` does not forget them. A missing or unreadable file means "nothing saved":
@@ -64,6 +65,17 @@ def load_overlay_side() -> str | None:
 def save_overlay_side(side: str) -> None:
     """Remember the overlay side. Failing to write is not an error."""
     _write("overlay_side", side)
+
+
+def load_api_spent() -> float:
+    """US dollars the app has spent on the API so far, across sessions."""
+    value = _read().get("api_spent_usd")
+    return float(value) if isinstance(value, int | float) and value >= 0 else 0.0
+
+
+def save_api_spent(amount: float) -> None:
+    """Record the running total spent on the API."""
+    _write("api_spent_usd", round(amount, 6))
 
 
 def _write(key: str, value: Any) -> None:

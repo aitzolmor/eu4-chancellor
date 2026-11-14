@@ -128,14 +128,17 @@ chancellor chat
 ```
 
 Ask in plain language, in any language: *"¿Me sale rentable atacar a Borgoña?"*, *"What
-should Austria aim for in the next 50 years?"*. The Chancellor (Claude Opus 5.5) decides
+should Austria aim for in the next 50 years?"*. The Chancellor (Claude Sonnet 5.5) decides
 which queries to run (country briefings, war checks, the world overview, missions,
 formable nations, expansion targets), reads the results, and answers with the numbers
 behind its advice. When you save the game, the next question uses the new save.
 
 It needs an Anthropic API key in `.env` (`ANTHROPIC_API_KEY`, see `.env.example`). Each
 question is billed by the API: a few tool lookups plus the answer usually cost a few cents.
-`/usage` shows the tokens used in the session.
+The app keeps a budget (D-028): every response is priced as it arrives, a question stops
+before it could cost more than its cap (default $0.50), and once the total budget
+(default $5) is spent the chat refuses new questions. `/usage` shows the tokens and money
+spent. The desktop panel has the same chat as a mode you switch on in its "…" menu.
 
 ## Use it from Claude Desktop (no API key needed)
 

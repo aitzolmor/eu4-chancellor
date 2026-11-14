@@ -1,6 +1,8 @@
 // The Chancellor panel: asks Python for the campaign's key facts and lays them out.
 // Python side: chancellor.app.ui.PanelApi, reached through pywebview's js_api bridge.
 
+import { renderMarkdown } from "./markdown.js";
+
 const $ = (id) => document.getElementById(id);
 let readAt = null;
 let loading = false;
@@ -255,8 +257,14 @@ document.addEventListener("keydown", (event) => {
 });
 
 // --- Quick questions (build order step 5) ----------------------------------------------
-// Python copies the prompt and brings Claude Desktop forward; the player pastes it there.
+// In Claude Desktop mode Python copies the prompt and brings Claude Desktop forward; the
+// player pastes it there. With the API chat on, the question goes to the chat tab.
 async function ask(question, button) {
+  if (chat.mode === "api") {
+    showTab("chat");
+    sendToApi(question.prompt);
+    return;
+  }
   status("Copying…", "busy");
   const result = await window.pywebview.api.ask(question.id);
   for (const other of $("questions").children) other.classList.remove("sent");
@@ -277,7 +285,7 @@ async function setUpQuestions() {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = question.label;
-    button.title = `${question.prompt}\n\nCopies this and opens Claude Desktop: paste it with Ctrl+V.`;
+    button.title = question.prompt;
     button.addEventListener("click", () => ask(question, button));
     box.append(button);
   }
@@ -294,10 +302,190 @@ async function setUpHotkey() {
   hint.replaceChildren(keys, ` ${what}`);
 }
 
+// --- API chat (build order step 6, D-020, D-028) ---------------------------------------
+// Off by default and only for this session. Turning it on asks once per session; while it
+// is on, the header shows what has been spent of the budget.
+let chat = { mode: "claude_desktop" };
+let confirmedThisSession = false;
+let answer = null; // the assistant bubble being streamed: { text, body, tools, frame }
+
+const dollars = (value) => `$${Number(value ?? 0).toFixed(2)}`;
+// One question usually costs cents: show a tenth of a cent.
+const cents = (value) => `$${Number(value ?? 0).toFixed(3)}`;
+
+function showChatMode(state) {
+  chat = { ...chat, ...state };
+  const on = chat.mode === "api";
+  $("chat-desktop").setAttribute("aria-pressed", String(!on));
+  $("chat-api").setAttribute("aria-pressed", String(on));
+  $("chat-api").disabled = !on && !chat.api_available;
+  $("chat-api").title = chat.api_available ? "" : chat.reason ?? "";
+  $("api-badge").hidden = !on;
+  setText("api-badge", `API · ${dollars(chat.spent)} of ${dollars(chat.budget)} spent`);
+  setText(
+    "chat-hint",
+    on
+      ? `API chat on: ${chat.model}, up to ${dollars(chat.question_cap)} a question.`
+      : "The chat runs in Claude Desktop and reads the same save.",
+  );
+  $("tabs").hidden = !on;
+  if (!on) showTab("campaign");
+  setBusy(Boolean(chat.busy));
+}
+
+function showTab(name) {
+  const onChat = name === "chat" && chat.mode === "api";
+  $("tab-campaign").setAttribute("aria-selected", String(!onChat));
+  $("tab-chat").setAttribute("aria-selected", String(onChat));
+  $("content").hidden = onChat;
+  $("ask").hidden = onChat;
+  $("chat").hidden = !onChat;
+  if (onChat) $("chat-input").focus();
+}
+
+function askToTurnOn() {
+  const text =
+    `Each question is billed to your API key: ${chat.model}, effort ${chat.effort}, ` +
+    `up to ${dollars(chat.question_cap)} a question. ${dollars(chat.spent)} of ` +
+    `${dollars(chat.budget)} spent so far. It stays on until you switch back or close the app.`;
+  setText("api-confirm-text", text);
+  $("api-confirm").hidden = false;
+  $("api-confirm-yes").focus();
+}
+
+async function setChatMode(mode) {
+  $("api-confirm").hidden = true;
+  const result = await window.pywebview.api.set_chat_mode(mode);
+  if (!result.ok) {
+    status(result.error, "error");
+    return;
+  }
+  showChatMode(result);
+  if (mode === "api") {
+    setMenu(false);
+    showTab("chat");
+    status("API chat on: questions are billed.");
+  } else {
+    status("Back to Claude Desktop.");
+  }
+}
+
+$("chat-desktop").addEventListener("click", () => setChatMode("claude_desktop"));
+$("chat-api").addEventListener("click", () => {
+  if (chat.mode === "api") return;
+  if (confirmedThisSession) setChatMode("api");
+  else askToTurnOn();
+});
+$("api-confirm-yes").addEventListener("click", () => {
+  confirmedThisSession = true;
+  setChatMode("api");
+});
+$("api-confirm-no").addEventListener("click", () => {
+  $("api-confirm").hidden = true;
+});
+$("tab-campaign").addEventListener("click", () => showTab("campaign"));
+$("tab-chat").addEventListener("click", () => showTab("chat"));
+
+function setBusy(busy) {
+  $("chat-send").disabled = busy;
+  $("chat-send").textContent = busy ? "Answering…" : "Send";
+}
+
+function bubble(role, text = "") {
+  $("chat-empty").hidden = true;
+  const item = document.createElement("article");
+  item.className = `bubble ${role}`;
+  const tools = document.createElement("p");
+  tools.className = "tools";
+  tools.hidden = true;
+  const body = document.createElement("div");
+  body.className = "body";
+  if (role === "user") body.textContent = text;
+  item.append(tools, body);
+  $("chat-log").append(item);
+  item.scrollIntoView({ block: "end" });
+  return { item, body, tools };
+}
+
+function renderAnswer() {
+  if (!answer) return;
+  answer.frame = null;
+  answer.body.innerHTML = renderMarkdown(answer.text);
+  answer.item.scrollIntoView({ block: "end" });
+}
+
+async function sendToApi(question) {
+  const text = question.trim();
+  if (!text) return;
+  bubble("user", text);
+  const pending = bubble("assistant");
+  pending.body.innerHTML = '<p class="quiet">Thinking…</p>';
+  answer = { ...pending, text: "", frame: null };
+  setBusy(true);
+  const result = await window.pywebview.api.ask_api(text);
+  if (!result.ok) {
+    answer.body.innerHTML = "";
+    answer.body.append(Object.assign(document.createElement("p"), { className: "error", textContent: result.error }));
+    answer = null;
+    setBusy(false);
+  }
+}
+
+window.addEventListener("chat-delta", (event) => {
+  if (!answer) return;
+  answer.text += event.detail.text;
+  if (!answer.frame) answer.frame = requestAnimationFrame(renderAnswer);
+});
+
+window.addEventListener("chat-tool", (event) => {
+  if (!answer) return;
+  answer.tools.hidden = false;
+  const chip = document.createElement("span");
+  chip.textContent = event.detail.name.replaceAll("_", " ");
+  answer.tools.append(chip);
+});
+
+window.addEventListener("chat-done", (event) => {
+  const { cost, note } = event.detail;
+  if (answer) {
+    renderAnswer();
+    if (note) answer.body.append(Object.assign(document.createElement("p"), { className: "note", textContent: note }));
+    answer.item.append(Object.assign(document.createElement("p"), { className: "cost", textContent: cents(cost) }));
+    answer = null;
+  }
+  showChatMode(event.detail);
+});
+
+window.addEventListener("chat-error", (event) => {
+  if (answer) {
+    renderAnswer();
+    answer.body.append(Object.assign(document.createElement("p"), { className: "error", textContent: event.detail.error }));
+    answer = null;
+  }
+  showChatMode(event.detail);
+});
+
+$("chat-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  if ($("chat-send").disabled) return;
+  const input = $("chat-input");
+  sendToApi(input.value);
+  input.value = "";
+});
+
+// Enter sends, Shift+Enter starts a new line.
+$("chat-input").addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    $("chat-form").requestSubmit();
+  }
+});
+
 async function start() {
   await setUpLayout();
   setUpQuestions();
   setUpHotkey();
+  showChatMode(await window.pywebview.api.chat_mode());
   load();
 }
 

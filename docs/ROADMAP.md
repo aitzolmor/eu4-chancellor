@@ -116,9 +116,17 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
   system-wide hotkey, `Ctrl+Shift+Space` by default (D-026); verified live on two
   screens with EU4 running as administrator. Sending them to the API tab comes with
   that tab
-- [ ] API chat tab behind the player's chat-mode switch (D-020), with a session counter of
-  questions and tokens; conversation history within a session
+- [x] API chat tab behind the player's chat-mode switch (D-020), on a budget (D-028):
+  priced responses, a cap per question, a running total across sessions, Sonnet 5.5
 - [ ] Evaluation set of real questions with expected reasoning
+- [ ] Answer quality of the chat. First live question (2026-11-14, Sonnet 5.5 at
+  `medium`, $0.031): "how is my campaign going?" used only the briefing and the world
+  overview; the facts were right and the diagnosis pointed the right way (AE near a
+  coalition), but the advice was generic or wrong for the game: spend ~390 military
+  points on military technology (not enough) or on generals (Austria has enough), "only
+  declare war with a casus belli" (always true). Needs game knowledge in the prompt or
+  the tools (technology costs, what points are worth), more tools per question, or a
+  higher effort; measure it with the evaluation set above
 
 ### Play-test findings (2026-11-13, Austria 1475 save, through the MCP tools)
 

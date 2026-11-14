@@ -41,7 +41,7 @@ def test_status_reports_errors_to_the_page():
 
 
 def test_chat_mode_is_claude_desktop_until_the_player_switches():
-    assert PanelApi(_Provider()).chat_mode() == {"mode": "claude_desktop", "api_available": False}
+    assert PanelApi(_Provider()).chat_mode()["mode"] == "claude_desktop"
 
 
 def test_page_and_script_agree_on_element_ids():

@@ -6,8 +6,12 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-DEFAULT_MODEL = "claude-opus-5-5"
-DEFAULT_EFFORT = "high"
+DEFAULT_MODEL = "claude-sonnet-5-5"
+DEFAULT_EFFORT = "medium"
+# The player's API balance is small and fixed (D-028): what the app may spend in all, and
+# the most one question may cost, in US dollars.
+DEFAULT_API_BUDGET_USD = 5.0
+DEFAULT_QUESTION_CAP_USD = 0.50
 
 
 @dataclass(frozen=True)
@@ -26,6 +30,8 @@ class Settings:
             ``max``): how much the model thinks before answering.
         hotkey: The panel's system-wide shortcut, e.g. ``ctrl+shift+space``. ``None``
             uses the default (:data:`chancellor.app.hotkey.DEFAULT_HOTKEY`).
+        api_budget_usd: The most the app may spend on the API in all, across sessions.
+        question_cap_usd: The most one question may cost.
     """
 
     save_dir: Path | None
@@ -35,6 +41,8 @@ class Settings:
     language: str | None = None
     effort: str = DEFAULT_EFFORT
     hotkey: str | None = None
+    api_budget_usd: float = DEFAULT_API_BUDGET_USD
+    question_cap_usd: float = DEFAULT_QUESTION_CAP_USD
 
 
 def _read_dotenv(path: Path) -> dict[str, str]:
@@ -79,4 +87,15 @@ def load_settings(dotenv_path: Path | None = None) -> Settings:
         language=get("EU4_LANGUAGE"),
         effort=get("CHANCELLOR_EFFORT") or DEFAULT_EFFORT,
         hotkey=get("CHANCELLOR_HOTKEY"),
+        api_budget_usd=_dollars(get("CHANCELLOR_API_BUDGET_USD"), DEFAULT_API_BUDGET_USD),
+        question_cap_usd=_dollars(get("CHANCELLOR_QUESTION_CAP_USD"), DEFAULT_QUESTION_CAP_USD),
     )
+
+
+def _dollars(value: str | None, default: float) -> float:
+    """A non-negative amount of dollars from the environment, or ``default``."""
+    try:
+        amount = float(value) if value else default
+    except ValueError:
+        return default
+    return amount if amount >= 0 else default

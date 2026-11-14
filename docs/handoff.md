@@ -1,11 +1,11 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
-updated on **2026-11-14** after the second play-test (PRs #1–#35 merged;
-438 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
+updated on **2026-11-14** after the second play-test (PRs #1–#36 merged;
+455 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-027),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-028),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -28,7 +28,9 @@ Phase 4: getting the Chancellor in front of the player while they play.
 - **Ideas recorded, not scheduled:** goal-based watches, goals and a campaign journal
   for the panel (ROADMAP, *Ideas / later*).
 - `chancellor chat` (#12) still has **never made a live API call**; the user's key is in
-  `.env`. Ask before any call: it is billed.
+  `.env`. Ask before any call: it is billed. **The user's API balance is 5 EUR and will
+  not be topped up** (D-028): test with fakes, and have the user run any live question
+  from their own terminal.
 
 ## What is finished
 
@@ -75,8 +77,8 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
      D-021); steps 1-4 are built: the panel window (`chancellor app`), the save
      watcher with live refresh, alerts, and docking: on two screens, or a floating icon
      with an overlay on one (D-022), both verified live (docking also over
-     Miracast), and step 5, quick questions and a hotkey (D-026). Next is step 6,
-     the API chat tab behind the player's switch (D-020).
+     Miracast), step 5, quick questions and a hotkey (D-026), and step 6, the API
+     chat tab on a budget (D-028). Next is step 7, charts (Phase 5).
 5. **Later phases:**
    - goal-based watches, goals and a campaign journal for the panel (an idea, recorded
      in ROADMAP under *Ideas / later*; not scheduled);
@@ -102,7 +104,8 @@ The full reasoning is in [DECISIONS.md](DECISIONS.md).
 | D-012 | Three-valued condition evaluation | EU4 has hundreds of triggers; unknowns must not hide certain failures |
 | D-013 | Cache game data on disk, not the save | Game files change only with patches; the save changes on every save |
 | D-014 | Targets count ownership conditions only | Counting every mention marked all of Castile as a target |
-| D-015 | Terminal chat first, manual streaming loop, `claude-opus-5-5`, effort `high`, caching, refusal fallbacks | Stream text, validate tool inputs, recover from tool errors; the window reuses the agent |
+| D-015 | Terminal chat first, manual streaming loop, caching, refusal fallbacks | Stream text, validate tool inputs, recover from tool errors; the window reuses the agent |
+| D-028 | API chat on a budget: Sonnet 5.5 at `medium`, priced responses, $0.50 per question, $5 in all | The user's API balance is 5 EUR and will not be topped up |
 | D-016 | MCP server alongside the API chat | Uses the Claude subscription instead of per-token billing; same `Toolbox` |
 
 ## Traps we hit
@@ -233,10 +236,11 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
    would add (ROADMAP). A third play-test can wait for a later save.
 2. **Desktop app:** step 5 (quick questions, hotkey) is done (D-026), and so are the
    docking follow-ups (D-027: screens dropping and returning, the icon's place, the
-   overlay side, the "…" menu). Next: step 6, the API chat tab. The API chat mode
-   stays off unless the player switches it on (D-020).
-3. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
-   with the answers given through MCP.
+   overlay side, the "…" menu), and step 6, the API chat tab on a budget (D-028:
+   Sonnet 5.5, $0.50 cap per question, $5 in all).
+3. With the user's go-ahead for the cost, the first live questions (the panel's API
+   chat or `chancellor chat`), compared with the answers given through MCP. Mind the
+   5 EUR balance.
 4. Remaining data gaps (casus belli, income breakdown, advisors and generals), or the
    watches idea, whichever the play-test shows matters more.
 

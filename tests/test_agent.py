@@ -335,7 +335,8 @@ def test_run_chat_commands(save_dir: Path):
     assert text_out.startswith("Chancellor ready: HAB (HAB), 1471.10.2 (mini.eu4).")
     assert "/reload" in text_out  # help
     assert "Respuesta." in text_out
-    assert "Input 10 tokens (+4 from cache), output 3 tokens." in text_out
+    assert "Input 10 tokens (+4 from cache), output 3 tokens, $0.000 this session" in text_out
+    assert "Billed per question: up to $0.50 each; $0.00 of $5.00 spent." in text_out
     assert len(api.calls) == 1
 
 
@@ -346,3 +347,106 @@ def test_run_chat_ends_on_eof(save_dir: Path):
         raise EOFError
 
     assert run_chat(settings_for(save_dir), loader, client, read=read, out=io.StringIO()) == 0
+
+
+# --- cost guard (D-028) ----------------------------------------------------------------
+
+
+def priced(*blocks, stop_reason="end_turn", output=1000, cache_write=0, model=None):
+    usage = SimpleNamespace(
+        input_tokens=2000,
+        cache_creation_input_tokens=cache_write,
+        cache_read_input_tokens=0,
+        output_tokens=output,
+    )
+    return SimpleNamespace(content=list(blocks), stop_reason=stop_reason, usage=usage, model=model)
+
+
+def test_each_response_is_priced_and_reported(campaign):
+    agent, _ = make_agent(
+        campaign,
+        priced(tool_use("get_save_status", {}), stop_reason="tool_use"),
+        priced(text("Listo.")),
+    )
+    agent.model = "claude-sonnet-5-5"
+    costs = []
+    result = agent.ask("¿Cómo voy?", cost_limit=0.50, on_cost=costs.append)
+    # Each response: 2000 input at $2/M + 1000 output at $10/M = $0.014.
+    assert costs == [pytest.approx(0.014), pytest.approx(0.014)]
+    assert result.cost == pytest.approx(0.028)
+    assert result.usage.output_tokens == 2000
+    assert result.text == "Listo."
+
+
+def test_a_fallback_model_is_priced_as_itself(campaign):
+    agent, _ = make_agent(campaign, priced(text("Hola."), model="claude-opus-5-5"))
+    agent.model = "claude-sonnet-5-5"
+    result = agent.ask("Hola")
+    assert result.cost == pytest.approx((2000 * 4 + 1000 * 20) / 1e6)
+
+
+def test_question_stops_before_a_request_could_pass_its_limit(campaign):
+    agent, api = make_agent(
+        campaign,
+        priced(tool_use("get_save_status", {}), stop_reason="tool_use", output=8000),
+        priced(text("never sent")),
+    )
+    agent.model = "claude-sonnet-5-5"
+    # The first request's worst case (~$0.17) fits $0.20; after it, the next does not.
+    result = agent.ask("¿Cómo voy?", cost_limit=0.20)
+    assert result.stop_reason == "cost_limit"
+    assert len(api.calls) == 1
+    assert "cost limit of $0.20" in result.text
+
+
+def test_no_request_is_sent_when_even_the_first_cannot_fit(campaign):
+    agent, api = make_agent(campaign, priced(text("never sent")))
+    agent.model = "claude-sonnet-5-5"
+    result = agent.ask("¿Cómo voy?", cost_limit=0.05)
+    assert result.stop_reason == "cost_limit"
+    assert api.calls == []
+
+
+def test_unknown_models_are_priced_as_the_most_expensive():
+    from chancellor.llm.cost import PRICES, prices_for
+
+    assert prices_for("claude-sonnet-5-5") == PRICES["claude-sonnet-5-5"]
+    assert prices_for("some-future-model").output == max(p.output for p in PRICES.values())
+
+
+def test_usage_cost_counts_cache_writes_and_reads():
+    from chancellor.llm.cost import Prices, Usage
+
+    usage = Usage(
+        input_tokens=1_000_000,
+        cache_write_tokens=1_000_000,
+        cache_read_tokens=1_000_000,
+        output_tokens=1_000_000,
+    )
+    assert usage.cost(Prices(2.0, 10.0, 0.10)) == pytest.approx(2.0 + 2.5 + 0.10 + 10.0)
+
+
+def test_budget_is_kept_between_sessions_and_caps_questions():
+    from chancellor.app.budget import Budget, BudgetExhausted
+
+    budget = Budget(total=1.0, question_cap=0.50)
+    assert budget.question_limit() == 0.50
+    budget.charge(0.70)
+    assert Budget(total=1.0, question_cap=0.50).spent == pytest.approx(0.70)  # persisted
+    assert budget.question_limit() == pytest.approx(0.30)  # less than the cap is left
+    budget.charge(0.30)
+    with pytest.raises(BudgetExhausted, match=r"\$1.00 of \$1.00 spent"):
+        budget.question_limit()
+
+
+def test_chat_refuses_questions_once_the_budget_is_used_up(save_dir: Path):
+    from chancellor.app.budget import Budget
+
+    client, api = fake_client(message(text("never sent")))
+    out = io.StringIO()
+    budget = Budget(total=0.10, question_cap=0.50)
+    budget.charge(0.10)
+    session = ChatSession(settings_for(save_dir), loader, client, out, budget=budget)
+    session.ask("¿Cómo voy?")
+    assert api.calls == []
+    assert "The API budget is used up" in out.getvalue()

@@ -131,6 +131,10 @@ def _geography(map_dir: Path) -> dict[str, frozenset[int]]:
     geography: dict[str, frozenset[int]] = {}
 
     def ids(value: Any) -> frozenset[int]:
+        # An area with a colour mixes `color = { ... }` with bare province ids; the parser
+        # keeps the bare values under the empty key.
+        if isinstance(value, dict):
+            value = value.get("", [])
         values = value if isinstance(value, list) else [value]
         return frozenset(v for v in values if isinstance(v, int))
 
@@ -138,7 +142,7 @@ def _geography(map_dir: Path) -> dict[str, frozenset[int]]:
         path = map_dir / name
         if path.is_file():
             for key, value in parse(_read(path)).items():
-                geography[key] = ids(value) if not isinstance(value, dict) else frozenset()
+                geography[key] = ids(value)
 
     regions = map_dir / "region.txt"
     if regions.is_file():

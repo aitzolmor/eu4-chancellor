@@ -133,9 +133,12 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
     each technology, leaders and advisors
   - [x] The AE a conquest adds (D-030), in the war check; to be checked against a peace
     deal in game (distance falloff and reach)
-  - [ ] More mechanics where advice went wrong: development cost (needs each province's
-    terrain, read from the map images), coring cost; technology cost changes from idea
-    bonuses, policies, reforms and estate privileges
+  - [x] Development cost per province (D-031), with each province's terrain read from the
+    map images; matches the game's tooltips (Vienna 59, Ostmark 53, Tirol 56)
+  - [ ] Coring cost: no tooltip yet (the one non-cored province was already being cored);
+    calibrate at the next conquest
+  - [ ] Technology cost changes from idea bonuses, policies, reforms and estate
+    privileges
   - [ ] Strategy knowledge: the wiki as a searchable source (`search_wiki`)
   - [ ] Player feedback on answers (thumbs up or down with a note) to find bad advice
 

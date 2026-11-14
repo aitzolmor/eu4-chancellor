@@ -158,7 +158,9 @@ def test_rules_load(tmp_path: Path):
         encoding="utf-8",
     )
     (tmp_path / "map").mkdir()
-    (tmp_path / "map" / "area.txt").write_text("a_area = { 1 2 }\nb_area = { 3 }", "utf-8")
+    (tmp_path / "map" / "area.txt").write_text(
+        "a_area = { 1 2 }\nb_area = { color = { 213 40 40 } 3 }", "utf-8"
+    )
     (tmp_path / "map" / "region.txt").write_text(
         "x_region = { areas = { a_area b_area } }", encoding="utf-8"
     )
@@ -169,6 +171,7 @@ def test_rules_load(tmp_path: Path):
     assert rules.culture_groups == {"austrian": "germanic"}
     assert rules.religion_groups == {"catholic": "christian"}
     assert rules.scripted_triggers == {"my_trigger": {"tag": "HAB"}}
+    assert rules.geography["b_area"] == frozenset({3})  # an area with a colour
     assert rules.geography["x_region"] == frozenset({1, 2, 3})
     assert rules.geography["x_superregion"] == frozenset({1, 2, 3})
     assert rules.geography["europe"] == frozenset({1, 2, 3})

@@ -27,8 +27,10 @@ Phase 4: getting the Chancellor in front of the player while they play.
   findings went to ROADMAP (coalition risk first).
 - **Ideas recorded, not scheduled:** goal-based watches, goals and a campaign journal
   for the panel (ROADMAP, *Ideas / later*).
-- `chancellor chat` (#12) still has **never made a live API call**; the user's key is in
-  `.env`. Ask before any call: it is billed. **The user's API balance is 5 EUR and will
+- **First live API call (2026-11-14):** one question from the panel's API chat cost
+  $0.031 (Sonnet 5.5, `medium`); the budget counter worked. The answer's facts were
+  right but its advice was generic (ROADMAP, *Answer quality of the chat*). The user's
+  key is in `.env`; ask before any call: it is billed. **The user's API balance is 5 EUR and will
   not be topped up** (D-028): test with fakes, and have the user run any live question
   from their own terminal.
 
@@ -238,9 +240,9 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
    docking follow-ups (D-027: screens dropping and returning, the icon's place, the
    overlay side, the "…" menu), and step 6, the API chat tab on a budget (D-028:
    Sonnet 5.5, $0.50 cap per question, $5 in all).
-3. With the user's go-ahead for the cost, the first live questions (the panel's API
-   chat or `chancellor chat`), compared with the answers given through MCP. Mind the
-   5 EUR balance.
+3. **Answer quality** (ROADMAP): the first live answer gave generic advice. An
+   evaluation set of real questions, then game knowledge in the prompt or tools. Any
+   live comparison needs the user's go-ahead; mind the 5 EUR balance.
 4. Remaining data gaps (casus belli, income breakdown, advisors and generals), or the
    watches idea, whichever the play-test shows matters more.
 

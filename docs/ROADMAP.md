@@ -152,10 +152,10 @@ findings, most harmful first:
   coalition threshold, and high-risk targets rank last among unblocked ones (D-024)
 - [ ] Estimate the AE a conquest would add (province development, distance, culture,
   religion, HRE), so the risk can say how many provinces are safe to take
-- [ ] Checklists: never truncate an unmet branch. Austria-Hungary's only failing
+- [x] Checklists: never truncate an unmet branch. Austria-Hungary's only failing
   requirement (an `if`/`else` on administrative technology, 20 here) printed as an
   empty "Otherwise:" and "…"
-- [ ] Checklists: name the owner when `mission_completed` refers to another country's
+- [x] Checklists: name the owner when `mission_completed` refers to another country's
   mission. `hun_a_multicultural_empire` read as "Imperio multicultural", the same title
   as Austria's own `hab_multicultural_empire`
 - [ ] War check: ally reliability. Castile counts as "likely" with an opinion of +4;

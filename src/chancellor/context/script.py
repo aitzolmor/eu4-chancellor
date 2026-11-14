@@ -150,6 +150,7 @@ def describe(
     campaign: Campaign,
     max_lines: int = 12,
     modifiers: ModifierLibrary | None = None,
+    country: str | None = None,
 ) -> list[str]:
     """Describe a trigger or effect block as indented Markdown list lines.
 
@@ -158,11 +159,14 @@ def describe(
         campaign: Supplies names (localisation and save).
         max_lines: Truncate after this many lines; a final ``…`` line marks the cut.
         modifiers: Modifier definitions; when given, granted modifiers list their bonuses.
+        country: The country the script is read for. Missions that belong to another
+            country are then named with their owner, since titles repeat across
+            countries ("Imperio multicultural" is both Austrian and Hungarian).
 
     Returns:
         Lines such as ``"- owns_core_province: Praga (#266)"`` (two spaces per level).
     """
-    lines = _block(script, _Ctx(campaign, modifiers), 0)
+    lines = _block(script, _Ctx(campaign, modifiers, country), 0)
     if len(lines) > max_lines:
         lines = [*lines[:max_lines], "- …"]
     return lines
@@ -186,6 +190,7 @@ class _Ctx:
 
     campaign: Campaign
     modifiers: ModifierLibrary | None
+    country: str | None = None
 
     @property
     def loc(self) -> Localisation:
@@ -271,11 +276,29 @@ def _phrase(key: str, value: Any, campaign: _Ctx) -> str | None:
     if key == "mission_completed" and isinstance(value, str):
         title = campaign.loc.get(f"{value}_title", "")
         shown = clean_text(title, campaign) if title else value
+        owner = _mission_owner(value, campaign)
+        if owner:
+            shown += f" (a mission of {campaign.label(owner)}, `{value}`)"
     elif key in _LOCALISED_VALUES and isinstance(value, str):
         shown = campaign.loc.get(value, value.replace("_", " "))
     else:
         shown = _value(key, value, campaign)
     return template.format(v=shown)
+
+
+def _mission_owner(mission: str, campaign: _Ctx) -> str | None:
+    """The country a mission belongs to, when it is not the one being read for.
+
+    Country missions are keyed by the lower-case tag (``hun_a_multicultural_empire``).
+    Only prefixes that are a country in the save count, so generic missions stay
+    unnamed, and nothing is said without a ``country`` to compare with.
+    """
+    if campaign.country is None:
+        return None
+    prefix = mission.split("_", 1)[0].upper()
+    if len(prefix) != 3 or prefix == campaign.country.upper():
+        return None
+    return prefix if prefix in campaign.campaign.country_blocks else None
 
 
 def _branch(parts: dict[str, Any], campaign: _Ctx, depth: int) -> list[str]:

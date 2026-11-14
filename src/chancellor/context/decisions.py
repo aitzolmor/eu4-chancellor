@@ -19,6 +19,12 @@ from chancellor.game.missions import MissionLibrary
 from chancellor.game.modifiers import ModifierLibrary
 from chancellor.game.rules import GameRules
 
+# Lines per requirement in the checklist. A requirement that is not met (or not
+# checkable) keeps every line: cutting it hid Austria-Hungary's only failing condition,
+# an if/else on administrative technology.
+_MET_LINES = 4
+_UNMET_LINES = 40
+
 
 @dataclass
 class Requirement:
@@ -95,7 +101,16 @@ def check_decisions(
         if visible is None and not (decision.forms or decision.major):
             continue
         requirements = [
-            Requirement(met, describe(value if key == "if" else {key: value}, campaign, 4))
+            Requirement(
+                met,
+                describe(
+                    value if key == "if" else {key: value},
+                    campaign,
+                    # Met requirements stay short; the ones to work on are shown whole.
+                    _MET_LINES if met else _UNMET_LINES,
+                    country=tag,
+                ),
+            )
             for met, key, value in evaluator.explain(decision.allow)
         ]
         title = clean_text(campaign.loc.get(f"{decision.name}_title", ""), campaign)

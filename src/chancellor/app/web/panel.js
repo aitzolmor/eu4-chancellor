@@ -134,75 +134,139 @@ window.addEventListener("save-changed", (event) => {
   load();
 });
 
+// --- Status line -----------------------------------------------------------------------
+// One line under the header for results and errors; hidden when there is nothing to say.
+// Results fade after a while; errors stay until the next action.
+let statusTimer = null;
+
+function status(text, tone = null) {
+  const line = $("status");
+  clearTimeout(statusTimer);
+  line.textContent = text ?? "";
+  line.classList.toggle("error", tone === "error");
+  line.hidden = !text;
+  if (text && tone !== "error" && tone !== "busy") {
+    statusTimer = setTimeout(() => { line.hidden = true; }, 6000);
+  }
+}
+
+// --- Menu ------------------------------------------------------------------------------
+// Docking, the way back to the game and the overlay side are used now and then, so they
+// live behind the "…" button instead of taking room while playing.
+function setMenu(open) {
+  $("menu").hidden = !open;
+  $("menu-button").setAttribute("aria-expanded", String(open));
+  if (open) $("menu").querySelector("button:not([hidden])")?.focus();
+}
+
+$("menu-button").addEventListener("click", (event) => {
+  event.stopPropagation();
+  setMenu($("menu").hidden);
+});
+document.addEventListener("click", (event) => {
+  if (!$("menu").hidden && !$("menu").contains(event.target)) setMenu(false);
+});
+
 const DOCK_MODES = {
   two_screens: "Docked: panel and Claude Desktop on the second screen.",
   one_screen: "Docked: game on the left, panel and Claude Desktop on the right.",
 };
 
 async function dock() {
-  const note = $("dock-note");
-  note.classList.remove("error");
-  setText("dock-note", "Docking…");
+  setMenu(false);
+  status("Docking…", "busy");
   const result = await window.pywebview.api.dock();
   if (!result.ok) {
-    note.classList.add("error");
-    setText("dock-note", result.error);
+    status(result.error, "error");
     return;
   }
   let text = DOCK_MODES[result.mode] ?? "Docked.";
   if (!result.game_found) text += " EU4 is not running; start it in borderless windowed mode.";
-  setText("dock-note", text);
+  status(text);
   $("undock").hidden = false;
 }
 
 async function undock() {
+  setMenu(false);
   await window.pywebview.api.undock();
   $("undock").hidden = true;
-  setText("dock-note", "Windows are back where they were.");
+  status("Windows are back where they were.");
+}
+
+function closeOverlay() {
+  setMenu(false);
+  window.pywebview.api.toggle_overlay();
 }
 
 $("dock").addEventListener("click", dock);
 $("undock").addEventListener("click", undock);
+$("close-overlay").addEventListener("click", closeOverlay);
 $("refresh").addEventListener("click", load);
 $("retry").addEventListener("click", load);
 setInterval(() => lastStatus && renderMeta(lastStatus), 30_000);
-// One screen: the panel opens over the game from the floating icon (D-022), so the
-// footer offers a way back instead of the dock buttons.
+
+// The mode can change while the app runs: a second screen appearing or dropping. With
+// one screen the panel opens over the game from the floating icon (D-022), so the menu
+// offers the way back and the overlay side instead of docking.
+let overlayMode = false;
+
 async function setUpLayout() {
-  const { mode } = await window.pywebview.api.layout_mode();
-  if (mode !== "overlay") return;
-  $("dock").hidden = true;
-  $("close-overlay").hidden = false;
-  setText("dock-note", "Opened over the game. The icon or this button puts it away.");
+  const { mode, docked, side } = await window.pywebview.api.layout_mode();
+  overlayMode = mode === "overlay";
+  document.body.classList.toggle("overlay", overlayMode);
+  $("side-row").hidden = !overlayMode;
+  showSide(side);
+  $("dock").hidden = overlayMode;
+  $("undock").hidden = overlayMode || !docked;
+  $("close-overlay").hidden = !overlayMode;
 }
 
-$("close-overlay").addEventListener("click", () => window.pywebview.api.toggle_overlay());
-document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !$("close-overlay").hidden) window.pywebview.api.toggle_overlay();
+// One screen: the player picks the side the overlay opens on, to keep the part of the
+// game's interface they need in view. It does not follow the floating icon.
+function showSide(side) {
+  for (const name of ["left", "right"]) {
+    $(`side-${name}`).setAttribute("aria-pressed", String(side === name));
+  }
+}
+
+async function chooseSide(side) {
+  const result = await window.pywebview.api.set_overlay_side(side);
+  if (result.ok) showSide(result.side);
+  else status(result.error, "error");
+}
+
+$("side-left").addEventListener("click", () => chooseSide("left"));
+$("side-right").addEventListener("click", () => chooseSide("right"));
+
+window.addEventListener("layout-changed", async () => {
+  await setUpLayout();
+  setUpHotkey();
 });
 
-// Quick questions (build order step 5): Python copies the prompt and brings Claude
-// Desktop forward; the player pastes it there.
-const ASK_HINT = "Copies the question and opens Claude Desktop: paste it with Ctrl+V.";
+// Escape closes the menu first; with the menu closed it puts the overlay away.
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  if (!$("menu").hidden) {
+    setMenu(false);
+    $("menu-button").focus();
+  } else if (overlayMode) {
+    closeOverlay();
+  }
+});
 
+// --- Quick questions (build order step 5) ----------------------------------------------
+// Python copies the prompt and brings Claude Desktop forward; the player pastes it there.
 async function ask(question, button) {
-  const note = $("ask-note");
-  note.classList.remove("error");
-  setText("ask-note", "Copying…");
+  status("Copying…", "busy");
   const result = await window.pywebview.api.ask(question.id);
   for (const other of $("questions").children) other.classList.remove("sent");
   if (!result.ok) {
-    note.classList.add("error");
-    setText("ask-note", result.error);
+    status(result.error, "error");
     return;
   }
   button.classList.add("sent");
-  if (result.focused) {
-    setText("ask-note", `Copied "${question.label}". Paste it in Claude Desktop with Ctrl+V.`);
-  } else {
-    note.classList.add("error");
-    setText("ask-note", `Copied, but Claude Desktop could not be opened: ${result.error}`);
-  }
+  if (result.focused) status(`Copied "${question.label}". Paste it in Claude Desktop with Ctrl+V.`);
+  else status(`Copied, but Claude Desktop could not be opened: ${result.error}`, "error");
 }
 
 async function setUpQuestions() {
@@ -213,7 +277,7 @@ async function setUpQuestions() {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = question.label;
-    button.title = question.prompt;
+    button.title = `${question.prompt}\n\nCopies this and opens Claude Desktop: paste it with Ctrl+V.`;
     button.addEventListener("click", () => ask(question, button));
     box.append(button);
   }
@@ -221,14 +285,13 @@ async function setUpQuestions() {
 
 async function setUpHotkey() {
   const hotkey = await window.pywebview.api.hotkey();
+  const hint = $("menu-hotkey");
+  hint.hidden = !hotkey.registered;
   if (!hotkey.registered) return;
-  const overlay = !$("close-overlay").hidden;
-  const what = overlay ? "opens or closes this panel over the game" : "brings Claude Desktop forward";
-  const note = $("ask-note");
-  note.replaceChildren(`${ASK_HINT} `);
   const keys = document.createElement("kbd");
   keys.textContent = hotkey.keys;
-  note.append(keys, ` ${what}.`);
+  const what = overlayMode ? "opens or closes this panel over the game." : "brings Claude Desktop forward.";
+  hint.replaceChildren(keys, ` ${what}`);
 }
 
 async function start() {

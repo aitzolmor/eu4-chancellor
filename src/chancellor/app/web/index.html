@@ -12,15 +12,32 @@
       <h1 id="country" class="country">Chancellor</h1>
       <p id="meta" class="meta">Reading your save…</p>
     </div>
-    <button id="refresh" class="icon-button" type="button" aria-label="Read the save again" title="Read the save again">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>
-    </button>
+    <div class="header-actions">
+      <button id="refresh" class="icon-button" type="button" aria-label="Read the save again" title="Read the save again">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>
+      </button>
+      <button id="menu-button" class="icon-button" type="button" aria-label="More options" title="More options" aria-haspopup="true" aria-expanded="false" aria-controls="menu">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>
+      </button>
+    </div>
+    <!-- Actions used now and then, out of the way while playing. -->
+    <div id="menu" class="menu" hidden>
+      <button id="dock" class="menu-item" type="button">Dock beside the game</button>
+      <button id="undock" class="menu-item" type="button" hidden>Undock</button>
+      <button id="close-overlay" class="menu-item" type="button" hidden>Back to the game <kbd>Esc</kbd></button>
+      <div id="side-row" class="menu-group" hidden>
+        <span id="side-label" class="menu-label">Open the panel on the</span>
+        <div class="segmented" role="group" aria-labelledby="side-label">
+          <button id="side-left" type="button" aria-pressed="false">◀ Left</button>
+          <button id="side-right" type="button" aria-pressed="true">Right ▶</button>
+        </div>
+      </div>
+      <p id="menu-hotkey" class="menu-hint" hidden></p>
+      <p class="menu-hint">The chat runs in Claude Desktop and reads the same save.</p>
+    </div>
   </header>
 
-  <section class="chat-mode" aria-label="Chat">
-    <span class="label">Chat</span>
-    <span id="chat-mode" class="pill">Claude Desktop</span>
-  </section>
+  <p id="status" class="status" role="status" hidden></p>
 
   <main id="content" aria-live="polite">
     <section id="loading" class="state">
@@ -57,17 +74,7 @@
   <section class="ask" aria-labelledby="ask-title">
     <h2 id="ask-title" class="section-title">Ask the Chancellor</h2>
     <div id="questions" class="questions"></div>
-    <p id="ask-note" class="ask-note" aria-live="polite">Copies the question and opens Claude Desktop: paste it with Ctrl+V.</p>
   </section>
-
-  <footer class="footer">
-    <div class="dock-row">
-      <button id="dock" type="button">Dock beside the game</button>
-      <button id="undock" type="button" hidden>Undock</button>
-      <button id="close-overlay" type="button" hidden>Back to the game</button>
-    </div>
-    <p id="dock-note" class="dock-note">The chat runs in Claude Desktop and reads the same save.</p>
-  </footer>
 
   <script type="module" src="panel.js"></script>
 </body>

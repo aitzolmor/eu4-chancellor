@@ -108,8 +108,10 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
   draggable icon that opens the panel and Claude Desktop as an overlay (D-022), shown
   only while the game is in front; verified live with EU4 running as administrator; the
   icon is a native, truly round window (D-023)
-- [ ] Docking: follow a screen appearing or dropping while the app runs (docking over
-  Miracast works, verified 2026-11-14), remember the icon's position between sessions, dock automatically at start
+- [x] Docking: follow a screen appearing or dropping while the app runs, remember the
+  icon's place, let the player choose the overlay side, and move the rarely used
+  actions into a menu (D-027; docking over Miracast verified 2026-11-14)
+- [ ] Docking: dock automatically at start
 - [x] Quick questions (copy the prompt and bring Claude Desktop forward) and a
   system-wide hotkey, `Ctrl+Shift+Space` by default (D-026); verified live on two
   screens with EU4 running as administrator. Sending them to the API tab comes with

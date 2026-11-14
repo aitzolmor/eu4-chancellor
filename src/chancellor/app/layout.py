@@ -6,9 +6,9 @@ window is never moved: EU4 runs borderless at its own resolution and ignores res
 
 * With two screens the panel and Claude Desktop are **docked** on the screen the game is
   not on.
-* With one screen they form an **overlay** column on top of the game, on the side of the
-  floating icon (:mod:`chancellor.app.icon_window`), and are put away again when the
-  player closes it.
+* With one screen they form an **overlay** column on top of the game, on the side the
+  player chose (left or right), opened from the floating icon
+  (:mod:`chancellor.app.icon_window`) and put away again when the player closes it.
 
 :func:`plan_layout` decides where each window goes from the monitors alone. It is a pure
 function, so every layout rule is tested without touching real windows. :class:`Docker`
@@ -145,16 +145,65 @@ def overlay_layout(work: Rect, width: int, side: str) -> Layout:
     )
 
 
-def side_of(monitor: Monitor, rect: Rect) -> str:
-    """``left`` or ``right``: the half of the monitor holding the centre of ``rect``."""
-    centre = rect.left + rect.width // 2
-    return "left" if centre < monitor.area.left + monitor.area.width // 2 else "right"
-
-
 def monitor_at(monitors: Iterable[Monitor], rect: Rect) -> Monitor | None:
     """The monitor holding the centre of ``rect``."""
     x, y = rect.left + rect.width // 2, rect.top + rect.height // 2
     return next((m for m in monitors if m.area.contains(x, y)), None)
+
+
+@dataclass(frozen=True)
+class IconPlace:
+    """Where the player left the floating icon, kept between sessions.
+
+    Stored relative to the monitor's work area, so it survives a change of resolution
+    or scaling: ``x`` and ``y`` run from 0 (left or top edge) to 1 (right or bottom edge)
+    over the room the icon has to move in.
+
+    Attributes:
+        monitor: Windows device name of the monitor.
+        primary: Whether that monitor was the primary one (device names can change
+            when a display reconnects; the primary monitor is the fallback).
+        x: Horizontal position, 0-1.
+        y: Vertical position, 0-1.
+    """
+
+    monitor: str
+    primary: bool
+    x: float
+    y: float
+
+
+def icon_rect(monitor: Monitor, size: int, place: IconPlace) -> Rect:
+    """The icon's rectangle on ``monitor`` for a saved place.
+
+    Args:
+        monitor: Where the icon goes.
+        size: Icon size in logical pixels (scaled by the monitor's DPI).
+        place: The saved place; positions outside 0-1 are clamped onto the screen.
+    """
+    work = monitor.work
+    scaled = round(size * monitor.dpi / 96)
+    room_x, room_y = max(work.width - scaled, 0), max(work.height - scaled, 0)
+    x, y = min(max(place.x, 0.0), 1.0), min(max(place.y, 0.0), 1.0)
+    return Rect(work.left + round(x * room_x), work.top + round(y * room_y), scaled, scaled)
+
+
+def icon_place(monitor: Monitor, rect: Rect) -> IconPlace:
+    """The saved form of the icon's rectangle on ``monitor`` (inverse of :func:`icon_rect`)."""
+    work = monitor.work
+    room_x, room_y = max(work.width - rect.width, 1), max(work.height - rect.height, 1)
+    x = min(max((rect.left - work.left) / room_x, 0.0), 1.0)
+    y = min(max((rect.top - work.top) / room_y, 0.0), 1.0)
+    return IconPlace(monitor.name, monitor.primary, round(x, 4), round(y, 4))
+
+
+def saved_monitor(monitors: Iterable[Monitor], place: IconPlace) -> Monitor | None:
+    """The monitor a saved place refers to: by name, else the primary if it was primary."""
+    monitors = list(monitors)
+    by_name = next((m for m in monitors if m.name == place.monitor), None)
+    if by_name is not None:
+        return by_name
+    return next((m for m in monitors if m.primary), None) if place.primary else None
 
 
 # --- Win32 -------------------------------------------------------------------------------
@@ -254,12 +303,18 @@ class Docker:
             self._api.restore(state)
         self._saved = []
 
-    def icon_home(self, size: int) -> Rect:
-        """Where the floating icon first appears: right edge of the game's screen, mid-height.
+    def icon_home(self, size: int, saved: IconPlace | None = None) -> Rect:
+        """Where the floating icon first appears.
 
-        ``size`` is in logical pixels; the returned rectangle is in physical pixels.
+        Where the player left it last time, if that monitor is still there; otherwise
+        the right edge of the game's screen, mid-height. ``size`` is in logical pixels;
+        the returned rectangle is in physical pixels.
         """
         monitors = self._api.monitors()
+        if saved is not None:
+            monitor = saved_monitor(monitors, saved)
+            if monitor is not None:
+                return icon_rect(monitor, size, saved)
         game = self._api.find_window(exe=GAME_EXE)
         home = (monitor_at(monitors, self._api.window_rect(game)) if game else None) or next(
             (m for m in monitors if m.primary), monitors[0]
@@ -274,24 +329,26 @@ class Docker:
         title: str,
         stop: threading.Event,
         keep_visible: Callable[[], bool] = lambda: False,
+        allowed: Callable[[], bool] = lambda: True,
     ) -> None:
         """Show the floating icon only while it is useful, until ``stop`` is set.
 
         It is visible when the game is the active window (or the game is not running),
         when one of this app's windows is active, or while ``keep_visible`` says so (the
         overlay is open). Otherwise it is hidden, so it does not float over the browser
-        when the game is minimised.
+        when the game is minimised. While ``allowed`` says no (two screens, where the
+        panel is docked instead) it stays hidden.
         """
         icon: int | None = None
         while icon is None and not stop.wait(0.05):  # the window appears after loading
-            icon = self._api.find_window(pid=os.getpid(), title=title)
+            icon = self._api.find_window(pid=os.getpid(), title=title, visible_only=False)
         if icon is None:
             return
-        shown = True
+        shown = self._api.is_visible(icon)
         while not stop.wait(0.15):
             if not self._api.is_window(icon):
                 return
-            wanted = keep_visible() or self._game_in_front()
+            wanted = allowed() and (keep_visible() or self._game_in_front())
             if wanted != shown:
                 self._api.set_visible(icon, wanted)
                 shown = wanted
@@ -314,6 +371,15 @@ class Docker:
             time.sleep(0.02)
         return False
 
+    def icon_place(self, title: str) -> IconPlace | None:
+        """Where the floating icon is now, in the form saved between sessions."""
+        icon = self._api.find_window(pid=os.getpid(), title=title, visible_only=False)
+        if icon is None:
+            return None
+        rect = self._api.window_rect(icon)
+        monitor = monitor_at(self._api.monitors(), rect)
+        return icon_place(monitor, rect) if monitor else None
+
     def focus_chat(self) -> None:
         """Bring Claude Desktop to the front and give it the keyboard.
 
@@ -333,15 +399,6 @@ class Docker:
         icon = self._api.find_window(pid=os.getpid(), title=title)
         if icon is not None:
             self._api.bring_to_top(icon)
-
-    def icon_side(self, title: str) -> str:
-        """``left`` or ``right``: the half of its screen the floating icon is on."""
-        icon = self._api.find_window(pid=os.getpid(), title=title)
-        if icon is None:
-            return "right"
-        rect = self._api.window_rect(icon)
-        monitor = monitor_at(self._api.monitors(), rect)
-        return side_of(monitor, rect) if monitor else "right"
 
 
 class _Win32:
@@ -437,15 +494,22 @@ class _Win32:
 
     # windows
     def find_window(
-        self, exe: str | None = None, pid: int | None = None, title: str | None = None
+        self,
+        exe: str | None = None,
+        pid: int | None = None,
+        title: str | None = None,
+        visible_only: bool = True,
     ) -> int | None:
-        """The largest visible top-level window matching the process and title."""
+        """The largest top-level window matching the process and title.
+
+        Only visible windows count, unless ``visible_only`` is off.
+        """
         wt = self.wintypes
         matches: list[tuple[int, int]] = []
 
         @ctypes.WINFUNCTYPE(wt.BOOL, wt.HWND, wt.LPARAM)
         def callback(hwnd: Any, _data: Any) -> bool:
-            if not self.user32.IsWindowVisible(hwnd):
+            if visible_only and not self.user32.IsWindowVisible(hwnd):
                 return True
             length = self.user32.GetWindowTextLengthW(hwnd)
             if length == 0:
@@ -538,6 +602,10 @@ class _Win32:
     def exe_name(self, pid: int) -> str:
         """Lower-case executable name of a process, or an empty string."""
         return self._exe_name(pid)
+
+    def is_visible(self, hwnd: int) -> bool:
+        """Whether a window is shown."""
+        return bool(self.user32.IsWindowVisible(hwnd))
 
     def is_window(self, hwnd: int) -> bool:
         """Whether the handle still names a window."""

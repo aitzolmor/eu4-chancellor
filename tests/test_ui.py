@@ -106,12 +106,12 @@ class _Window:
         self.calls.append(f"set_open {open_}")
 
 
-def test_layout_mode_follows_the_windows():
+def test_layout_mode_follows_the_mode():
     api = PanelApi(_Provider())
     api._attach(panel=_Window())
-    assert api.layout_mode() == {"mode": "two_screens"}
-    api._attach(icon=_Window())
-    assert api.layout_mode() == {"mode": "overlay"}
+    assert api.layout_mode() == {"mode": "two_screens", "docked": False, "side": "right"}
+    api._mode = "overlay"
+    assert api.layout_mode() == {"mode": "overlay", "docked": False, "side": "right"}
 
 
 def test_overlay_needs_the_panel_window():
@@ -133,12 +133,27 @@ def test_quit_closes_every_window_off_the_calling_thread():
 
 
 def test_closing_the_panel_in_overlay_mode_only_puts_it_away():
-    from chancellor.app.ui import _put_away_instead
+    from chancellor.app.ui import _on_closing
 
     api = PanelApi(_Provider())
-    assert _put_away_instead(api) is False  # the close is cancelled
+    api._mode = "overlay"
+    assert _on_closing(api) is False  # the close is cancelled
     api._quitting = True
-    assert _put_away_instead(api) is True  # unless the app is quitting
+    assert _on_closing(api) is True  # unless the app is quitting
+
+
+def test_closing_the_panel_on_two_screens_quits():
+    from chancellor.app.ui import _on_closing
+
+    icon = _Window()
+    docker = _ScreenDocker(docked=True)
+    api = PanelApi(_Provider())
+    api._docker = docker
+    api._attach(panel=_Window(), icon=icon)
+    assert _on_closing(api) is True
+    assert api._quitting and api._stop_icon.is_set()
+    assert icon.calls == ["destroy"]
+    assert docker.calls == ["undock"]
 
 
 class _Docker:
@@ -214,3 +229,116 @@ def test_hotkey_brings_claude_desktop_forward_on_two_screens():
     api._attach(panel=_Window())
     api._on_hotkey()
     assert api._docker.focused == 1
+
+
+class _ScreenDocker:
+    """Stands in for layout.Docker when screens come and go."""
+
+    def __init__(self, docked: bool = False) -> None:
+        self.docked = docked
+        self.calls: list[str] = []
+
+    def undock(self) -> None:
+        self.calls.append("undock")
+        self.docked = False
+
+    def dock(self, side: str = "right") -> dict:
+        self.calls.append("dock")
+        self.docked = True
+        return {"mode": "two_screens", "game_found": True}
+
+
+def test_second_screen_dropping_switches_to_the_overlay():
+    from chancellor.app.ui import LAYOUT_CHANGED_SCRIPT
+
+    panel, icon = _Window(), _Window()
+    docker = _ScreenDocker(docked=True)
+    api = PanelApi(_Provider())
+    api._docker = docker
+    api._attach(panel=panel, icon=icon)
+
+    api._set_screens(1)
+    assert api._mode == "overlay"
+    assert docker.calls == ["undock"]  # docked windows go back where they were
+    assert panel.calls == ["hide", LAYOUT_CHANGED_SCRIPT]
+    assert icon.calls == ["set_open False"]
+
+    api._set_screens(1)  # no change, nothing happens
+    assert panel.calls == ["hide", LAYOUT_CHANGED_SCRIPT]
+
+
+def test_second_screen_returning_docks_again_if_it_was_docked():
+    from chancellor.app.ui import LAYOUT_CHANGED_SCRIPT
+
+    panel = _Window()
+    docker = _ScreenDocker(docked=True)
+    api = PanelApi(_Provider())
+    api._docker = docker
+    api._attach(panel=panel, icon=_Window())
+    api._set_screens(1)
+    panel.calls.clear()
+
+    api._set_screens(2)
+    assert api._mode == "two_screens"
+    assert docker.calls == ["undock", "dock"]
+    assert panel.calls == ["show", LAYOUT_CHANGED_SCRIPT]
+    assert api.layout_mode() == {"mode": "two_screens", "docked": True, "side": "right"}
+
+
+def test_second_screen_returning_leaves_an_undocked_panel_alone():
+    docker = _ScreenDocker(docked=False)
+    api = PanelApi(_Provider())
+    api._docker = docker
+    api._attach(panel=_Window(), icon=_Window())
+    api._set_screens(1)
+    api._set_screens(2)
+    assert docker.calls == []
+
+
+def test_page_follows_layout_changes():
+    script = (WEB_DIR / "panel.js").read_text(encoding="utf-8")
+    assert 'addEventListener("layout-changed"' in script
+
+
+class _SideDocker:
+    """Stands in for layout.Docker while the overlay is open."""
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    def dock(self, side: str = "right") -> dict:
+        self.calls.append(f"dock {side}")
+        return {"mode": "overlay", "game_found": True}
+
+    def raise_icon(self, title: str) -> None:
+        self.calls.append("raise_icon")
+
+
+def test_overlay_side_is_the_players_choice_and_is_remembered():
+    from chancellor.app.state import load_overlay_side
+
+    api = PanelApi(_Provider())
+    assert api.set_overlay_side("left") == {"ok": True, "side": "left"}
+    assert api.layout_mode()["side"] == "left"
+    assert load_overlay_side() == "left"
+    assert api.set_overlay_side("top") == {"ok": False, "error": "Unknown side 'top'."}
+    assert api.layout_mode()["side"] == "left"
+
+
+def test_an_open_overlay_moves_to_the_chosen_side_at_once():
+    docker = _SideDocker()
+    api = PanelApi(_Provider())
+    api._docker = docker
+    api._overlay_open = True
+    api.set_overlay_side("left")
+    assert docker.calls == ["dock left", "raise_icon"]
+
+
+def test_the_overlay_does_not_follow_the_icon():
+    import inspect
+
+    from chancellor.app.ui import PanelApi as Api
+
+    source = inspect.getsource(Api.toggle_overlay)
+    assert "docker.dock(side=self._side)" in source
+    assert "icon_side" not in source

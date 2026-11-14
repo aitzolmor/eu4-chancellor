@@ -35,7 +35,7 @@ it to the clipboard, ready to paste into any chat.
 - [x] `app.cli`: `summary` command with `--save`, `--copy`, `--output`, `--language`
 - [x] Unit tests against fixtures; checked on all 23 local saves (≤2.6 s, ≤1.2k tokens)
 - [ ] Income/expense breakdown by category
-- [ ] Advisors and generals in the briefing
+- [x] Advisors and generals in the briefing (with the monarch power section, D-029)
 
 ## Phase 2 — Query tools
 
@@ -127,6 +127,15 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
   declare war with a casus belli" (always true). Needs game knowledge in the prompt or
   the tools (technology costs, what points are worth), more tools per question, or a
   higher effort; measure it with the evaluation set above
+  - [x] Game mechanics computed in the tools (D-029): the briefing says what monarch
+    power buys (technology costs with their parts, matching the game's tooltip exactly
+    for Austria in 1483; ideas, stability, generals), the monthly gain, the months to
+    each technology, leaders and advisors
+  - [ ] More mechanics where advice went wrong: development cost, coring cost, the AE a
+    conquest adds; technology cost changes from idea bonuses, policies, reforms and
+    estate privileges
+  - [ ] Strategy knowledge: the wiki as a searchable source (`search_wiki`)
+  - [ ] Player feedback on answers (thumbs up or down with a note) to find bad advice
 
 ### Play-test findings (2026-11-13, Austria 1475 save, through the MCP tools)
 

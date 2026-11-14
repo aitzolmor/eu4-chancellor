@@ -14,9 +14,11 @@ from dataclasses import dataclass
 from typing import Any
 
 from chancellor.context.campaign import Campaign, as_list, count_regiments, land_armies
+from chancellor.context.power import power_report, render_power
 from chancellor.game.imperial_reforms import IMPERIAL_REFORM_COST, ImperialReformLibrary
 from chancellor.game.localisation import Localisation
 from chancellor.game.modifiers import format_effect
+from chancellor.game.power_rules import PowerRules
 from chancellor.save.loader import RawSave
 from chancellor.save.parser import get_all
 
@@ -43,6 +45,7 @@ class _Context:
     tag: str
     country: dict[str, Any]
     reforms: ImperialReformLibrary | None = None
+    power_rules: PowerRules | None = None
 
     @property
     def date(self) -> str:
@@ -81,7 +84,10 @@ def summarize_save(raw: RawSave, loc: Localisation | None = None, tag: str | Non
 
 
 def summarize(
-    campaign: Campaign, tag: str | None = None, reforms: ImperialReformLibrary | None = None
+    campaign: Campaign,
+    tag: str | None = None,
+    reforms: ImperialReformLibrary | None = None,
+    power_rules: PowerRules | None = None,
 ) -> str:
     """Produce a briefing of a country and its surroundings.
 
@@ -90,6 +96,8 @@ def summarize(
         tag: Country to describe. Defaults to the player.
         reforms: Imperial reforms from the game files; when given, the Holy Roman Empire
             section also shows the next reform and what it grants.
+        power_rules: Monarch power cost rules from the game files; when given, the
+            briefing says what the country's points buy and how fast they come (D-029).
 
     Returns:
         Markdown briefing.
@@ -101,7 +109,9 @@ def summarize(
     country = campaign.country(tag)
     if country is None:
         raise KeyError(f"Country {tag} is not in the save")
-    ctx = _Context(campaign=campaign, tag=tag, country=country, reforms=reforms)
+    ctx = _Context(
+        campaign=campaign, tag=tag, country=country, reforms=reforms, power_rules=power_rules
+    )
 
     sections = [
         _header(ctx),
@@ -111,6 +121,7 @@ def summarize(
         _military(ctx),
         _territory(ctx),
         _progress(ctx),
+        _power(ctx),
         _estates(ctx),
         _diplomacy(ctx),
         _aggressive_expansion(ctx),
@@ -269,6 +280,13 @@ def _monarch_power(powers: Any) -> str | None:
     if len(values) != 3:
         return None
     return "/".join(str(v) for v in values)
+
+
+def _power(ctx: _Context) -> str | None:
+    """What the country's monarch points buy, when the game's cost rules are known."""
+    if ctx.power_rules is None:
+        return None
+    return render_power(power_report(ctx.campaign, ctx.power_rules, ctx.tag))
 
 
 def _estates(ctx: _Context) -> str:

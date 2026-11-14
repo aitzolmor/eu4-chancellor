@@ -24,6 +24,7 @@ from chancellor.context.war_check import check_war, render_war_check
 from chancellor.context.world import render_world, world_overview
 from chancellor.game.ae_rules import AeRules
 from chancellor.game.decisions import DecisionLibrary
+from chancellor.game.development_rules import DevelopmentRules
 from chancellor.game.imperial_reforms import ImperialReformLibrary
 from chancellor.game.missions import MissionLibrary
 from chancellor.game.modifiers import ModifierLibrary
@@ -48,7 +49,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "military, territory and overextension, technology and ideas, monarch power "
             "with what it buys (estimated cost of the next technology in each category with "
             "its parts, ideas, stability, generals; monthly gain; months until each next "
-            "technology; leaders and advisors), "
+            "technology; leaders and advisors; what developing its provinces costs, "
+            "cheapest first), "
             "estates, diplomacy, aggressive expansion held against it (who is near or in a "
             "coalition), its place in the Holy Roman Empire (with the next imperial reform), "
             "wars and the countries around "
@@ -201,8 +203,13 @@ class Toolbox:
 
     def _get_country_briefing(self, args: dict[str, Any]) -> str:
         tag = self._tag(args.get("country"))
+        development = (self._development_rules, self._rules) if self.game_dir else None
         return summarize(
-            self.campaign, tag, reforms=self._imperial_reforms, power_rules=self._power_rules
+            self.campaign,
+            tag,
+            reforms=self._imperial_reforms,
+            power_rules=self._power_rules,
+            development=development,
         )
 
     def _check_war(self, args: dict[str, Any]) -> str:
@@ -264,6 +271,10 @@ class Toolbox:
     @cached_property
     def _modifiers(self) -> ModifierLibrary:
         return ModifierLibrary.load(self._game_dir())
+
+    @cached_property
+    def _development_rules(self) -> DevelopmentRules:
+        return DevelopmentRules.load(self._game_dir())
 
     @cached_property
     def _ae_rules(self) -> AeRules:

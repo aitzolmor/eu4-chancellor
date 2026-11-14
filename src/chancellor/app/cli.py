@@ -21,6 +21,7 @@ from chancellor.context.world import render_world, world_overview
 from chancellor.game.ae_rules import AeRules
 from chancellor.game.cache import cache_dir, clear_cache
 from chancellor.game.decisions import DecisionLibrary
+from chancellor.game.development_rules import DevelopmentRules
 from chancellor.game.imperial_reforms import ImperialReformLibrary
 from chancellor.game.localisation import Localisation, detect_language
 from chancellor.game.missions import MissionLibrary
@@ -200,7 +201,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             settings = load_settings()
             campaign, save_path = _load_campaign(args, settings)
             briefing = summarize(
-                campaign, reforms=_imperial_reforms(settings), power_rules=_power_rules(settings)
+                campaign,
+                reforms=_imperial_reforms(settings),
+                power_rules=_power_rules(settings),
+                development=_development(settings),
             )
             return _emit(args, briefing, f"Briefing for {save_path.name}")
         if args.command == "country":
@@ -212,6 +216,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 tag,
                 reforms=_imperial_reforms(settings),
                 power_rules=_power_rules(settings),
+                development=_development(settings),
             )
             return _emit(args, briefing, f"Briefing of {campaign.label(tag)}")
         if args.command == "war-check":
@@ -325,6 +330,13 @@ def main(argv: Sequence[str] | None = None) -> int:
 def _imperial_reforms(settings: Settings) -> ImperialReformLibrary | None:
     """Imperial reforms for briefings, or ``None`` without the game files."""
     return ImperialReformLibrary.load(settings.game_dir) if settings.game_dir else None
+
+
+def _development(settings: Settings) -> tuple[DevelopmentRules, GameRules] | None:
+    """Development cost rules for briefings, or ``None`` without the game files."""
+    if settings.game_dir is None:
+        return None
+    return DevelopmentRules.load(settings.game_dir), GameRules.load(settings.game_dir)
 
 
 def _power_rules(settings: Settings) -> PowerRules | None:

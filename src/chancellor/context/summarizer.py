@@ -14,11 +14,14 @@ from dataclasses import dataclass
 from typing import Any
 
 from chancellor.context.campaign import Campaign, as_list, count_regiments, land_armies
+from chancellor.context.development import development_costs, render_development
 from chancellor.context.power import power_report, render_power
+from chancellor.game.development_rules import DevelopmentRules
 from chancellor.game.imperial_reforms import IMPERIAL_REFORM_COST, ImperialReformLibrary
 from chancellor.game.localisation import Localisation
 from chancellor.game.modifiers import format_effect
 from chancellor.game.power_rules import PowerRules
+from chancellor.game.rules import GameRules
 from chancellor.save.loader import RawSave
 from chancellor.save.parser import get_all
 
@@ -46,6 +49,7 @@ class _Context:
     country: dict[str, Any]
     reforms: ImperialReformLibrary | None = None
     power_rules: PowerRules | None = None
+    development: tuple[DevelopmentRules, GameRules] | None = None
 
     @property
     def date(self) -> str:
@@ -88,6 +92,7 @@ def summarize(
     tag: str | None = None,
     reforms: ImperialReformLibrary | None = None,
     power_rules: PowerRules | None = None,
+    development: tuple[DevelopmentRules, GameRules] | None = None,
 ) -> str:
     """Produce a briefing of a country and its surroundings.
 
@@ -98,6 +103,8 @@ def summarize(
             section also shows the next reform and what it grants.
         power_rules: Monarch power cost rules from the game files; when given, the
             briefing says what the country's points buy and how fast they come (D-029).
+        development: Development cost rules and the game's geography; when given, the
+            monarch power section also says what developing its provinces costs (D-031).
 
     Returns:
         Markdown briefing.
@@ -110,7 +117,12 @@ def summarize(
     if country is None:
         raise KeyError(f"Country {tag} is not in the save")
     ctx = _Context(
-        campaign=campaign, tag=tag, country=country, reforms=reforms, power_rules=power_rules
+        campaign=campaign,
+        tag=tag,
+        country=country,
+        reforms=reforms,
+        power_rules=power_rules,
+        development=development,
     )
 
     sections = [
@@ -286,7 +298,16 @@ def _power(ctx: _Context) -> str | None:
     """What the country's monarch points buy, when the game's cost rules are known."""
     if ctx.power_rules is None:
         return None
-    return render_power(power_report(ctx.campaign, ctx.power_rules, ctx.tag))
+    text = render_power(power_report(ctx.campaign, ctx.power_rules, ctx.tag))
+    if ctx.development is not None:
+        rules, geography = ctx.development
+        costs = development_costs(ctx.campaign, rules, geography, ctx.tag)
+        line = render_development(costs, ctx.country.get("capital"))
+        if line:
+            # Before the closing note in italics.
+            body, _, note = text.rpartition("\n\n_")
+            text = f"{body}\n{line}\n\n_{note}" if body else f"{text}\n{line}"
+    return text
 
 
 def _estates(ctx: _Context) -> str:

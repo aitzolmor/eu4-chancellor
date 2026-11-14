@@ -26,7 +26,7 @@ from chancellor import __version__
 T = TypeVar("T")
 
 # Bump when the shape of cached objects changes in a way the version would not catch.
-CACHE_FORMAT = 1
+CACHE_FORMAT = 2  # 2: areas with a colour lost their provinces before
 _SUFFIX = ".pickle"
 
 

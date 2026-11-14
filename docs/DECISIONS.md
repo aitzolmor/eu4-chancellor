@@ -515,3 +515,36 @@ next war, the way D-029 was checked against tooltips.
 To measure distances cheaply, `Campaign.province_owners` reads every province's owner
 with a regular expression instead of parsing the provinces; an estimate takes about
 three seconds. The expansion targets do not run it for every owner yet, for that cost.
+
+## D-031 — Development costs from the map and the game's own tooltips
+
+**Date:** 2026-11-14 · **Status:** Accepted
+
+The briefing now lists what developing each of the country's provinces costs, cheapest
+first (`context.development`). The cost is 50 points times one plus its parts: the
+capital's discount, embraced institutions, the golden bull of the papacy's religion,
+passed imperial reforms, country and province modifiers, the centre of trade (level 2
+for the province, level 3 for its whole state), terrain, climate, prosperity, the
+development already there, corruption and innovativeness. The game floors the result.
+
+Terrain is not in the save, and it matters (mountains +35%, hills +25%). It is read
+from the map as the game does (`game.terrain`): the category covering most of each
+province's pixels in `terrain.bmp`, matched to `provinces.bmp` through `definition.csv`,
+unless `terrain.txt` fixes it. Every second pixel in each direction is sampled; the
+result takes about five seconds and is cached until the game files change.
+
+Three rules are not in the files and were read off the tooltips for Austria in 1483:
+the base of 50, the capital's discount of 0.05% per point of the country's development
+(cut to a thousandth), and the growth with development already there, +3% a point from
+10 and +6% from 20. Growth above 30 is assumed to rise by another 3% every ten points;
+it was not seen. The golden bull applies to every country of the papacy's religion,
+not only the papal controller (Austria had it while Castile controlled the Curia). The
+result matches the tooltips: Vienna 59, Ostmark 53, Tirol 56.
+
+Reading the areas for prosperity exposed a parser gap: areas written with a colour lost
+their provinces (50 areas, and every region built from them). Fixing it made the
+expansion targets' region counts complete (Iberia 62 provinces, not 54; Germany's
+formable region 145, not 119); the cache format was bumped.
+
+Coring cost waits for a tooltip: the one province without a core was already being
+cored, and the game shows no cost breakdown then.

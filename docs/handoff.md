@@ -1,11 +1,11 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
-updated on **2026-11-14** after the second play-test (PRs #1–#38 merged;
-472 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
+updated on **2026-11-14** after the second play-test (PRs #1–#39 merged;
+481 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-030),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-031),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -201,6 +201,10 @@ The full reasoning is in [DECISIONS.md](DECISIONS.md).
   colour keys do not help. Anything that must not be rectangular is a native layered
   window (D-023). Check such claims by sampling screen pixels with and without the
   window (`GetPixel` on the screen DC), as was done here.
+- **Areas with a colour.** In `map/area.txt` some areas start with `color = { ... }`;
+  the parser then keeps the bare province ids under the empty key `""`. `_geography`
+  dropped them until D-031, so 50 areas (Austria's own among them) and every region built
+  from them were short of provinces. `CACHE_FORMAT` was bumped so old caches rebuild.
 - **Checking game mechanics.** The game's tooltips show the exact figure and its parts
   (technology cost, monthly power, leader pool), and the user can read them without
   knowing strategy. That is how D-029 was calibrated: a level's year is the block after
@@ -252,9 +256,9 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
    computed in the tools (D-029, monarch power; D-030, AE of a conquest). **Check D-030
    in the user's next war**: the peace screen shows the AE of each demanded province;
    compare with `war-check` for that enemy (the distance falloff and the reach are the
-   wiki's 1.24 rules). Next: more mechanics where advice goes wrong (development cost,
-   which needs each province's terrain from the map images; coring cost), then the wiki
-   as a searchable source,
+   wiki's 1.24 rules). Development cost is done too (D-031, matches the tooltips).
+   **Coring cost** waits for a tooltip at the user's next conquest. Then the wiki as a
+   searchable source,
    then player feedback on answers. The user is no expert, so validate numbers against
    the game's tooltips (they can read those), not strategy. Any live API check needs
    the user's go-ahead; mind the 5 EUR balance.

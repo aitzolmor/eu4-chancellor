@@ -1,11 +1,11 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
-updated on **2026-11-14** after the second play-test (PRs #1–#33 merged;
-405 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
+updated on **2026-11-14** after the second play-test (PRs #1–#34 merged;
+422 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-025),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-026),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -75,7 +75,8 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
      D-021); steps 1-4 are built: the panel window (`chancellor app`), the save
      watcher with live refresh, alerts, and docking: on two screens, or a floating icon
      with an overlay on one (D-022), both verified live (docking also over
-     Miracast). Next is step 5, quick questions.
+     Miracast), and step 5, quick questions and a hotkey (D-026). Next is step 6,
+     the API chat tab behind the player's switch (D-020).
 5. **Later phases:**
    - goal-based watches, goals and a campaign journal for the panel (an idea, recorded
      in ROADMAP under *Ideas / later*; not scheduled);
@@ -172,6 +173,8 @@ The full reasoning is in [DECISIONS.md](DECISIONS.md).
   active, though the cursor position and clicks on our own windows still arrived. The
   floating icon's page reports press and release for that reason (D-022). Check with a
   token query (`TokenElevation`) when input behaves differently with the game in front.
+  `RegisterHotKey` is not affected: the panel's hotkey works with the elevated game in
+  front (verified 2026-11-14).
 - **EU4 ignores outside resizing.** `SetWindowPos` on its borderless SDL window changes
   nothing; never plan a layout that needs the game to shrink.
 - **Win32 handles from ctypes.** `HWND_TOPMOST` is `-1` and must reach `SetWindowPos`
@@ -222,11 +225,10 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
 1. **Every second play-test finding is fixed** (coalition risk D-024, ally reliability
    D-025, checklists, formables, display). Still open: estimating the AE a conquest
    would add (ROADMAP). A third play-test can wait for a later save.
-2. **Desktop app, build order step 5** ([UI_DESIGN](UI_DESIGN.md)): quick questions
-   (copy a question to the clipboard and bring Claude Desktop to the front) and a hotkey
-   for the overlay; then follow screens appearing or dropping while the app runs and
-   remember the icon's position. The API chat mode stays off unless the player switches
-   it on (D-020).
+2. **Desktop app:** step 5 (quick questions, hotkey) is done (D-026). Next: follow
+   screens appearing or dropping while the app runs and remember the icon's position;
+   then step 6, the API chat tab. The API chat mode stays off unless the player
+   switches it on (D-020).
 3. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
    with the answers given through MCP.
 4. Remaining data gaps (casus belli, income breakdown, advisors and generals), or the

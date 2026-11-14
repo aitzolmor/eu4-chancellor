@@ -181,8 +181,60 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !$("close-overlay").hidden) window.pywebview.api.toggle_overlay();
 });
 
-function start() {
-  setUpLayout();
+// Quick questions (build order step 5): Python copies the prompt and brings Claude
+// Desktop forward; the player pastes it there.
+const ASK_HINT = "Copies the question and opens Claude Desktop: paste it with Ctrl+V.";
+
+async function ask(question, button) {
+  const note = $("ask-note");
+  note.classList.remove("error");
+  setText("ask-note", "Copying…");
+  const result = await window.pywebview.api.ask(question.id);
+  for (const other of $("questions").children) other.classList.remove("sent");
+  if (!result.ok) {
+    note.classList.add("error");
+    setText("ask-note", result.error);
+    return;
+  }
+  button.classList.add("sent");
+  if (result.focused) {
+    setText("ask-note", `Copied "${question.label}". Paste it in Claude Desktop with Ctrl+V.`);
+  } else {
+    note.classList.add("error");
+    setText("ask-note", `Copied, but Claude Desktop could not be opened: ${result.error}`);
+  }
+}
+
+async function setUpQuestions() {
+  const { questions } = await window.pywebview.api.quick_questions();
+  const box = $("questions");
+  box.replaceChildren();
+  for (const question of questions) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = question.label;
+    button.title = question.prompt;
+    button.addEventListener("click", () => ask(question, button));
+    box.append(button);
+  }
+}
+
+async function setUpHotkey() {
+  const hotkey = await window.pywebview.api.hotkey();
+  if (!hotkey.registered) return;
+  const overlay = !$("close-overlay").hidden;
+  const what = overlay ? "opens or closes this panel over the game" : "brings Claude Desktop forward";
+  const note = $("ask-note");
+  note.replaceChildren(`${ASK_HINT} `);
+  const keys = document.createElement("kbd");
+  keys.textContent = hotkey.keys;
+  note.append(keys, ` ${what}.`);
+}
+
+async function start() {
+  await setUpLayout();
+  setUpQuestions();
+  setUpHotkey();
   load();
 }
 

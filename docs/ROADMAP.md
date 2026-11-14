@@ -108,10 +108,12 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
   draggable icon that opens the panel and Claude Desktop as an overlay (D-022), shown
   only while the game is in front; verified live with EU4 running as administrator; the
   icon is a native, truly round window (D-023)
-- [ ] Docking: try it over Miracast, follow a screen appearing or dropping while the app
-  runs, remember the icon's position between sessions, dock automatically at start
-- [ ] Quick questions (copy to Claude Desktop, or send to the API tab) and a hotkey for
-  the overlay
+- [ ] Docking: follow a screen appearing or dropping while the app runs (docking over
+  Miracast works, verified 2026-11-14), remember the icon's position between sessions, dock automatically at start
+- [x] Quick questions (copy the prompt and bring Claude Desktop forward) and a
+  system-wide hotkey, `Ctrl+Shift+Space` by default (D-026); verified live on two
+  screens with EU4 running as administrator. Sending them to the API tab comes with
+  that tab
 - [ ] API chat tab behind the player's chat-mode switch (D-020), with a session counter of
   questions and tokens; conversation history within a session
 - [ ] Evaluation set of real questions with expected reasoning

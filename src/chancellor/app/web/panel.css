@@ -131,6 +131,28 @@ main {
 .cell dd.positive, .positive { color: #9cc58a; }
 .cell dd.negative, .negative { color: var(--danger); }
 
+.ask { display: flex; flex-direction: column; gap: 8px; }
+.ask .section-title { margin-bottom: 0; }
+.questions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.questions button {
+  font-size: 13px;
+  text-align: left;
+  padding: 8px 10px;
+  line-height: 1.3;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.questions button.sent { border-color: var(--accent); background: var(--accent-soft); }
+.ask-note { margin: 0; color: var(--text-muted); font-size: 12px; }
+.ask-note.error { color: var(--danger); }
+.ask-note kbd {
+  font: inherit;
+  padding: 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+
 .footer { color: var(--text-muted); font-size: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
 .dock-row { display: flex; gap: 8px; }
 .dock-row button { flex: 1; font-size: 13px; }

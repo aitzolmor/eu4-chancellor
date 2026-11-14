@@ -375,3 +375,22 @@ opinion +4)"). The opinion is the save's `cached_sum` in the ally's `active_rela
 `trust_value` is omitted at the default of 50. The same rule applies to the defender's
 allies. The thresholds are a heuristic: the AI also weighs the war's odds, its own wars
 and its debts, which are not modelled.
+
+## D-026 — Quick questions copy a prompt; a system-wide hotkey opens the Chancellor
+
+**Date:** 2026-11-14 · **Status:** Accepted
+
+The panel's quick questions copy a full prompt to the clipboard and bring Claude Desktop
+to the front; the player pastes it (Ctrl+V) and sends it. The app does not type into
+Claude Desktop itself: simulated keystrokes would land wherever the focus happens to be
+and could send a half-written message, while one paste keeps the player in control.
+The prompts name what to look at ("expansion targets, war odds and coalition risk"),
+so Claude picks the right MCP tools first time. They are in English like the rest of
+the repository; Claude answers in the language the player writes in.
+
+A system-wide shortcut, `Ctrl+Shift+Space` by default (`CHANCELLOR_HOTKEY` in `.env`),
+opens and closes the overlay on one screen and brings Claude Desktop forward on two. It
+is registered with `RegisterHotKey` on a thread with its own message loop, which
+delivers `WM_HOTKEY` whichever window is in front: it works while EU4 runs as
+administrator, unlike reading the input state (D-022). A registered hotkey is taken
+before the game sees it, so a player who uses that combination in game can pick another.

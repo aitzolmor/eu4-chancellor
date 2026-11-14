@@ -314,6 +314,20 @@ class Docker:
             time.sleep(0.02)
         return False
 
+    def focus_chat(self) -> None:
+        """Bring Claude Desktop to the front and give it the keyboard.
+
+        Windows only lets the process that received the last input make another window
+        active; a click in the panel or the app's hotkey counts.
+
+        Raises:
+            DockError: If Claude Desktop is not running.
+        """
+        chat = self._api.find_window(exe=CLAUDE_EXE)
+        if chat is None:
+            raise DockError("Open Claude Desktop first, then try again.")
+        self._api.activate(chat)
+
     def raise_icon(self, title: str) -> None:
         """Keep the floating icon above the overlay column, so it can close it again."""
         icon = self._api.find_window(pid=os.getpid(), title=title)
@@ -373,6 +387,7 @@ class _Win32:
             "GetWindowLongW": ([hwnd, i], ctypes.c_long),
             "GetClientRect": ([hwnd, ctypes.POINTER(wintypes.RECT)], wintypes.BOOL),
             "GetForegroundWindow": ([], hwnd),
+            "SetForegroundWindow": ([hwnd], wintypes.BOOL),
         }
         for name, (arguments, result) in signatures.items():
             function = getattr(self.user32, name)
@@ -532,6 +547,12 @@ class _Win32:
         """Put a window at the top of the always-on-top windows, without activating it."""
         flags = self.SWP_NOMOVE | self.SWP_NOSIZE | self.SWP_NOACTIVATE
         self.user32.SetWindowPos(hwnd, self.HWND_TOPMOST, 0, 0, 0, 0, flags)
+
+    def activate(self, hwnd: int) -> None:
+        """Restore a window if minimised, then make it the active window."""
+        if self.user32.IsIconic(hwnd):
+            self.user32.ShowWindow(hwnd, self.SW_RESTORE)
+        self.user32.SetForegroundWindow(hwnd)
 
     def send_to_back(self, hwnd: int) -> None:
         """Drop a window behind every other one (behind the game)."""

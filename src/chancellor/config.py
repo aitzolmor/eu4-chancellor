@@ -24,6 +24,8 @@ class Settings:
             from the game's ``settings.txt``.
         effort: Effort level for the chat agent (``low``, ``medium``, ``high``, ``xhigh``,
             ``max``): how much the model thinks before answering.
+        hotkey: The panel's system-wide shortcut, e.g. ``ctrl+shift+space``. ``None``
+            uses the default (:data:`chancellor.app.hotkey.DEFAULT_HOTKEY`).
     """
 
     save_dir: Path | None
@@ -32,6 +34,7 @@ class Settings:
     model: str = DEFAULT_MODEL
     language: str | None = None
     effort: str = DEFAULT_EFFORT
+    hotkey: str | None = None
 
 
 def _read_dotenv(path: Path) -> dict[str, str]:
@@ -75,4 +78,5 @@ def load_settings(dotenv_path: Path | None = None) -> Settings:
         model=get("CHANCELLOR_MODEL") or DEFAULT_MODEL,
         language=get("EU4_LANGUAGE"),
         effort=get("CHANCELLOR_EFFORT") or DEFAULT_EFFORT,
+        hotkey=get("CHANCELLOR_HOTKEY"),
     )

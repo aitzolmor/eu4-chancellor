@@ -2,8 +2,9 @@
 
 The first Phase 4 interface: a read-eval-print loop beside the game. Before each question
 it checks whether the game wrote a newer save; if so it reloads the campaign and tells
-Claude that earlier tool results may be stale. The docked desktop window comes later and
-reuses the same agent.
+Claude that earlier tool results may be stale. The desktop panel's API chat reuses the
+same agent. Both spend from the same budget (:mod:`chancellor.app.budget`, D-028): every
+response is charged as it arrives, and a question stops before it can pass its cap.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TextIO
 
+from chancellor.app.budget import Budget, BudgetExhausted
 from chancellor.config import Settings
 from chancellor.context.campaign import Campaign
 from chancellor.context.tools import Toolbox
@@ -25,7 +27,7 @@ plan be for the next 50 years?". The Chancellor reads your latest save on its ow
 
 Commands:
   /reload   reload the latest save now
-  /usage    tokens used in this session
+  /usage    tokens and money spent (this session and the budget)
   /help     show this help
   /exit     leave (Ctrl+C or Ctrl+Z then Enter also work)
 """
@@ -47,16 +49,19 @@ class ChatSession:
         load: Callable[[Settings], tuple[Campaign, Path]],
         client: Any,
         out: TextIO = sys.stdout,
+        budget: Budget | None = None,
     ) -> None:
         """Load the current save and create the agent.
 
         Args:
-            settings: Paths and model settings.
+            settings: Paths, model and budget settings.
             load: Loads the current campaign and returns it with its save path.
             client: Anthropic client.
             out: Where to print.
+            budget: The API budget; by default the one from ``settings``.
         """
         self.settings = settings
+        self.budget = budget or Budget(settings.api_budget_usd, settings.question_cap_usd)
         self._load = load
         self.out = out
         self.loaded = self._load_current()
@@ -66,7 +71,7 @@ class ChatSession:
             model=settings.model,
             effort=settings.effort,
         )
-        self.totals = {"input": 0, "cached": 0, "output": 0}
+        self.totals = {"input": 0, "cached": 0, "output": 0, "cost": 0.0}
 
     def _load_current(self) -> _Loaded:
         campaign, path = self._load(self.settings)
@@ -99,15 +104,28 @@ class ChatSession:
         return current != self.loaded.path or current.stat().st_mtime != self.loaded.mtime
 
     def ask(self, question: str) -> None:
-        """Answer one question, streaming the reply."""
+        """Answer one question, streaming the reply, within the budget."""
+        try:
+            limit = self.budget.question_limit()
+        except BudgetExhausted as exc:
+            self._print(f"[{exc}]")
+            return
         self.refresh()
 
         def on_tool(name: str, arguments: dict[str, Any]) -> None:
             shown = ", ".join(f"{k}={v}" for k, v in arguments.items())
             self._print(f"\n  · {name}({shown})")
 
-        result = self.agent.ask(question, on_text=lambda text: self._write(text), on_tool=on_tool)
-        if result.stop_reason == "refusal":
+        result = self.agent.ask(
+            question,
+            on_text=lambda text: self._write(text),
+            on_tool=on_tool,
+            cost_limit=limit,
+            on_cost=self.budget.charge,
+        )
+        if result.stop_reason == "cost_limit":
+            self._print(f"\n{result.text}")
+        elif result.stop_reason == "refusal":
             self._print("\n[The model declined to answer this request.]")
         elif not result.text.strip():
             self._print("\n[No answer was returned.]")
@@ -115,6 +133,8 @@ class ChatSession:
         self.totals["input"] += result.input_tokens
         self.totals["cached"] += result.cached_tokens
         self.totals["output"] += result.output_tokens
+        self.totals["cost"] += result.cost
+        self._print(f"[${result.cost:.3f} for this question; {self.budget.summary()}]")
 
     def _write(self, text: str) -> None:
         self.out.write(text)
@@ -150,6 +170,8 @@ def run_chat(
     out.write(
         f"Chancellor ready: {campaign.label(campaign.player)}, {campaign.date} "
         f"({session.loaded.path.name}). Model {settings.model}, effort {settings.effort}.\n"
+        f"Billed per question: up to ${settings.question_cap_usd:.2f} each; "
+        f"{session.budget.summary()}.\n"
         "Type /help for commands.\n\n"
     )
     while True:
@@ -172,7 +194,8 @@ def run_chat(
             t = session.totals
             out.write(
                 f"Input {t['input']:,} tokens (+{t['cached']:,} from cache), "
-                f"output {t['output']:,} tokens.\n"
+                f"output {t['output']:,} tokens, ${t['cost']:.3f} this session; "
+                f"{session.budget.summary()}.\n"
             )
             continue
         try:

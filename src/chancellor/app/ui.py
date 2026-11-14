@@ -5,7 +5,7 @@ The page under ``app/web/`` is plain HTML, CSS and JavaScript. It calls the meth
 values, so the class is testable without a window. pywebview is an optional dependency
 (``pip install -e ".[ui]"``) and is imported only when the window opens.
 
-Build order steps 1-5: the header (country, date, save), alerts and the key numbers,
+Build order steps 1-6: the header (country, date, save), alerts and the key numbers,
 refreshed when the game writes a new save (:class:`chancellor.watcher.SaveWatcher` fires
 a ``save-changed`` event in the page), and arranging the panel and Claude Desktop around
 the game (:mod:`chancellor.app.layout`, D-022): docked on the second screen when there
@@ -14,8 +14,9 @@ Quick questions copy a ready-made prompt and bring Claude Desktop to the front, 
 system-wide shortcut (:mod:`chancellor.app.hotkey`) opens the overlay or Claude Desktop
 from inside the game. The app follows a second screen appearing or dropping while it
 runs (a Miracast link, for instance) and remembers where the icon was left
-(:mod:`chancellor.app.state`). The chat runs in Claude Desktop; the paid API mode arrives later
-and only behind the player's own switch (D-020).
+(:mod:`chancellor.app.state`). By default the chat runs in Claude Desktop; the paid API
+chat (:mod:`chancellor.app.api_chat`) is a mode the player switches on for the session,
+within a budget (D-020, D-028).
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from chancellor.app.api_chat import ApiChat
 from chancellor.app.clipboard import ClipboardError, copy_to_clipboard
 from chancellor.app.hotkey import DEFAULT_HOTKEY, GlobalHotkey, HotkeyError, describe_hotkey
 from chancellor.app.icon_window import FloatingIcon
@@ -95,6 +97,7 @@ class PanelApi:
         self._redock = False  # docked when the second screen dropped: dock again on return
         self._quitting = False
         self._stop_icon = threading.Event()
+        self._chat: ApiChat | None = None  # the paid API chat, when settings allow it
 
     def status(self) -> dict[str, Any]:
         """The current campaign's key facts, or an error message for the page.
@@ -357,8 +360,31 @@ class PanelApi:
             return
 
     def chat_mode(self) -> dict[str, Any]:
-        """The chat mode in use. Always Claude Desktop until the API tab exists (D-020)."""
-        return {"mode": "claude_desktop", "api_available": False}
+        """The chat mode in use and the API budget, for the menu and the header badge.
+
+        Claude Desktop unless the player switched the API chat on this session (D-020).
+        """
+        if self._chat is None:
+            return {"mode": "claude_desktop", "api_available": False, "reason": "Not set up."}
+        return self._chat.state()
+
+    def set_chat_mode(self, mode: str) -> dict[str, Any]:
+        """Switch the chat between ``claude_desktop`` and ``api`` (the page confirms first)."""
+        if self._chat is None:
+            return {"ok": False, "error": "The API chat is not set up."}
+        return self._chat.set_mode(mode)
+
+    def ask_api(self, question: str) -> dict[str, Any]:
+        """Ask the paid API chat; the answer streams to the page as ``chat-*`` events."""
+        if self._chat is None:
+            return {"ok": False, "error": "The API chat is not set up."}
+        return self._chat.ask(question, self._emit)
+
+    def _emit(self, name: str, detail: dict[str, Any]) -> None:
+        """Send an event to the page (from any thread)."""
+        panel = self._windows.get("panel")
+        if panel is not None:
+            panel.evaluate_js(event_script(name, detail))
 
 
 def run_panel(settings: Settings, load: Callable[[Path], Campaign]) -> None:
@@ -390,6 +416,7 @@ def run_panel(settings: Settings, load: Callable[[Path], Campaign]) -> None:
     api._docker = docker
     api._mode = "overlay" if one_screen else "two_screens"
     api._side = load_overlay_side() or "right"
+    api._chat = ApiChat(settings, api._provider.toolbox)
     panel = webview.create_window(
         WINDOW_TITLE,
         url=str(WEB_DIR / "index.html"),
@@ -465,6 +492,14 @@ def _on_closing(api: PanelApi) -> bool:
 
 
 LAYOUT_CHANGED_SCRIPT = "window.dispatchEvent(new CustomEvent('layout-changed'))"
+
+
+def event_script(name: str, detail: dict[str, Any]) -> str:
+    """JavaScript that fires a ``CustomEvent`` with a JSON ``detail`` in the page."""
+    return (
+        f"window.dispatchEvent(new CustomEvent({json.dumps(name)}, "
+        f"{{detail: {json.dumps(detail)}}}))"
+    )
 
 
 def save_changed_script(path: Path) -> str:

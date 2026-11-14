@@ -7,11 +7,15 @@ Each player question runs a manual agentic loop on the Messages API:
    (:class:`chancellor.context.tools.Toolbox`) and send all results back in one message;
 3. repeat until Claude answers without tools.
 
-Request settings follow the current API guidance: Claude Opus 5.5 by default (override
-with ``CHANCELLOR_MODEL``), adaptive thinking (always on for this model) with an explicit
-effort level, top-level prompt caching so the system prompt and tool list are reused
-across turns, and server-side refusal fallbacks. The whole assistant content (thinking
-included) is appended to the history unchanged, keeping the conversation append-only.
+Request settings follow the current API guidance: Claude Sonnet 5.5 by default (override
+with ``CHANCELLOR_MODEL``), adaptive thinking with an explicit effort level, top-level
+prompt caching so the system prompt and tool list are reused across turns, and
+server-side refusal fallbacks. The whole assistant content (thinking included) is
+appended to the history unchanged, keeping the conversation append-only.
+
+Every response is priced as it arrives (:mod:`chancellor.llm.cost`) and reported through
+``on_cost``. Before each request the agent checks that even its worst case fits the
+question's cost limit, and stops the question otherwise (D-028).
 """
 
 from __future__ import annotations
@@ -23,10 +27,14 @@ from typing import Any
 
 from chancellor.context.campaign import CountryLookupError
 from chancellor.context.tools import Toolbox, ToolInputError
+from chancellor.llm.cost import Usage, prices_for, worst_request_cost
 
-DEFAULT_EFFORT = "high"
-MAX_TOKENS = 64000
-MAX_TOOL_ROUNDS = 12  # safety stop for a runaway loop within one question
+DEFAULT_EFFORT = "medium"
+# Per request: enough for a long answer with its thinking, small enough that one request
+# cannot eat much of a small API balance (D-028).
+MAX_TOKENS = 16000
+MAX_TOOL_ROUNDS = 6  # safety stop for a runaway loop within one question
+_CHARS_PER_TOKEN = 3  # a cautious estimate of the next request's size
 _FALLBACK_BETA = "server-side-fallback-2026-07-01"
 _JSON_RETRIES = 2
 
@@ -58,18 +66,32 @@ class TurnResult:
     Attributes:
         text: Claude's final answer (text blocks of the last response).
         tool_calls: Names of the tools run, in order.
-        stop_reason: Why the last response stopped (``end_turn``, ``refusal``, ...).
-        input_tokens: Uncached input tokens across all requests of the turn.
-        cached_tokens: Input tokens served from the prompt cache.
-        output_tokens: Output tokens across all requests of the turn.
+        stop_reason: Why the last response stopped (``end_turn``, ``refusal``, ...), or
+            ``cost_limit`` when the agent stopped the question to stay within its limit.
+        usage: Tokens across all requests of the turn, split as they are billed.
+        cost: What the turn cost, in US dollars.
     """
 
     text: str
     tool_calls: list[str] = field(default_factory=list)
     stop_reason: str | None = None
-    input_tokens: int = 0
-    cached_tokens: int = 0
-    output_tokens: int = 0
+    usage: Usage = field(default_factory=Usage)
+    cost: float = 0.0
+
+    @property
+    def input_tokens(self) -> int:
+        """Uncached input tokens across all requests of the turn."""
+        return self.usage.input_tokens
+
+    @property
+    def cached_tokens(self) -> int:
+        """Input tokens served from the prompt cache."""
+        return self.usage.cache_read_tokens
+
+    @property
+    def output_tokens(self) -> int:
+        """Output tokens across all requests of the turn."""
+        return self.usage.output_tokens
 
 
 class ChancellorAgent:
@@ -110,6 +132,8 @@ class ChancellorAgent:
         question: str,
         on_text: Callable[[str], None] = lambda _: None,
         on_tool: Callable[[str, dict[str, Any]], None] = lambda *_: None,
+        cost_limit: float | None = None,
+        on_cost: Callable[[float], None] = lambda _: None,
     ) -> TurnResult:
         """Ask a question and run the tool loop until Claude answers.
 
@@ -117,6 +141,10 @@ class ChancellorAgent:
             question: The player's message.
             on_text: Called with each piece of answer text as it streams.
             on_tool: Called with each tool name and its input before it runs.
+            cost_limit: Most this question may cost, in US dollars. A request is only
+                sent if its worst case still fits; ``None`` means no limit.
+            on_cost: Called with the cost of each response as soon as it arrives, so
+                spending is recorded even if a later request fails.
 
         Returns:
             The final answer and usage figures.
@@ -127,9 +155,22 @@ class ChancellorAgent:
             self._pending_note = None
 
         result = TurnResult(text="")
+        last_input = 0  # tokens the previous request read, the base for the next estimate
         for _ in range(MAX_TOOL_ROUNDS):
+            if cost_limit is not None and not self._fits(result, last_input, cost_limit):
+                result.stop_reason = "cost_limit"
+                result.text = (
+                    f"[Stopped before asking again: this question would go past its cost "
+                    f"limit of ${cost_limit:.2f} (spent ${result.cost:.2f} so far).]"
+                )
+                return result
             response = self._stream_with_retry(on_text)
-            self._add_usage(result, response)
+            usage = Usage.of(response)
+            cost = usage.cost(prices_for(getattr(response, "model", None) or self.model))
+            result.usage.add(usage)
+            result.cost += cost
+            on_cost(cost)
+            last_input = usage.input_tokens + usage.cache_write_tokens + usage.cache_read_tokens
             self.messages.append({"role": "assistant", "content": response.content})
             result.stop_reason = response.stop_reason
 
@@ -155,6 +196,23 @@ class ChancellorAgent:
         return result
 
     # --- internals ----------------------------------------------------------------------
+
+    def _fits(self, result: TurnResult, last_input: int, cost_limit: float) -> bool:
+        """Whether the next request's worst case keeps the question within its limit.
+
+        The next request reads what the previous one read, plus everything added since
+        (its answer and the tool results); before the first request the whole
+        conversation is estimated from its length.
+        """
+        if last_input:
+            added = self.messages[-2:]  # the assistant answer and the tool results
+            estimate = last_input + len(json.dumps(added, default=str)) // _CHARS_PER_TOKEN
+        else:
+            prefix = SYSTEM_PROMPT + json.dumps(self.toolbox.definitions)
+            history = json.dumps(self.messages, default=str)
+            estimate = (len(prefix) + len(history)) // _CHARS_PER_TOKEN
+        worst = worst_request_cost(prices_for(self.model), estimate, MAX_TOKENS)
+        return result.cost + worst <= cost_limit
 
     def _stream_with_retry(self, on_text: Callable[[str], None]) -> Any:
         """Stream one response, re-issuing it if a streamed tool input was unparseable.
@@ -202,12 +260,3 @@ class ChancellorAgent:
         except KeyError as exc:
             error = f"Unknown tool or country: {exc}"
         return {"type": "tool_result", "tool_use_id": block.id, "content": error, "is_error": True}
-
-    @staticmethod
-    def _add_usage(result: TurnResult, response: Any) -> None:
-        usage = getattr(response, "usage", None)
-        if usage is None:
-            return
-        result.input_tokens += getattr(usage, "input_tokens", 0) or 0
-        result.cached_tokens += getattr(usage, "cache_read_input_tokens", 0) or 0
-        result.output_tokens += getattr(usage, "output_tokens", 0) or 0

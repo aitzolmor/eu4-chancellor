@@ -11,6 +11,7 @@
     <div class="identity">
       <h1 id="country" class="country">Chancellor</h1>
       <p id="meta" class="meta">Reading your save…</p>
+      <p id="api-badge" class="api-badge" title="The API chat is on: each question is billed" hidden></p>
     </div>
     <div class="header-actions">
       <button id="refresh" class="icon-button" type="button" aria-label="Read the save again" title="Read the save again">
@@ -32,12 +33,32 @@
           <button id="side-right" type="button" aria-pressed="true">Right ▶</button>
         </div>
       </div>
+      <div id="chat-row" class="menu-group">
+        <span id="chat-label" class="menu-label">Chat in</span>
+        <div class="segmented" role="group" aria-labelledby="chat-label">
+          <button id="chat-desktop" type="button" aria-pressed="true">Claude Desktop</button>
+          <button id="chat-api" type="button" aria-pressed="false">API</button>
+        </div>
+      </div>
+      <div id="api-confirm" class="menu-confirm" hidden>
+        <p id="api-confirm-text"></p>
+        <div class="confirm-row">
+          <button id="api-confirm-yes" type="button" class="primary">Turn on</button>
+          <button id="api-confirm-no" type="button">Cancel</button>
+        </div>
+      </div>
       <p id="menu-hotkey" class="menu-hint" hidden></p>
-      <p class="menu-hint">The chat runs in Claude Desktop and reads the same save.</p>
+      <p id="chat-hint" class="menu-hint">The chat runs in Claude Desktop and reads the same save.</p>
     </div>
   </header>
 
   <p id="status" class="status" role="status" hidden></p>
+
+  <!-- Only while the API chat is on: the campaign view or the chat. -->
+  <nav id="tabs" class="tabs" role="tablist" hidden>
+    <button id="tab-campaign" type="button" role="tab" aria-selected="true" aria-controls="content">Campaign</button>
+    <button id="tab-chat" type="button" role="tab" aria-selected="false" aria-controls="chat">Chat</button>
+  </nav>
 
   <main id="content" aria-live="polite">
     <section id="loading" class="state">
@@ -71,7 +92,17 @@
     </section>
   </main>
 
-  <section class="ask" aria-labelledby="ask-title">
+  <section id="chat" class="chat" role="tabpanel" aria-labelledby="tab-chat" hidden>
+    <div id="chat-log" class="chat-log" aria-live="polite">
+      <p id="chat-empty" class="quiet">Ask anything about your campaign. Each question is billed to your API key.</p>
+    </div>
+    <form id="chat-form" class="chat-form">
+      <textarea id="chat-input" rows="2" placeholder="Ask the Chancellor…" aria-label="Your question"></textarea>
+      <button id="chat-send" type="submit" class="primary">Send</button>
+    </form>
+  </section>
+
+  <section id="ask" class="ask" aria-labelledby="ask-title">
     <h2 id="ask-title" class="section-title">Ask the Chancellor</h2>
     <div id="questions" class="questions"></div>
   </section>

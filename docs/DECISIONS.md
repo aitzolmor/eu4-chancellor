@@ -152,7 +152,7 @@ mission target (e.g. Venice) stays visible.
 
 ## D-015 — Chat agent: terminal first, manual streaming loop, Opus 5.5
 
-**Date:** 2026-11-13 · **Status:** Accepted
+**Date:** 2026-11-13 · **Status:** Accepted; model, effort and limits superseded by D-028
 
 - **Terminal first.** `chancellor chat` ships the whole agent (tools, loop, save
   following) before any window code. The desktop window (D-005, D-006) will reuse
@@ -420,3 +420,40 @@ before the game sees it, so a player who uses that combination in game can pick 
   line under the header only while there is something to say. The footer is gone, so
   the overlay panel, about 350 px high on one screen, keeps room for the alerts and
   numbers.
+
+## D-028 — The API chat runs on a budget: Sonnet 5.5, priced responses, hard caps
+
+**Date:** 2026-11-14 · **Status:** Accepted (supersedes the model and effort of D-015)
+
+The player's API balance is 5 EUR and will not be topped up. As built for D-015, one
+unlucky question could have spent all of it: 64,000 output tokens per request and up to
+12 tool rounds, about $15 in the worst case on Opus 5.5, with cache writes not even
+counted. The chat now treats money as a hard limit:
+
+- **Model and effort.** Claude Sonnet 5.5 at effort `medium` (the starting point the
+  API guidance gives for multistep tool use on that model), at about half the price of
+  Opus 5.5. Chosen by the player; `CHANCELLOR_MODEL` / `CHANCELLOR_EFFORT` still
+  override it.
+- **Every response is priced** from the usage the API returns, cache writes and reads
+  included (`llm.cost`, prices checked 2026-11-03; an unknown model is priced like the
+  most expensive one), and charged to the budget as it arrives, so spending is recorded
+  even when a later request fails. A response served by a fallback model is priced as
+  that model.
+- **Per question.** Before every request the agent checks that its worst case (all input
+  written to the cache, full output) still fits the question's cap, $0.50 by default,
+  and stops the question otherwise. Requests are limited to 16,000 output tokens and a
+  question to 6 tool rounds, so the worst single request on Sonnet 5.5 is about $0.17.
+- **In all.** A running total in `state.json`, shared by `chancellor chat` and the
+  panel, against a budget of $5 by default (a little under 5 EUR). The cap of the last
+  questions shrinks to what is left; with less than a cent left the chat refuses. The
+  total only knows what the app spent, so it should be set to what is left for the app.
+- **The panel's API chat** (build order step 6, D-020): a mode switched on in the "…"
+  menu, confirmed once per session with the model, the cap and what is spent; while it is
+  on, the header shows the spending and a *Chat* tab holds the conversation, streamed as
+  it is written, with the tools used and the cost of each answer. Quick questions go to
+  that tab instead of the clipboard. Answers are rendered from Markdown by a small
+  renderer that escapes all HTML first.
+
+Development and tests use fake clients; live calls happen only with the player's
+go-ahead, from their own terminal (the Claude Desktop MSIX container keeps a separate
+`state.json`, see the handoff).

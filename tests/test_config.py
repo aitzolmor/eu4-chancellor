@@ -37,3 +37,13 @@ def test_missing_values_are_none(tmp_path: Path, monkeypatch):
     assert settings.save_dir is None
     assert settings.game_dir is None
     assert settings.api_key is None
+
+
+def test_budget_settings(tmp_path, monkeypatch):
+    for key in ("CHANCELLOR_API_BUDGET_USD", "CHANCELLOR_QUESTION_CAP_USD"):
+        monkeypatch.delenv(key, raising=False)
+    env = tmp_path / ".env"
+    env.write_text("CHANCELLOR_API_BUDGET_USD=4.5\nCHANCELLOR_QUESTION_CAP_USD=nope\n", "utf-8")
+    settings = load_settings(env)
+    assert settings.api_budget_usd == 4.5
+    assert settings.question_cap_usd == 0.50  # unreadable values fall back to the default

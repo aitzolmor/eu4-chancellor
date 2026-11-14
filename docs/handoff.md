@@ -1,7 +1,7 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
-updated on **2026-11-14** before a fresh session (PRs #1–#29 merged, nothing open;
+updated on **2026-11-14** after the second play-test (PRs #1–#30 merged;
 393 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
@@ -21,7 +21,10 @@ Phase 4: getting the Chancellor in front of the player while they play.
   with the paid API only on the player's switch (D-020), pywebview panel (D-021) with
   live refresh and alerts, docking on two screens, and on one screen a native, round
   floating icon that opens the panel and Claude Desktop as an overlay (D-022, D-023).
-  Verified live by the user, with EU4 running as administrator.
+  Verified live by the user, with EU4 running as administrator; on 2026-11-14 also
+  over Miracast.
+- **2026-11-14, second play-test** on the 1483 save: the advice improved, and seven new
+  findings went to ROADMAP (coalition risk first).
 - **Ideas recorded, not scheduled:** goal-based watches, goals and a campaign journal
   for the panel (ROADMAP, *Ideas / later*).
 - `chancellor chat` (#12) still has **never made a live API call**; the user's key is in
@@ -51,14 +54,12 @@ Shared foundations:
 
 In priority order. The full list is in [ROADMAP](ROADMAP.md).
 
-1. **Second play-test** (first play-test done on 2026-11-13, findings list in
-   [ROADMAP](ROADMAP.md) under *Play-test findings*). Done: armies at sea are counted
-   (#15), the briefing shows the HRE (#16), aggressive expansion, overextension and
-   monarch power (#17), war checks and targets know about truces (#18) and flag
-   targets defended by the player's own allies (#19); targets say "any N of M
-   provinces" for counted mission conditions (#20); common triggers read as words
-   (#21, D-019) and the HRE section shows the next imperial reform. Every finding is
-   done; the second play-test checks whether the advice actually improved.
+1. **Second play-test findings** (done on 2026-11-14 on the 1483 save; list in
+   [ROADMAP](ROADMAP.md) under *Play-test findings (2026-11-14)*). The first round's
+   fixes held up. The worst new gap: war checks and targets ignore coalition risk, so
+   the countries most outraged by Austria rank as the easiest targets. Next worst: a
+   checklist truncated the only unmet requirement, and a mission of another country
+   read like the player's own.
 2. **First live run of `chancellor chat`** with the real API key, to tune the system
    prompt and effort. It spends money, so ask the user before running it.
 3. **Data gaps that limit advice:**
@@ -72,8 +73,8 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
    - the desktop app: designed on 2026-11-13 ([UI_DESIGN](UI_DESIGN.md), D-020,
      D-021); steps 1-4 are built: the panel window (`chancellor app`), the save
      watcher with live refresh, alerts, and docking: on two screens, or a floating icon
-     with an overlay on one (D-022), both verified live. Next is step 5, quick
-     questions.
+     with an overlay on one (D-022), both verified live (docking also over
+     Miracast). Next is step 5, quick questions.
 5. **Later phases:**
    - goal-based watches, goals and a campaign journal for the panel (an idea, recorded
      in ROADMAP under *Ideas / later*; not scheduled);
@@ -213,21 +214,16 @@ The API key lives only in the git-ignored `.env`. Never print it, and never put 
 
 ## Next step
 
-The user is at home on 2026-11-14 with EU4 open on a newer save, Claude Desktop
-restarted, and a second laptop ready to join through *Project to this PC* (Miracast).
+Done on 2026-11-14: docking over Miracast works (the second laptop is an ordinary
+extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
+(`notes/2026-11-14-playtest.md`, findings in ROADMAP).
 
-1. **Docking over Miracast (quick).** Once the user has extended the screen to the
-   second laptop, check Windows reports two monitors (`chancellor.app.layout._Win32().
-   monitors()`, per-monitor DPI aware), then have them run `chancellor app` and press
-   *Dock beside the game*. Note anything Miracast changes (latency, DPI, the screen
-   dropping). The app decides one or two screens at start.
-2. **Second play-test through MCP** on the new save. Check `get_save_status` first.
-   Ask the same questions as the first play-test (`notes/2026-11-13-playtest.md`): how
-   the campaign is going, attacking Venice, the next 50 years, forming Germany or
-   Austria-Hungary, where to expand. Compare with the first answers, note what is still
-   wrong or missing, and turn new findings into roadmap items. A Claude Code session can
-   run it with the `mcp__eu4-chancellor__*` tools; Claude Desktop shows how Claude
-   chains them itself.
+1. **Coalition risk in war checks and targets** (the top play-test finding): show
+   the owner's AE and how many nearby countries sit at or near 50, rank targets with
+   it, then estimate the AE a conquest would add.
+2. **Checklist fixes:** never truncate an unmet branch; name the owner of another
+   country's mission. Then the smaller findings (ally reliability, "up to N"
+   defenders, formable noise).
 3. **Desktop app, build order step 5** ([UI_DESIGN](UI_DESIGN.md)): quick questions
    (copy a question to the clipboard and bring Claude Desktop to the front) and a hotkey
    for the overlay; then follow screens appearing or dropping while the app runs and

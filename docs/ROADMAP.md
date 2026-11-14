@@ -140,6 +140,31 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
   still fall back to the key ("force british union debate"); the heading's "forms …"
   says what it does
 
+### Play-test findings (2026-11-14, Austria 1483 save, through the MCP tools)
+
+The first round of fixes held up: the briefing now covers the HRE, aggressive expansion,
+overextension and monarch power, and truces and allied defenders are filtered. New
+findings, most harmful first:
+
+- [ ] War check and targets: coalition risk. With the coalition dissolved, Venice
+  (AE 74), Switzerland (83) and Milan (82) rank as easy targets although 34 countries
+  hold 50+ AE; show the owner's AE and how many nearby countries are at or near the
+  coalition threshold, then estimate the AE a conquest would add
+- [ ] Checklists: never truncate an unmet branch. Austria-Hungary's only failing
+  requirement (an `if`/`else` on administrative technology, 20 here) printed as an
+  empty "Otherwise:" and "…"
+- [ ] Checklists: name the owner when `mission_completed` refers to another country's
+  mission. `hun_a_multicultural_empire` read as "Imperio multicultural", the same title
+  as Austria's own `hab_multicultural_empire`
+- [ ] War check: ally reliability. Castile counts as "likely" with an opinion of +4;
+  lower allies with poor opinion or trust to "possible"
+- [ ] Targets: name the countries behind "up to N" (Ragusa's possible defender is the
+  Ottomans)
+- [ ] Decisions: formables marked "may apply" that are out of reach (Great Britain and
+  the Byzantine Empire for Austria) add noise; rank or hide them
+- [ ] Small: subject roles mix English and localised names; national ideas shown as
+  "0/7" like an idea group; average unrest not rounded
+
 ## Phase 5 — Charts and insight
 
 Goal: visual analysis of the campaign inside the workspace.

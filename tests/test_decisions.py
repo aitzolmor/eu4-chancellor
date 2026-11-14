@@ -149,6 +149,14 @@ def test_rules_load(tmp_path: Path):
     (tmp_path / "common" / "colonial_regions" / "c.txt").write_text(
         "colonial_x = { color = { 1 1 1 } provinces = { 900 901 } }", encoding="utf-8"
     )
+    (tmp_path / "common" / "government_reforms").mkdir(parents=True)
+    (tmp_path / "common" / "government_reforms" / "g.txt").write_text(
+        "plain = { icon = x } "
+        "always = { custom_attributes = { is_merchant_republic = yes } } "
+        "dlc = { conditional = { allow = { has_dlc = x } custom_attributes = {"
+        " english_parliament = yes } } conditional = { allow = { y = 1 } } }",
+        encoding="utf-8",
+    )
     (tmp_path / "map").mkdir()
     (tmp_path / "map" / "area.txt").write_text("a_area = { 1 2 }\nb_area = { 3 }", "utf-8")
     (tmp_path / "map" / "region.txt").write_text(
@@ -165,6 +173,10 @@ def test_rules_load(tmp_path: Path):
     assert rules.geography["x_superregion"] == frozenset({1, 2, 3})
     assert rules.geography["europe"] == frozenset({1, 2, 3})
     assert rules.geography["colonial_x"] == frozenset({900, 901})
+    assert rules.government_attributes == {
+        "always": {"is_merchant_republic": True},
+        "dlc": {"english_parliament": False},
+    }
 
 
 # Shaped like form_austria_hungary: the only failing requirement is a nested if/else.

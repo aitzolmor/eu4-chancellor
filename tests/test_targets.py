@@ -335,3 +335,21 @@ def test_owners_with_a_high_coalition_risk_come_after_the_rest(report):
     assert "| 2 | SAL (SAL) | 1 | 8 | cores | 5 vs 1 | 5.0x | high (owner 60 AE) |  |" in text
     hidden = render_targets(campaign, result, top=1)
     assert "Not shown because of a high coalition risk: SAL (SAL): high (owner 60 AE)." in hidden
+
+
+def test_possible_defenders_are_named(report):
+    campaign, _ = report
+    # ENG guarantees POL: a possible defender that makes up the worst case.
+    campaign.gamestate["countries"]["ENG"] = {
+        "owned_provinces": [236],
+        "army": {"regiment": {}},
+    }
+    campaign.diplomacy.setdefault("guarantee", {"first": "ENG", "second": "POL"})
+    campaign._countries.clear()
+    missions = MissionLibrary(parse_mission_file(MISSIONS))
+    decisions = DecisionLibrary(parse_decision_file(DECISIONS))
+    result = find_targets(campaign, RULES, missions, decisions)
+    poland = {t.owner: t for t in result.targets}["POL"]
+    assert poland.possible_defenders == ["ENG"]
+    text = render_targets(campaign, result)
+    assert "| 5 vs 2 (up to 3: ENG) |" in text

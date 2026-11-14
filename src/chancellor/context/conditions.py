@@ -301,6 +301,16 @@ class Evaluator:
         if key == "has_reform":
             reforms = ((c.get("government") or {}).get("reform_stack") or {}).get("reforms", [])
             return value in as_list(reforms)
+        if key == "has_government_attribute" and self.rules.government_attributes:
+            reforms = ((c.get("government") or {}).get("reform_stack") or {}).get("reforms", [])
+            granted = [
+                self.rules.government_attributes.get(str(r), {}).get(str(value))
+                for r in as_list(reforms)
+            ]
+            if True in granted:
+                return True
+            # A reform that grants it only under a condition (often a DLC) is unknown.
+            return None if False in granted else False
         if key in _COUNTRY_NUMBERS:
             return _at_least(_dig(c, _COUNTRY_NUMBERS[key]), value)
         if key == "is_subject":

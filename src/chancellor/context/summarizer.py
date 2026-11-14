@@ -228,7 +228,7 @@ def _territory(ctx: _Context) -> str:
             ("Claims", _count(c.get("claim_provinces"))),
             # The save omits the key when there is no overextension.
             ("Overextension", _pct(c.get("overextension_percentage") or 0.0)),
-            ("Average unrest", _num(c.get("average_unrest"), 2)),
+            ("Average unrest", _num(c.get("average_unrest"), 1)),
             ("Average autonomy", _num(c.get("average_autonomy"))),
             ("Colonies", str(c["num_of_colonies"]) if c.get("num_of_colonies") else None),
         ],
@@ -238,13 +238,24 @@ def _territory(ctx: _Context) -> str:
 def _progress(ctx: _Context) -> str:
     c = ctx.country
     tech = c.get("technology") or {}
-    ideas = c.get("active_idea_groups") or {}
+    ideas = dict(c.get("active_idea_groups") or {})
+    # The save lists the national ideas first. They are not picked like an idea group:
+    # one unlocks for every three ideas taken in the other groups.
+    national = next(iter(ideas.items()), None)
+    if national:
+        del ideas[national[0]]
     return _section(
         "Technology and ideas",
         [
             (
                 "Technology (adm/dip/mil)",
                 "/".join(str(tech.get(k, "?")) for k in ("adm_tech", "dip_tech", "mil_tech")),
+            ),
+            (
+                "National ideas",
+                f"{ctx.text(national[0])} {national[1]}/7 (one per 3 ideas taken)"
+                if national
+                else None,
             ),
             ("Idea groups", ", ".join(f"{ctx.text(k)} {v}/7" for k, v in ideas.items()) or None),
             ("Innovativeness", _num(c.get("innovativeness"))),

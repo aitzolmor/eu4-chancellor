@@ -1,11 +1,11 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
-updated on **2026-11-14** after the second play-test (PRs #1–#32 merged;
-400 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
+updated on **2026-11-14** after the second play-test (PRs #1–#33 merged;
+405 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-024),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-025),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -59,7 +59,8 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
    fixes held up. The worst new gap, coalition risk, is fixed (D-024): war checks and
    targets read the AE the target and its neighbours hold. The two checklist findings
    are fixed too: unmet requirements are shown whole, and another country's mission
-   is named with its owner. The smaller findings remain.
+   is named with its owner. The smaller findings are fixed as well (D-025); only
+   the AE estimate of a peace deal is left.
 2. **First live run of `chancellor chat`** with the real API key, to tune the system
    prompt and effort. It spends money, so ask the user before running it.
 3. **Data gaps that limit advice:**
@@ -218,18 +219,17 @@ Done on 2026-11-14: docking over Miracast works (the second laptop is an ordinar
 extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
 (`notes/2026-11-14-playtest.md`, findings in ROADMAP).
 
-1. **Coalition risk** is in war checks and targets (D-024). Still open: estimating the
-   AE a conquest would add (ROADMAP).
-2. **Smaller play-test findings:** ally reliability, "up to N" defenders, formable
-   noise (the checklist fixes are done).
-3. **Desktop app, build order step 5** ([UI_DESIGN](UI_DESIGN.md)): quick questions
+1. **Every second play-test finding is fixed** (coalition risk D-024, ally reliability
+   D-025, checklists, formables, display). Still open: estimating the AE a conquest
+   would add (ROADMAP). A third play-test can wait for a later save.
+2. **Desktop app, build order step 5** ([UI_DESIGN](UI_DESIGN.md)): quick questions
    (copy a question to the clipboard and bring Claude Desktop to the front) and a hotkey
    for the overlay; then follow screens appearing or dropping while the app runs and
    remember the icon's position. The API chat mode stays off unless the player switches
    it on (D-020).
-4. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
+3. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
    with the answers given through MCP.
-5. Remaining data gaps (casus belli, income breakdown, advisors and generals), or the
+4. Remaining data gaps (casus belli, income breakdown, advisors and generals), or the
    watches idea, whichever the play-test shows matters more.
 
 **Tip:** a Claude Code session on this machine has the `eu4-chancellor` MCP tools too

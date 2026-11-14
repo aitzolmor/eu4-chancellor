@@ -261,3 +261,26 @@ def test_coalition_risk_is_rendered(campaign: Campaign):
         "can push it over (Burgundy 40). Worldwide, 2 countries that are not your allies or "
         "subjects are at 50+ AE; a coalition against you already exists."
     ) in text
+
+
+def test_allies_with_low_opinion_or_trust_are_only_possible(campaign: Campaign):
+    campaign.country("CAS")["active_relations"] = {"HAB": {"cached_sum": 4}}
+    campaign.country("FRA")["active_relations"] = {"BUR": {"cached_sum": 90, "trust_value": 10}}
+    check = check_war(campaign, "BUR")
+    castile = next(p for p in check.attackers if p.tag == "CAS")
+    assert (castile.roles, castile.likelihood) == (["ally (low opinion +4)"], "possible")
+    france = next(p for p in check.defenders if p.tag == "FRA")
+    assert (france.roles, france.likelihood) == (["ally (low trust 10)"], "possible")
+
+
+def test_well_disposed_allies_stay_likely(campaign: Campaign):
+    campaign.country("CAS")["active_relations"] = {"HAB": {"cached_sum": 74, "trust_value": 100}}
+    castile = next(p for p in check_war(campaign, "BUR").attackers if p.tag == "CAS")
+    assert (castile.roles, castile.likelihood) == (["ally"], "likely")
+
+
+def test_subject_types_use_the_game_names(campaign: Campaign):
+    campaign.loc = Localisation({"vassal_title": "Vasallo", "tributary_state": "Estado tributario"})
+    attackers = {p.tag: p.roles for p in check_war(campaign, "BUR").attackers}
+    assert attackers["LAN"] == ["subject (Vasallo)"]
+    assert attackers["TRI"] == ["subject (Estado tributario)"]

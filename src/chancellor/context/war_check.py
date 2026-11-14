@@ -31,6 +31,10 @@ AE_YEARLY_DECAY = 2.0
 NEAR_COALITION_AE = 35.0
 # Neighbours at the threshold that make the risk high on their own.
 _HIGH_RISK_NEIGHBOURS = 3
+# Below these, an ally is only a possible participant (a heuristic: the AI also weighs
+# the war's odds, its own wars and debts). Trust defaults to 50 when the save omits it.
+ALLY_MIN_OPINION = 25.0
+ALLY_MIN_TRUST = 30.0
 
 # Subject types with `joins_overlords_wars = no` in common/subject_types (game 1.37).
 # Every other type inherits `joins_overlords_wars = yes` from the default.
@@ -216,12 +220,17 @@ def check_war(campaign: Campaign, target: str, attacker: str | None = None) -> W
         add(defenders, overlord, "overlord", "certain")
     for subject in as_list(tgt.get("subjects")):
         kind = campaign.subject_type(target, subject) or "subject"
-        add(defenders, subject, f"subject ({campaign.text(kind)})", _subject_likelihood(kind))
+        add(
+            defenders,
+            subject,
+            f"subject ({campaign.subject_type_name(kind)})",
+            _subject_likelihood(kind),
+        )
     if target in _coalition(att):
         for member in _coalition(att):
             add(defenders, member, "coalition member", "certain")
     for ally in as_list(tgt.get("allies")):
-        add(defenders, ally, "ally", "likely")
+        add(defenders, ally, *_ally(campaign, ally, target))
     for guarantor in campaign.guarantors_of(target):
         add(defenders, guarantor, "guarantor", "possible")
     emperor = campaign.emperor
@@ -240,9 +249,14 @@ def check_war(campaign: Campaign, target: str, attacker: str | None = None) -> W
         if subject == target:
             continue
         kind = campaign.subject_type(attacker, subject) or "subject"
-        add(attackers, subject, f"subject ({campaign.text(kind)})", _subject_likelihood(kind))
+        add(
+            attackers,
+            subject,
+            f"subject ({campaign.subject_type_name(kind)})",
+            _subject_likelihood(kind),
+        )
     for ally in as_list(att.get("allies")):
-        add(attackers, ally, "ally", "likely")
+        add(attackers, ally, *_ally(campaign, ally, attacker))
 
     # Countries on both lists will not fight their own ally; treat them as neutral,
     # unless they are bound to one side (the target itself, subjects, coalition).
@@ -453,6 +467,24 @@ def _coalition(country: dict) -> list[str]:
     for value in get_all(country, "coalition_against_us"):
         members.extend(as_list(value))
     return members
+
+
+def _ally(campaign: Campaign, ally: str, leader: str) -> tuple[str, Likelihood]:
+    """Role and likelihood of an ally answering ``leader``'s call to arms.
+
+    The AI weighs opinion and trust when it answers a call. An ally that barely likes
+    the leader, or distrusts it, is only a possible participant.
+    """
+    opinion = campaign.opinion(ally, leader)
+    trust = campaign.trust(ally, leader)
+    reasons = []
+    if opinion is not None and opinion < ALLY_MIN_OPINION:
+        reasons.append(f"opinion {opinion:+.0f}")
+    if trust is not None and trust < ALLY_MIN_TRUST:
+        reasons.append(f"trust {trust:.0f}")
+    if reasons:
+        return f"ally (low {', '.join(reasons)})", "possible"
+    return "ally", "likely"
 
 
 def _subject_likelihood(kind: str) -> Likelihood:

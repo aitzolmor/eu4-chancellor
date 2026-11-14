@@ -361,3 +361,17 @@ it depends on the casus belli, distance, culture, religion and HRE membership of
 country in range, and the casus belli is not in the save. The thresholds are a
 heuristic: AI coalition decisions also weigh opinion, distance and threat, which are
 not modelled.
+
+## D-025 — Allies with a low opinion or trust are only possible participants
+
+**Date:** 2026-11-14 · **Status:** Accepted
+
+War checks counted every ally as "likely" to answer a call to arms. In the second
+play-test Castile, with an opinion of +4 towards Austria, made up 40 of the 197
+regiments on Austria's side. The AI weighs opinion and trust when it answers a call, so
+an ally whose opinion of the country calling it is below 25, or whose trust is below 30,
+is now "possible": it counts only in the worst case, and its role says why ("ally (low
+opinion +4)"). The opinion is the save's `cached_sum` in the ally's `active_relations`;
+`trust_value` is omitted at the default of 50. The same rule applies to the defender's
+allies. The thresholds are a heuristic: the AI also weighs the war's odds, its own wars
+and its debts, which are not modelled.

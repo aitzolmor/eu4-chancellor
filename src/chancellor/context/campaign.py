@@ -272,6 +272,20 @@ class Campaign:
         ]
         return sorted(found, key=lambda t: _date_key(t.estimated_end or "9999.1.1"))
 
+    def opinion(self, holder: str, of: str) -> float | None:
+        """``holder``'s total opinion of ``of`` (the save's ``cached_sum``), if known."""
+        relation = ((self.country(holder) or {}).get("active_relations") or {}).get(of)
+        value = relation.get("cached_sum") if isinstance(relation, dict) else None
+        return float(value) if isinstance(value, int | float) else None
+
+    def trust(self, holder: str, of: str) -> float | None:
+        """``holder``'s trust in ``of`` (``trust_value``); absent at the default of 50."""
+        relation = ((self.country(holder) or {}).get("active_relations") or {}).get(of)
+        if not isinstance(relation, dict):
+            return None
+        value = relation.get("trust_value")
+        return float(value) if isinstance(value, int | float) else None
+
     def aggressive_expansion_towards(self, tag: str) -> list[Grievance]:
         """Every living country's aggressive expansion against ``tag``, highest first.
 
@@ -402,6 +416,13 @@ class Campaign:
     def text(self, key: str) -> str:
         """Localised text for a game key, humanised if no translation exists."""
         return self.loc.get(key, key.replace("_", " "))
+
+    def subject_type_name(self, kind: str) -> str:
+        """Localised name of a subject type (``vassal`` → ``Vasallo``).
+
+        The game names most types under ``<type>_title``; a few only under the bare key.
+        """
+        return self.loc.get(f"{kind}_title", "") or self.text(kind)
 
     # --- lookup -------------------------------------------------------------------------
 

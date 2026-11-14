@@ -4,12 +4,15 @@ from chancellor.app import layout
 from chancellor.app.layout import (
     Docker,
     DockError,
+    IconPlace,
     Monitor,
     Rect,
+    icon_place,
+    icon_rect,
     monitor_at,
     overlay_layout,
     plan_layout,
-    side_of,
+    saved_monitor,
 )
 
 # The developer's screens: a 2240×1400 laptop at 150% and a 1920×1080 screen to its right.
@@ -36,7 +39,7 @@ def test_the_largest_other_screen_is_used():
     assert plan.panel.left == 2240
 
 
-def test_one_screen_opens_an_overlay_column_on_the_icon_side():
+def test_one_screen_opens_an_overlay_column_on_the_chosen_side():
     right = plan_layout([MAIN], MAIN)  # default side
     assert right.mode == "overlay"
     assert right.panel == Rect(1344, 0, 896, 531)  # 40% of the width, top 40%
@@ -52,12 +55,6 @@ def test_overlay_widens_to_what_claude_desktop_accepts():
     assert plan.chat == Rect(1337, 531, 903, 797)
     assert plan.panel.left == 1337 and plan.panel.width == 903
     assert overlay_layout(MAIN.work, 5000, "left").chat.width == 2240  # never off-screen
-
-
-def test_side_of_uses_the_rect_centre():
-    assert side_of(MAIN, Rect(2120, 664, 96, 96)) == "right"
-    assert side_of(MAIN, Rect(100, 664, 96, 96)) == "left"
-    assert side_of(SIDE, Rect(2300, 0, 96, 96)) == "left"
 
 
 def test_without_a_known_game_monitor_the_primary_is_home():
@@ -88,3 +85,32 @@ def test_the_win32_layer_has_every_call_the_docker_makes():
     used = set(re.findall(r"self\._api\.(\w+)", inspect.getsource(Docker)))
     missing = {name for name in used if not hasattr(layout._Win32, name)}
     assert not missing, f"Docker calls _Win32 methods that do not exist: {missing}"
+
+
+def test_icon_place_round_trips_on_its_monitor():
+    rect = Rect(2240 + 1920 - 64 - 16, 400, 64, 64)  # 64 px at 100% on the side screen
+    place = icon_place(SIDE, rect)
+    assert (place.monitor, place.primary) == ("DISPLAY2", False)
+    assert icon_rect(SIDE, 64, place) == rect
+
+
+def test_icon_place_survives_a_change_of_scaling():
+    # Saved at the right edge, middle height; restored on a screen with other DPI.
+    place = IconPlace("DISPLAY1", True, 1.0, 0.5)
+    rect = icon_rect(MAIN, 64, place)
+    assert rect.width == 96  # 64 logical pixels at 150%
+    assert rect.right == MAIN.work.right
+    assert rect.top == round(0.5 * (MAIN.work.height - 96))
+
+
+def test_icon_place_is_clamped_onto_the_screen():
+    rect = icon_rect(SIDE, 64, IconPlace("DISPLAY2", False, 1.7, -0.2))
+    assert (rect.right, rect.top) == (SIDE.work.right, SIDE.work.top)
+
+
+def test_saved_monitor_by_name_or_the_primary():
+    monitors = [MAIN, SIDE]
+    assert saved_monitor(monitors, IconPlace("DISPLAY2", False, 0, 0)) is SIDE
+    # Device names change when a display reconnects: a primary place falls back.
+    assert saved_monitor(monitors, IconPlace("DISPLAY9", True, 0, 0)) is MAIN
+    assert saved_monitor(monitors, IconPlace("DISPLAY9", False, 0, 0)) is None

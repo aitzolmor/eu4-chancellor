@@ -49,13 +49,20 @@ moved or resized: EU4 draws at its own resolution and ignores outside resizing (
 
 **Two screens** (preferred when available): EU4 keeps its whole screen; the Chancellor
 panel and Claude Desktop are docked side by side on the other one (panel a third,
-Claude Desktop the rest). *Dock beside the game* arranges them; *Undock* puts them back.
+Claude Desktop the rest). *Dock beside the game* (in the panel's menu) arranges them;
+*Undock* puts them back.
+
+The app follows a screen appearing or dropping while it runs (D-027): when the second
+screen drops, docked windows go back where they were and the floating icon takes over;
+when it returns, the panel shows again and docks again if it was docked.
 
 **One screen**: nothing is split. A floating icon (a gold crown in a navy circle) sits
-over the game, always on top, and can be dragged anywhere. A click opens an overlay
-column on the icon's side of the screen: the panel on top, Claude Desktop below, both
-above the game. Another click, *Back to the game* or `Esc` puts them away (Claude
-Desktop drops behind the game). A right-click offers *Close Chancellor*. The icon is a
+over the game, always on top, and can be dragged anywhere; the app remembers where it
+was left. A click, or the hotkey, opens an overlay column on the side of the screen the
+player chose in the panel's menu (left or right, remembered; it does not follow the
+icon, which is moved out of the way instead): the panel on top, Claude Desktop below,
+both above the game. Another click, the hotkey, *Back to the game* or `Esc` puts them
+away (Claude Desktop drops behind the game). A right-click offers *Close Chancellor*. The icon is a
 native window with real per-pixel transparency (D-023), so only the circle shows. It
 is shown only while the game is the active
 window, while the overlay is open, or when the game is not running; it hides when the
@@ -91,7 +98,11 @@ All placement works in physical pixels with a per-monitor DPI-aware process, so 
 From top to bottom:
 
 1. **Header**: country name and tag, in-game date, save file name, "read 2 min ago",
-   the chat-mode switch and, in API mode, the billed badge.
+   a refresh button and a **"…" menu** with what is used now and then (D-027): *Dock*
+   / *Undock* on two screens; *Back to the game* and the overlay side on one; the
+   hotkey; later the chat-mode switch and, in API mode, the billed badge. Under the
+   header, a status line shows results and errors only while there is something to
+   say.
 2. **Alerts**: short, ranked lines from data the tools already produce, each linking to
    the full view:
    - a truce with a rival ends soon (estimated, D-017);
@@ -104,7 +115,10 @@ From top to bottom:
 4. **Quick questions**: buttons such as "How is my campaign going?" or "Where should I
    expand?". In Claude Desktop mode they copy the question to the clipboard and bring
    Claude Desktop to the front; in API mode they send it to the chat tab.
-5. **Footer**: dock / overlay / undock, settings.
+
+There is no footer: everything the player does not need while playing lives in the
+menu, so the overlay panel (about 350 px high on one screen) keeps its room for the
+alerts and numbers.
 
 Later tabs: **Charts** and **History** (Phase 5), **API chat** (when the mode is on).
 
@@ -139,9 +153,8 @@ as a calm instrument panel, not compete with the map.
 
 ## Open questions
 
-- Miracast displays add latency and can drop; the app decides one or two screens at
-  start, and should follow a screen appearing or disappearing while it runs. Docking
-  over Miracast itself works (verified 2026-11-14).
+- None at the moment. Docking over Miracast works, and the app follows the second
+  screen dropping and returning (verified 2026-11-14).
 
 ## Build order
 
@@ -156,9 +169,10 @@ as a calm instrument panel, not compete with the map.
    screen, with EU4 in front and running as administrator, the icon drags, opens and
    closes the overlay, hides when the game is not in front, and quits. Over Miracast
    (2026-11-14) the second laptop appears as an ordinary extended monitor (1366×768 at
-   96 DPI, offset below the top of the main screen) and docking works the same. Not
-   verified yet: a screen dropping or appearing while the app runs, and remembering
-   where the icon was left.
+   96 DPI, offset below the top of the main screen) and docking works the same.
+   Follow-ups (D-027), verified live on 2026-11-14: the second screen dropping and
+   returning while the app runs, the icon's place remembered between sessions, the
+   overlay side chosen by the player, and the rarely used actions moved into a menu.
 5. Quick questions and a system-wide hotkey (D-026). **Done**
    (`chancellor.app.quick_questions`, `chancellor.app.hotkey`). Verified live on two
    screens: a question is copied and Claude Desktop comes forward, and the hotkey works

@@ -1,11 +1,11 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
-updated on **2026-11-14** after the second play-test (PRs #1–#34 merged;
-422 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
+updated on **2026-11-14** after the second play-test (PRs #1–#35 merged;
+438 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-026),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-027),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -175,6 +175,12 @@ The full reasoning is in [DECISIONS.md](DECISIONS.md).
   token query (`TokenElevation`) when input behaves differently with the game in front.
   `RegisterHotKey` is not affected: the panel's hotkey works with the elevated game in
   front (verified 2026-11-14).
+- **Claude Desktop virtualises `%LOCALAPPDATA%`.** It is an MSIX (Store) app, so every
+  process started from it, Claude Code's shells included, reads and writes
+  `AppData\Local\Packages\Claude_…\LocalCache\Local\…` instead of the real folder.
+  A `chancellor app` started from Claude Code and one started from the user's own
+  terminal therefore see different `state.json` files (and caches). Have the user
+  start the app from their own terminal for any test that spans two runs.
 - **EU4 ignores outside resizing.** `SetWindowPos` on its borderless SDL window changes
   nothing; never plan a layout that needs the game to shrink.
 - **Win32 handles from ctypes.** `HWND_TOPMOST` is `-1` and must reach `SetWindowPos`
@@ -225,10 +231,10 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
 1. **Every second play-test finding is fixed** (coalition risk D-024, ally reliability
    D-025, checklists, formables, display). Still open: estimating the AE a conquest
    would add (ROADMAP). A third play-test can wait for a later save.
-2. **Desktop app:** step 5 (quick questions, hotkey) is done (D-026). Next: follow
-   screens appearing or dropping while the app runs and remember the icon's position;
-   then step 6, the API chat tab. The API chat mode stays off unless the player
-   switches it on (D-020).
+2. **Desktop app:** step 5 (quick questions, hotkey) is done (D-026), and so are the
+   docking follow-ups (D-027: screens dropping and returning, the icon's place, the
+   overlay side, the "…" menu). Next: step 6, the API chat tab. The API chat mode
+   stays off unless the player switches it on (D-020).
 3. With the user's go-ahead for the cost, the first live `chancellor chat` run, compared
    with the answers given through MCP.
 4. Remaining data gaps (casus belli, income breakdown, advisors and generals), or the

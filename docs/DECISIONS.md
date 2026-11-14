@@ -394,3 +394,29 @@ is registered with `RegisterHotKey` on a thread with its own message loop, which
 delivers `WM_HOTKEY` whichever window is in front: it works while EU4 runs as
 administrator, unlike reading the input state (D-022). A registered hotkey is taken
 before the game sees it, so a player who uses that combination in game can pick another.
+
+## D-027 — The app follows the screens; the player picks the overlay side; a "…" menu
+
+**Date:** 2026-11-14 · **Status:** Accepted (refines D-022)
+
+- **Screens while running.** The app checks the number of screens every two seconds.
+  When the second screen drops (a Miracast link ends), docked windows go back where
+  they were, the panel hides and the floating icon takes over; when it returns, the
+  overlay closes, the panel shows and docks again if it was docked. The native icon
+  registers its window class once, with the first instance's window procedure, so the
+  app creates one icon at start and only shows or hides it, instead of creating one
+  when the mode changes.
+- **The icon's place is remembered**, relative to its monitor's work area (so a change
+  of resolution or scaling keeps it in the same spot), in `state.json` next to the
+  cache, not inside it (`clear-cache` must not forget it). Monitor device names change
+  when a display reconnects, so a place on the primary monitor falls back to whichever
+  monitor is primary.
+- **The overlay side is the player's choice**, not the icon's half of the screen. The
+  player moves the icon out of the way of the game, and needs the overlay on the side
+  where it hides the least of the interface they want to read while asking. It is
+  remembered too.
+- **A "…" menu** in the header holds what is used now and then: docking, the way back
+  to the game, the overlay side and the hotkey. Results and errors appear in a status
+  line under the header only while there is something to say. The footer is gone, so
+  the overlay panel, about 350 px high on one screen, keeps room for the alerts and
+  numbers.

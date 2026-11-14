@@ -121,6 +121,7 @@ class FloatingIcon:
         home: Rect,
         on_click: Callable[[], Any],
         on_quit: Callable[[], Any],
+        on_moved: Callable[[], Any] | None = None,
     ) -> None:
         """Create the icon; nothing appears until :meth:`start`.
 
@@ -129,6 +130,7 @@ class FloatingIcon:
             home: Where it first appears, in physical pixels; its width is the size.
             on_click: Called (on a worker thread) when the icon is clicked.
             on_quit: Called (on a worker thread) when "Close Chancellor" is chosen.
+            on_moved: Called (on a worker thread) after the player drags the icon.
         """
         if sys.platform != "win32":
             raise OSError("The floating icon is only available on Windows.")
@@ -136,15 +138,23 @@ class FloatingIcon:
         self.home = home
         self.on_click = on_click
         self.on_quit = on_quit
+        self.on_moved = on_moved
         self.hwnd = 0
+        self._show = True
         self._open = False
         self._hover = False
         self._ready = threading.Event()
         self._busy = threading.Lock()
         self._thread: threading.Thread | None = None
 
-    def start(self) -> None:
-        """Create the window on its own thread and wait until it is on screen."""
+    def start(self, show: bool = True) -> None:
+        """Create the window on its own thread and wait until it exists.
+
+        Args:
+            show: Show it at once; otherwise it starts hidden (two screens, where the
+                panel is docked instead) until the layout code shows it.
+        """
+        self._show = show
         self._thread = threading.Thread(target=self._run, name="floating-icon", daemon=True)
         self._thread.start()
         self._ready.wait(5)
@@ -168,7 +178,8 @@ class FloatingIcon:
         self._drag: tuple[int, int, int, int] | None = None
         self._moved = False
         self._paint(self.home.left, self.home.top)
-        native.show(self.hwnd)
+        if self._show:
+            native.show(self.hwnd)
         self._ready.set()
         native.message_loop()
 
@@ -213,6 +224,8 @@ class FloatingIcon:
             user32.ReleaseCapture()
             if dragging and not self._moved:
                 self._in_background(self.on_click)
+            elif dragging and self.on_moved is not None:
+                threading.Thread(target=self.on_moved, name="icon-moved", daemon=True).start()
             return 0
         if message == _WM_RBUTTONUP:
             if native.close_menu(hwnd):

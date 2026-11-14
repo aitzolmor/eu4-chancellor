@@ -12,7 +12,9 @@ the game (:mod:`chancellor.app.layout`, D-022): docked on the second screen when
 are two, or behind a floating icon that opens them as an overlay when there is one.
 Quick questions copy a ready-made prompt and bring Claude Desktop to the front, and a
 system-wide shortcut (:mod:`chancellor.app.hotkey`) opens the overlay or Claude Desktop
-from inside the game. The chat runs in Claude Desktop; the paid API mode arrives later
+from inside the game. The app follows a second screen appearing or dropping while it
+runs (a Miracast link, for instance) and remembers where the icon was left
+(:mod:`chancellor.app.state`). The chat runs in Claude Desktop; the paid API mode arrives later
 and only behind the player's own switch (D-020).
 """
 
@@ -31,6 +33,12 @@ from chancellor.app.icon_window import FloatingIcon
 from chancellor.app.layout import Docker, DockError, enable_dpi_awareness
 from chancellor.app.mcp_server import CampaignProvider
 from chancellor.app.quick_questions import QUICK_QUESTIONS, find_question
+from chancellor.app.state import (
+    load_icon_place,
+    load_overlay_side,
+    save_icon_place,
+    save_overlay_side,
+)
 from chancellor.config import Settings
 from chancellor.context.alerts import campaign_alerts
 from chancellor.context.campaign import Campaign
@@ -45,6 +53,8 @@ ICON_TITLE = "Chancellor icon"
 WINDOW_SIZE = (440, 860)
 MIN_SIZE = (320, 300)  # small enough for the overlay's top 40% on a 1400 px screen
 ICON_SIZE = 64
+SIDES = ("left", "right")  # where the overlay can open on one screen
+SCREEN_CHECK_SECONDS = 2.0  # how often the app looks for screens appearing or dropping
 BACKGROUND = "#0f1726"  # matches the page, so the window does not flash white
 
 
@@ -80,6 +90,9 @@ class PanelApi:
         self._docker: Docker | None = None
         self._windows: dict[str, Any] = {}
         self._overlay_open = False
+        self._mode = "two_screens"  # or "overlay" (one screen, behind the floating icon)
+        self._side = "right"  # the overlay side the player chose (set_overlay_side)
+        self._redock = False  # docked when the second screen dropped: dock again on return
         self._quitting = False
         self._stop_icon = threading.Event()
 
@@ -117,8 +130,13 @@ class PanelApi:
         return self._reforms
 
     def layout_mode(self) -> dict[str, Any]:
-        """``two_screens`` (dock buttons) or ``overlay`` (floating icon), for the page."""
-        return {"mode": "overlay" if "icon" in self._windows else "two_screens"}
+        """``two_screens`` (dock buttons) or ``overlay`` (floating icon), for the page.
+
+        ``docked`` says whether the windows are docked on the second screen now (after
+        the screen returns, the app docks again by itself).
+        """
+        docked = self._mode == "two_screens" and self._docker is not None and self._docker.docked
+        return {"mode": self._mode, "docked": docked, "side": self._side}
 
     def dock(self) -> dict[str, Any]:
         """Dock the panel and Claude Desktop on the second screen.
@@ -154,14 +172,13 @@ class PanelApi:
                 docker.put_away()
                 self._overlay_open = False
             else:
-                side = docker.icon_side(ICON_TITLE)
                 panel.show()
                 # A window created hidden is centred by pywebview when first shown, which
                 # can land after our move; place it once visible, then once more.
                 docker.wait_visible(WINDOW_TITLE)
-                docker.dock(side=side)
+                docker.dock(side=self._side)
                 time.sleep(0.3)
-                docker.dock(side=side)
+                docker.dock(side=self._side)
                 docker.raise_icon(ICON_TITLE)
                 self._overlay_open = True
         except (DockError, OSError) as exc:
@@ -172,6 +189,29 @@ class PanelApi:
         if icon is not None:  # keep the icon in step when the panel closed the overlay
             icon.set_open(self._overlay_open)
         return {"ok": True, "open": self._overlay_open}
+
+    def set_overlay_side(self, side: str) -> dict[str, Any]:
+        """Choose the side of the screen the overlay opens on, and remember it.
+
+        The player picks it to keep the part of the game's interface they need in view;
+        it does not follow the floating icon, which is moved out of the way instead. An
+        open overlay moves at once.
+
+        Returns:
+            ``{"ok": True, "side": side}`` or ``{"ok": False, "error": "<message>"}``.
+        """
+        if side not in SIDES:
+            return {"ok": False, "error": f"Unknown side '{side}'."}
+        self._side = side
+        save_overlay_side(side)
+        if self._overlay_open:
+            try:
+                docker = self._get_docker()
+                docker.dock(side=side)
+                docker.raise_icon(ICON_TITLE)
+            except (DockError, OSError) as exc:
+                return {"ok": False, "error": str(exc)}
+        return {"ok": True, "side": side}
 
     def quit(self) -> dict[str, Any]:
         """Close the app (the floating icon's "Close Chancellor" menu).
@@ -192,13 +232,74 @@ class PanelApi:
             window.destroy()
 
     def _keep_icon_in_view(self) -> None:
-        """Hide the floating icon while the game is not in front (see layout)."""
+        """Hide the floating icon while the game is not in front, or on two screens."""
         try:
             self._get_docker().keep_icon_in_view(
-                ICON_TITLE, stop=self._stop_icon, keep_visible=lambda: self._overlay_open
+                ICON_TITLE,
+                stop=self._stop_icon,
+                keep_visible=lambda: self._overlay_open,
+                allowed=lambda: self._mode == "overlay",
             )
         except (DockError, OSError):
             return
+
+    def _set_screens(self, count: int) -> None:
+        """Switch between docking (two screens or more) and the overlay (one screen).
+
+        Called whenever the number of screens changes. When the second screen drops,
+        docked windows go back where they were, the panel hides and the floating icon
+        takes over; when it returns, the overlay closes, the panel shows again and, if
+        it was docked before, docks again.
+        """
+        mode = "overlay" if count == 1 else "two_screens"
+        if mode == self._mode:
+            return
+        panel = self._windows.get("panel")
+        docker = self._docker
+        if mode == "overlay":
+            self._redock = docker is not None and docker.docked
+            if docker is not None and docker.docked:
+                docker.undock()
+            if panel is not None:
+                panel.hide()
+            self._overlay_open = False
+            icon = self._windows.get("icon")
+            if icon is not None:
+                icon.set_open(False)
+            self._mode = mode
+        else:
+            if self._overlay_open:
+                self.toggle_overlay()
+            self._mode = mode
+            if panel is not None:
+                panel.show()
+            if self._redock:
+                self._redock = False
+                self.dock()
+        if panel is not None:
+            panel.evaluate_js(LAYOUT_CHANGED_SCRIPT)
+
+    def _watch_screens(self, interval: float = SCREEN_CHECK_SECONDS) -> None:
+        """Follow screens appearing or dropping until the app quits."""
+        docker = self._docker
+        if docker is None:
+            return
+        while not self._stop_icon.wait(interval):
+            try:
+                count = docker.screens()
+            except OSError:
+                continue
+            if count:
+                self._set_screens(count)
+
+    def _icon_moved(self) -> None:
+        """Remember where the player left the icon, for the next session."""
+        try:
+            place = self._get_docker().icon_place(ICON_TITLE)
+        except (DockError, OSError):
+            return
+        if place is not None:
+            save_icon_place(place)
 
     def _attach(self, **windows: Any) -> None:
         """Give the API the pywebview windows it shows, hides and closes."""
@@ -230,7 +331,7 @@ class PanelApi:
         except ClipboardError as exc:
             return {"ok": False, "error": str(exc)}
         try:
-            if "icon" in self._windows and not self._overlay_open:
+            if self._mode == "overlay" and not self._overlay_open:
                 opened = self.toggle_overlay()
                 if not opened.get("ok"):
                     return {"ok": True, "focused": False, "error": opened.get("error")}
@@ -247,7 +348,7 @@ class PanelApi:
 
     def _on_hotkey(self) -> None:
         """The shortcut: toggle the overlay (one screen) or bring Claude Desktop forward."""
-        if "icon" in self._windows:
+        if self._mode == "overlay":
             self.toggle_overlay()
             return
         try:
@@ -265,7 +366,8 @@ def run_panel(settings: Settings, load: Callable[[Path], Campaign]) -> None:
 
     With two screens the panel opens as a normal window with dock buttons. With one, only
     a floating icon appears over the game; clicking it opens the panel and Claude Desktop
-    as an overlay on that side of the screen (D-022).
+    as an overlay on that side of the screen (D-022). The icon exists in both cases and
+    is only shown with one screen, so the app can switch while it runs.
 
     Args:
         settings: Save and game folders.
@@ -286,6 +388,8 @@ def run_panel(settings: Settings, load: Callable[[Path], Campaign]) -> None:
 
     api = PanelApi(CampaignProvider(settings, load), game_dir=settings.game_dir)
     api._docker = docker
+    api._mode = "overlay" if one_screen else "two_screens"
+    api._side = load_overlay_side() or "right"
     panel = webview.create_window(
         WINDOW_TITLE,
         url=str(WEB_DIR / "index.html"),
@@ -297,16 +401,16 @@ def run_panel(settings: Settings, load: Callable[[Path], Campaign]) -> None:
         hidden=one_screen,
     )
     api._attach(panel=panel)
-    if one_screen and docker is not None:
+    if docker is not None:
         icon = FloatingIcon(
             ICON_TITLE,
-            docker.icon_home(ICON_SIZE),
+            docker.icon_home(ICON_SIZE, load_icon_place()),
             on_click=api.toggle_overlay,
             on_quit=api.quit,
+            on_moved=api._icon_moved,
         )
         api._attach(icon=icon)
-        # Closing the panel in overlay mode only puts it away; the icon quits the app.
-        panel.events.closing += lambda: _put_away_instead(api)
+    panel.events.closing += lambda: _on_closing(api)
 
     watcher = (
         SaveWatcher(settings.save_dir, lambda path: panel.evaluate_js(save_changed_script(path)))
@@ -328,23 +432,39 @@ def run_panel(settings: Settings, load: Callable[[Path], Campaign]) -> None:
             api._hotkey.start()
         if watcher is not None:
             watcher.start()
-        if one_screen:
-            api._windows["icon"].start()
+        if "icon" in api._windows:
+            api._windows["icon"].start(show=one_screen)
             threading.Thread(target=api._keep_icon_in_view, name="icon-view", daemon=True).start()
+            threading.Thread(target=api._watch_screens, name="screens", daemon=True).start()
 
     webview.start(started)
 
 
-def _put_away_instead(api: PanelApi) -> bool:
-    """``closing`` handler: in overlay mode the panel's close button closes the overlay.
+def _on_closing(api: PanelApi) -> bool:
+    """``closing`` handler for the panel's close button.
 
-    Returns ``False`` to cancel the close, except while the app is quitting.
+    In overlay mode it only closes the overlay (the icon's menu quits the app). On two
+    screens it quits: the hidden icon and the threads stop, docked windows go back.
+
+    Returns ``False`` to cancel the close.
     """
     if api._quitting:
         return True
-    if api._overlay_open:
-        api.toggle_overlay()
-    return False
+    if api._mode == "overlay":
+        if api._overlay_open:
+            api.toggle_overlay()
+        return False
+    api._quitting = True
+    api._stop_icon.set()
+    icon = api._windows.get("icon")
+    if icon is not None:
+        icon.destroy()
+    if api._docker is not None and api._docker.docked:
+        api._docker.undock()
+    return True
+
+
+LAYOUT_CHANGED_SCRIPT = "window.dispatchEvent(new CustomEvent('layout-changed'))"
 
 
 def save_changed_script(path: Path) -> str:

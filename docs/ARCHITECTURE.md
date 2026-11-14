@@ -55,6 +55,8 @@ flowchart LR
 | `watcher` | `SaveWatcher`: polls the current save and reports it once it has finished writing; the panel reloads on it | 4 |
 | `app.ui` | pywebview panel beside the game: campaign status, alerts, chat-mode switch (D-020, D-021, [UI_DESIGN](UI_DESIGN.md)) | 4 |
 | `app.layout` | Window arrangement: `plan_layout` (pure rules: dock on two screens, overlay column on one) and `Docker` (Win32 find, place, restore; per-monitor DPI aware) | 4 |
+| `app.quick_questions` | The panel's ready-made questions: button label and the prompt copied for Claude Desktop | 4 |
+| `app.hotkey` | System-wide shortcut: `parse_hotkey` (pure) and `GlobalHotkey` (`RegisterHotKey` on its own message-loop thread) | 4 |
 | `app.icon_window` | The floating icon: `render_icon` (pure-Python, anti-aliased drawing) and `FloatingIcon` (native layered window, its own message loop, drag, click, right-click menu) | 4 |
 
 Every query follows the same pattern (D-009): a function takes a `Campaign` and returns

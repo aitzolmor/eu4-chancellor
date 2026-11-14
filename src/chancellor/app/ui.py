@@ -5,13 +5,15 @@ The page under ``app/web/`` is plain HTML, CSS and JavaScript. It calls the meth
 values, so the class is testable without a window. pywebview is an optional dependency
 (``pip install -e ".[ui]"``) and is imported only when the window opens.
 
-Build order steps 1-4: the header (country, date, save), alerts and the key numbers,
+Build order steps 1-5: the header (country, date, save), alerts and the key numbers,
 refreshed when the game writes a new save (:class:`chancellor.watcher.SaveWatcher` fires
 a ``save-changed`` event in the page), and arranging the panel and Claude Desktop around
 the game (:mod:`chancellor.app.layout`, D-022): docked on the second screen when there
-are two, or behind a floating icon that opens them as an overlay when there is one. The
-chat runs in Claude Desktop; the paid API mode arrives later and only behind the
-player's own switch (D-020).
+are two, or behind a floating icon that opens them as an overlay when there is one.
+Quick questions copy a ready-made prompt and bring Claude Desktop to the front, and a
+system-wide shortcut (:mod:`chancellor.app.hotkey`) opens the overlay or Claude Desktop
+from inside the game. The chat runs in Claude Desktop; the paid API mode arrives later
+and only behind the player's own switch (D-020).
 """
 
 from __future__ import annotations
@@ -23,9 +25,12 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from chancellor.app.clipboard import ClipboardError, copy_to_clipboard
+from chancellor.app.hotkey import DEFAULT_HOTKEY, GlobalHotkey, HotkeyError, describe_hotkey
 from chancellor.app.icon_window import FloatingIcon
 from chancellor.app.layout import Docker, DockError, enable_dpi_awareness
 from chancellor.app.mcp_server import CampaignProvider
+from chancellor.app.quick_questions import QUICK_QUESTIONS, find_question
 from chancellor.config import Settings
 from chancellor.context.alerts import campaign_alerts
 from chancellor.context.campaign import Campaign
@@ -55,6 +60,7 @@ class PanelApi:
         provider: CampaignProvider,
         clock: Callable[[], float] = time.time,
         game_dir: Path | None = None,
+        copy: Callable[[str], None] = copy_to_clipboard,
     ) -> None:
         """Create the API.
 
@@ -63,9 +69,12 @@ class PanelApi:
             clock: Seconds since the epoch; replaceable in tests.
             game_dir: The game installation, for alerts that need game data (the next
                 imperial reform). Without it those alerts are skipped.
+            copy: Puts text on the clipboard; replaceable in tests.
         """
         self._provider = provider
         self._clock = clock
+        self._copy = copy
+        self._hotkey: GlobalHotkey | None = None
         self._game_dir = game_dir
         self._reforms: ImperialReformLibrary | None = None
         self._docker: Docker | None = None
@@ -200,6 +209,52 @@ class PanelApi:
             self._docker = Docker(WINDOW_TITLE)
         return self._docker
 
+    def quick_questions(self) -> dict[str, Any]:
+        """The ready-made questions, for the panel's buttons."""
+        return {"questions": [q.to_dict() for q in QUICK_QUESTIONS]}
+
+    def ask(self, question_id: str) -> dict[str, Any]:
+        """Copy a quick question and bring Claude Desktop to the front to paste it.
+
+        In overlay mode the overlay is opened first, so Claude Desktop is on screen.
+
+        Returns:
+            ``{"ok": True, "focused": bool, "error"?: str}`` (copied; ``focused`` says
+            whether Claude Desktop came forward) or ``{"ok": False, "error": str}``.
+        """
+        question = find_question(question_id)
+        if question is None:
+            return {"ok": False, "error": f"Unknown question '{question_id}'."}
+        try:
+            self._copy(question.prompt)
+        except ClipboardError as exc:
+            return {"ok": False, "error": str(exc)}
+        try:
+            if "icon" in self._windows and not self._overlay_open:
+                opened = self.toggle_overlay()
+                if not opened.get("ok"):
+                    return {"ok": True, "focused": False, "error": opened.get("error")}
+            self._get_docker().focus_chat()
+        except (DockError, OSError) as exc:
+            return {"ok": True, "focused": False, "error": str(exc)}
+        return {"ok": True, "focused": True}
+
+    def hotkey(self) -> dict[str, Any]:
+        """The system-wide shortcut, if it could be registered, for the page."""
+        if self._hotkey is None or not self._hotkey.registered:
+            return {"registered": False}
+        return {"registered": True, "keys": describe_hotkey(self._hotkey.text)}
+
+    def _on_hotkey(self) -> None:
+        """The shortcut: toggle the overlay (one screen) or bring Claude Desktop forward."""
+        if "icon" in self._windows:
+            self.toggle_overlay()
+            return
+        try:
+            self._get_docker().focus_chat()
+        except (DockError, OSError):
+            return
+
     def chat_mode(self) -> dict[str, Any]:
         """The chat mode in use. Always Claude Desktop until the API tab exists (D-020)."""
         return {"mode": "claude_desktop", "api_available": False}
@@ -261,7 +316,16 @@ def run_panel(settings: Settings, load: Callable[[Path], Campaign]) -> None:
     if watcher is not None:
         panel.events.closed += watcher.stop
 
+    try:
+        api._hotkey = GlobalHotkey(settings.hotkey or DEFAULT_HOTKEY, api._on_hotkey)
+    except HotkeyError:
+        api._hotkey = None
+    if api._hotkey is not None:
+        panel.events.closed += api._hotkey.stop
+
     def started() -> None:
+        if api._hotkey is not None:
+            api._hotkey.start()
         if watcher is not None:
             watcher.start()
         if one_screen:

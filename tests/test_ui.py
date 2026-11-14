@@ -139,3 +139,78 @@ def test_closing_the_panel_in_overlay_mode_only_puts_it_away():
     assert _put_away_instead(api) is False  # the close is cancelled
     api._quitting = True
     assert _put_away_instead(api) is True  # unless the app is quitting
+
+
+class _Docker:
+    """Stands in for layout.Docker: records focus requests, or fails like it would."""
+
+    def __init__(self, error: Exception | None = None) -> None:
+        self.error = error
+        self.focused = 0
+
+    def focus_chat(self) -> None:
+        if self.error:
+            raise self.error
+        self.focused += 1
+
+
+def test_quick_questions_are_plain_values():
+    questions = PanelApi(_Provider()).quick_questions()["questions"]
+    assert [q["id"] for q in questions] == ["campaign", "expand", "threats", "goals"]
+    assert all(q["label"] and len(q["prompt"]) > len(q["label"]) for q in questions)
+
+
+def test_ask_copies_the_prompt_and_brings_claude_desktop_forward():
+    copied: list[str] = []
+    api = PanelApi(_Provider(), copy=copied.append)
+    api._docker = _Docker()
+    assert api.ask("expand") == {"ok": True, "focused": True}
+    assert copied[0].startswith("Where should I expand next?")
+    assert api._docker.focused == 1
+
+
+def test_ask_still_copies_when_claude_desktop_is_closed():
+    from chancellor.app.layout import DockError
+
+    copied: list[str] = []
+    api = PanelApi(_Provider(), copy=copied.append)
+    api._docker = _Docker(DockError("Open Claude Desktop first, then try again."))
+    result = api.ask("campaign")
+    assert result == {
+        "ok": True,
+        "focused": False,
+        "error": "Open Claude Desktop first, then try again.",
+    }
+    assert len(copied) == 1
+
+
+def test_ask_reports_unknown_questions_and_clipboard_failures():
+    from chancellor.app.clipboard import ClipboardError
+
+    api = PanelApi(_Provider(), copy=lambda _text: None)
+    assert api.ask("nope") == {"ok": False, "error": "Unknown question 'nope'."}
+
+    def broken(_text: str) -> None:
+        raise ClipboardError("Could not open the clipboard")
+
+    api = PanelApi(_Provider(), copy=broken)
+    assert api.ask("campaign") == {"ok": False, "error": "Could not open the clipboard"}
+
+
+def test_hotkey_is_reported_only_when_registered():
+    from chancellor.app.hotkey import GlobalHotkey
+
+    api = PanelApi(_Provider())
+    assert api.hotkey() == {"registered": False}
+    api._hotkey = GlobalHotkey("ctrl+shift+space", lambda: None)
+    assert api.hotkey() == {"registered": False}  # not started
+    api._hotkey.registered = True
+    assert api.hotkey() == {"registered": True, "keys": "Ctrl+Shift+Space"}
+
+
+def test_hotkey_brings_claude_desktop_forward_on_two_screens():
+    api = PanelApi(_Provider())
+    api._docker = _Docker()
+    api._attach(panel=_Window())
+    api._on_hotkey()
+    assert api._docker.focused == 1

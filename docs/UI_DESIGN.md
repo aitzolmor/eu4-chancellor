@@ -142,10 +142,6 @@ as a calm instrument panel, not compete with the map.
 - Miracast displays add latency and can drop; the app decides one or two screens at
   start, and should follow a screen appearing or disappearing while it runs. Docking
   over Miracast itself works (verified 2026-11-14).
-- Whether a global hotkey can be registered while EU4 has focus. EU4 runs as
-  administrator on the developer's machine, and Windows hides input state from normal
-  programs while an elevated window is in front (D-022); `RegisterHotKey` may still
-  work, to be verified.
 
 ## Build order
 
@@ -163,6 +159,10 @@ as a calm instrument panel, not compete with the map.
    96 DPI, offset below the top of the main screen) and docking works the same. Not
    verified yet: a screen dropping or appearing while the app runs, and remembering
    where the icon was left.
-5. Quick questions; overlay hotkey.
+5. Quick questions and a system-wide hotkey (D-026). **Done**
+   (`chancellor.app.quick_questions`, `chancellor.app.hotkey`). Verified live on two
+   screens: a question is copied and Claude Desktop comes forward, and the hotkey works
+   with EU4 (running as administrator) in front. The overlay toggle through the hotkey
+   reuses the floating icon's code path; it was not tried separately on one screen.
 6. API chat tab behind the chat-mode switch.
 7. Charts and history (Phase 5).

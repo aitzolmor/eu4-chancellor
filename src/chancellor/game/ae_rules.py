@@ -16,7 +16,7 @@ several files:
 * ``map/positions.txt``: where each province is, to measure distances.
 
 How the numbers combine follows the game wiki's formula (written for 1.24, with the
-1.37 values from ``defines.lua``), corrected against a 1.37 peace deal (D-032): the
+1.37 values from ``defines.lua``), corrected against a 1.37 peace deal (D-034): the
 distance falloff is continuous and the difficulty counts. Which distant countries
 receive no AE at all is still unchecked.
 """

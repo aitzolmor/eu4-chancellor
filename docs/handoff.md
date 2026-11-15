@@ -5,7 +5,7 @@ updated on **2026-11-15** after checking AE and coring against the game (PRs #1â
 merged; 489 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-033),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-034),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -215,7 +215,7 @@ The full reasoning is in [DECISIONS.md](DECISIONS.md).
 - **The difficulty changes the player's numbers.** The user plays on easy
   (`setgameplayoptions` starts with 1), and `difficulty_easy_player` cuts AE by a third
   among other things. When an estimate is off by a constant factor for every country,
-  look at the difficulty modifiers first (D-032).
+  look at the difficulty modifiers first (D-034).
 - **Diagnosing the live app.** A run that logs the button state, cursor, foreground
   window and icon actions (only on change) found the elevation problem in one try;
   keep that approach for input issues.
@@ -260,7 +260,7 @@ extended monitor, 1366Ã—768 at 96 DPI), and the second play-test is recorded
    computed in the tools (D-029, monarch power; D-030, AE of a conquest). On
    2026-11-15 a peace deal against Trento checked the AE estimate: it was twice the
    game's, fixed by the player's difficulty (easy, -33%) and a continuous distance
-   falloff (D-032); the loser and far countries still come out a little high (ROADMAP).
+   falloff (D-034); the loser and far countries still come out a little high (ROADMAP).
    Development cost (D-031) and coring cost (D-033: Friaul 61, Treviso 102) match the
    tooltips. Then the wiki as a searchable source,
    then player feedback on answers. The user is no expert, so validate numbers against

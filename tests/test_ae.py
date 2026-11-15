@@ -95,7 +95,7 @@ def test_shares_follow_religion_culture_distance_and_relations(campaign, ae_rule
     base = 10 * 0.6 * 0.85
     # Owner: same religion +50%, same culture +50%, no distance.
     assert added["VEN"] == pytest.approx(base * 2.0)
-    # Milan, 50 away: same religion, same culture group; the falloff is continuous (D-032).
+    # Milan, 50 away: same religion, same culture group; the falloff is continuous (D-034).
     assert added["MLO"] == pytest.approx(base * 1.75 / (1 + 0.75 * 0.5))
     # The orthodox country 250 away: same religion group (0); greek culture is another group.
     assert added["ITA"] == pytest.approx(base * 1.0 / (1 + 0.75 * 2.5))

@@ -132,7 +132,7 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
     for Austria in 1483; ideas, stability, generals), the monthly gain, the months to
     each technology, leaders and advisors
   - [x] The AE a conquest adds (D-030), in the war check; checked against a peace deal
-    on 2026-11-15 (D-032): continuous distance falloff, the player's difficulty
+    on 2026-11-15 (D-034): continuous distance falloff, the player's difficulty
   - [ ] AE leftovers from that check: the loser of a province (Cilli: 12.7 estimated,
     about 10 in game) and a distant country (Poland: 5.2, about 4) come out high; Milan
     and Mantua were missing from the game's coalition list for an unknown reason

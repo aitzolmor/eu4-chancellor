@@ -549,7 +549,29 @@ formable region 145, not 119); the cache format was bumped.
 Coring cost waits for a tooltip: the one province without a core was already being
 cored, and the game shows no cost breakdown then (done in D-033).
 
-## D-032 — The AE estimate, checked against a peace deal
+## D-033 — Coring costs from the game files and a tooltip
+
+**Date:** 2026-11-15 · **Status:** Accepted
+
+The briefing now says what coring each province without a core costs, in
+administrative power and months (`context.coring`, rules in `game.coring_rules`):
+`10 x development (capped at 30) x (1 + parts)`, and half that for a territory. The parts
+add up: war exhaustion (3% a point), corruption, innovativeness, ideas, policies,
+government reforms, estate privileges, the golden bull, imperial reforms, country and
+province modifiers, administrative efficiency, and a claim (-10%). The summed parts stop
+at -80%. Coring takes `36 x (1 + parts)` months, between 6 and 240.
+
+Checked against the game's tooltip for Austria in 1492, at war: Friaul (12, a territory)
+61 in 37 months, Treviso (20, a territory) 102, with war exhaustion +3.1% and
+innovativeness -0.7%. As in D-029, those two are cut to a thousandth. A territory has no
+flag in the save: it is a province whose area holds no state of its owner.
+
+Not seen in a tooltip yet, so taken from the files and the wiki: the half price is a
+multiplier after the sum (the tooltip lists it apart), the claim discount
+(`CORE_HAD_CLAIM`), the -80% floor, the cap of 30 and administrative efficiency (zero
+before administrative technology 18).
+
+## D-034 — The AE estimate, checked against a peace deal
 
 **Date:** 2026-11-15 · **Status:** Accepted (corrects D-030)
 
@@ -574,25 +596,3 @@ still high and are left open: Cilli, which lost Celje (12.7 against about 10), a
 Poland, the farthest (5.2 against about 4). The game's coalition list also left out Milan
 and Mantua, which hold 90+ AE, for a reason not found. The estimate stays labelled as an
 estimate.
-
-## D-033 — Coring costs from the game files and a tooltip
-
-**Date:** 2026-11-15 · **Status:** Accepted
-
-The briefing now says what coring each province without a core costs, in
-administrative power and months (`context.coring`, rules in `game.coring_rules`):
-`10 x development (capped at 30) x (1 + parts)`, and half that for a territory. The parts
-add up: war exhaustion (3% a point), corruption, innovativeness, ideas, policies,
-government reforms, estate privileges, the golden bull, imperial reforms, country and
-province modifiers, administrative efficiency, and a claim (-10%). The summed parts stop
-at -80%. Coring takes `36 x (1 + parts)` months, between 6 and 240.
-
-Checked against the game's tooltip for Austria in 1492, at war: Friaul (12, a territory)
-61 in 37 months, Treviso (20, a territory) 102, with war exhaustion +3.1% and
-innovativeness -0.7%. As in D-029, those two are cut to a thousandth. A territory has no
-flag in the save: it is a province whose area holds no state of its owner.
-
-Not seen in a tooltip yet, so taken from the files and the wiki: the half price is a
-multiplier after the sum (the tooltip lists it apart), the claim discount
-(`CORE_HAD_CLAIM`), the -80% floor, the cap of 30 and administrative efficiency (zero
-before administrative technology 18).

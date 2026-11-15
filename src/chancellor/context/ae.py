@@ -16,7 +16,7 @@ distance falloff``, times 2/3 for the attacker's allies and 0.1 for its subjects
 
 Rules come from the game files (:class:`AeRules`). The distance falloff,
 ``1 / (1 + 0.75 x distance / 100)`` with the distance to the receiver's nearest province,
-is continuous: a peace deal in the player's game (D-032) matched it within about one AE
+is continuous: a peace deal in the player's game (D-034) matched it within about one AE
 for 15 of 17 countries, where rounding the distance down to hundreds (the wiki's 1.24
 reading) gave every neighbour the full share. Countries farther than 400 map units are
 left out; that reach is not checked.

@@ -64,7 +64,7 @@ Other notable top-level keys: `players_countries`, `start_date`, `great_powers`,
 
 `gameplaysettings.setgameplayoptions` is a list of numbered game options; the first is
 the difficulty, 0 very easy to 4 very hard (the user's 1492 save has 1, easy, which the
-AE of a peace deal confirmed: D-032). Province territories are not flagged: a province
+AE of a peace deal confirmed: D-034). Province territories are not flagged: a province
 is a territory when its country has no `country_state` in the area's
 `map_area_data.<area>.state` (D-033).
 

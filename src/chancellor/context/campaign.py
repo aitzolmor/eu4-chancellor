@@ -242,7 +242,7 @@ class Campaign:
 
         It is the first of the numbered ``setgameplayoptions`` (0 is very easy). It
         matters for the player's aggressive expansion: very easy and easy cut it by a
-        third (D-032).
+        third (D-034).
         """
         block = self.gamestate.get("gameplaysettings", {})
         if isinstance(block, LazyBlock):

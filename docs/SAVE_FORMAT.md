@@ -62,6 +62,12 @@ two blocks:
 Other notable top-level keys: `players_countries`, `start_date`, `great_powers`, `empire`
 (HRE), `celestial_empire`, `religions`, `institutions`, `trade_league`, `rebel_faction`.
 
+`gameplaysettings.setgameplayoptions` is a list of numbered game options; the first is
+the difficulty, 0 very easy to 4 very hard (the user's 1492 save has 1, easy, which the
+AE of a peace deal confirmed: D-032). Province territories are not flagged: a province
+is a territory when its country has no `country_state` in the area's
+`map_area_data.<area>.state` (D-033).
+
 #### Player country (`countries.<TAG>`)
 
 ~213 keys. The ones most useful for a briefing:

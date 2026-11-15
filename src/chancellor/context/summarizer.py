@@ -14,8 +14,10 @@ from dataclasses import dataclass
 from typing import Any
 
 from chancellor.context.campaign import Campaign, as_list, count_regiments, land_armies
+from chancellor.context.coring import coring_costs, render_coring
 from chancellor.context.development import development_costs, render_development
 from chancellor.context.power import power_report, render_power
+from chancellor.game.coring_rules import CoringRules
 from chancellor.game.development_rules import DevelopmentRules
 from chancellor.game.imperial_reforms import IMPERIAL_REFORM_COST, ImperialReformLibrary
 from chancellor.game.localisation import Localisation
@@ -50,6 +52,7 @@ class _Context:
     reforms: ImperialReformLibrary | None = None
     power_rules: PowerRules | None = None
     development: tuple[DevelopmentRules, GameRules] | None = None
+    coring: CoringRules | None = None
 
     @property
     def date(self) -> str:
@@ -93,6 +96,7 @@ def summarize(
     reforms: ImperialReformLibrary | None = None,
     power_rules: PowerRules | None = None,
     development: tuple[DevelopmentRules, GameRules] | None = None,
+    coring: CoringRules | None = None,
 ) -> str:
     """Produce a briefing of a country and its surroundings.
 
@@ -105,6 +109,8 @@ def summarize(
             briefing says what the country's points buy and how fast they come (D-029).
         development: Development cost rules and the game's geography; when given, the
             monarch power section also says what developing its provinces costs (D-031).
+        coring: Core creation rules; with ``development``, the monarch power section
+            also says what coring the country's uncored provinces costs (D-033).
 
     Returns:
         Markdown briefing.
@@ -123,6 +129,7 @@ def summarize(
         reforms=reforms,
         power_rules=power_rules,
         development=development,
+        coring=coring,
     )
 
     sections = [
@@ -302,7 +309,10 @@ def _power(ctx: _Context) -> str | None:
     if ctx.development is not None:
         rules, geography = ctx.development
         costs = development_costs(ctx.campaign, rules, geography, ctx.tag)
-        line = render_development(costs, ctx.country.get("capital"))
+        lines = [render_development(costs, ctx.country.get("capital"))]
+        if ctx.coring is not None:
+            lines.append(render_coring(coring_costs(ctx.campaign, ctx.coring, geography, ctx.tag)))
+        line = "\n".join(item for item in lines if item)
         if line:
             # Before the closing note in italics.
             body, _, note = text.rpartition("\n\n_")

@@ -10,14 +10,15 @@ several files:
   and friends);
 * ``common/wargoal_types``: the casus belli factor (``badboy_factor``): a claim
   (``take_claim``) counts fully, a core (``take_core``) a quarter;
-* ``common/static_modifiers``: what prestige does to AE (``ae_impact`` per 100);
+* ``common/static_modifiers``: what prestige does to AE (``ae_impact`` per 100) and
+  what the difficulty does to the player's (``difficulty_easy_player``: -33%);
 * ``common/technologies``: administrative efficiency, which also lowers AE;
 * ``map/positions.txt``: where each province is, to measure distances.
 
 How the numbers combine follows the game wiki's formula (written for 1.24, with the
-1.37 values from ``defines.lua``). Two parts are not documented for 1.37 and are
-estimates until checked against a peace deal: the exact distance falloff and which
-distant countries receive no AE at all.
+1.37 values from ``defines.lua``), corrected against a 1.37 peace deal (D-032): the
+distance falloff is continuous and the difficulty counts. Which distant countries
+receive no AE at all is still unchecked.
 """
 
 from __future__ import annotations
@@ -44,6 +45,9 @@ DEFAULT_DEFINES: dict[str, float] = {
     "AE_DISTANCE_BASE": 0.75,
     "AE_SAME_OVERLORD": 0.5,
 }
+# The player's side of ``difficulty_<level>_player`` in 1.37's static modifiers.
+DEFAULT_DIFFICULTY_AE: dict[str, float] = {"very_easy": -0.33, "easy": -0.33}
+_DIFFICULTY = re.compile(r"^difficulty_([a-z_]+)_player$")
 _DEFINE = re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*=\s*(-?\d+(?:\.\d+)?)", re.MULTILINE)
 _POSITION = re.compile(r"^(\d+)=\{\s*position=\{\s*(-?[\d.]+)\s+(-?[\d.]+)", re.MULTILINE)
 
@@ -58,6 +62,7 @@ class AeRules:
             on (a claim, or no casus belli at all).
         core_factor: Casus belli factor for taking back a core.
         prestige_ae_impact: Change of AE per 100 prestige.
+        difficulty_ae_impact: Difficulty → change of the player's AE (``easy`` → -0.33).
         admin_efficiency: Administrative technology level → administrative efficiency
             gained up to and including it.
         positions: Province id → map position of its city.
@@ -67,6 +72,9 @@ class AeRules:
     claim_factor: float = 1.0
     core_factor: float = 0.25
     prestige_ae_impact: float = -0.1
+    difficulty_ae_impact: dict[str, float] = field(
+        default_factory=lambda: dict(DEFAULT_DIFFICULTY_AE)
+    )
     admin_efficiency: dict[int, float] = field(default_factory=dict)
     positions: dict[int, tuple[float, float]] = field(default_factory=dict)
 
@@ -102,11 +110,22 @@ class AeRules:
                 factor = _badboy_factor(document.get(name))
                 if factor is not None:
                     setattr(rules, attribute, factor)
+        difficulty: dict[str, float] = {}
         for path in _files(common / "static_modifiers"):
-            block = parse(_read(path)).get("prestige")
+            document = parse(_read(path))
+            block = document.get("prestige")
             impact = block.get("ae_impact") if isinstance(block, dict) else None
             if isinstance(impact, int | float):
                 rules.prestige_ae_impact = float(impact)
+            for name, block in document.items():
+                match = _DIFFICULTY.match(name)
+                if match and isinstance(block, dict):
+                    impact = block.get("ae_impact")
+                    difficulty[match.group(1)] = (
+                        float(impact) if isinstance(impact, int | float) else 0.0
+                    )
+        if difficulty:
+            rules.difficulty_ae_impact = difficulty
         adm = common / "technologies" / "adm.txt"
         if adm.is_file():
             rules.admin_efficiency = admin_efficiency_by_level(_read(adm))

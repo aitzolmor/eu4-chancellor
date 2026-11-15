@@ -64,7 +64,9 @@ flowchart LR
 | `game.development_rules` | Its rules: static modifiers, centres of trade, institutions, golden bulls, imperial reforms, event modifiers, climate | 4 |
 | `game.terrain` | Each province's terrain from `map/provinces.bmp`, `terrain.bmp` and `terrain.txt` (sampled, cached) | 4 |
 | `context.ae` | The AE of taking given provinces, per receiving country, and who would cross 50 (D-030) | 4 |
-| `game.ae_rules` | Its rules: AE per development, casus belli factors, prestige, administrative efficiency, culture/religion/Empire factors, province positions | 4 |
+| `game.ae_rules` | Its rules: AE per development, casus belli factors, prestige, difficulty, administrative efficiency, culture/religion/Empire factors, province positions | 4 |
+| `context.coring` | What coring each uncored province costs (admin power and months), with its parts (D-033) | 4 |
+| `game.coring_rules` | Its rules: coring defines, war exhaustion, corruption, innovativeness, ideas, policies, reforms, privileges, golden bulls, imperial reforms, modifiers | 4 |
 | `game.power_rules` | The cost rules behind it, read from `defines.lua`, technologies, institutions, advisor types, idea groups, event and static modifiers | 4 |
 | `llm.cost` | Prices per model and the cost of a response from its usage, cache writes and reads included | 4 |
 | `app.hotkey` | System-wide shortcut: `parse_hotkey` (pure) and `GlobalHotkey` (`RegisterHotKey` on its own message-loop thread) | 4 |

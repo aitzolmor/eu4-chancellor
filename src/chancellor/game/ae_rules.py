@@ -138,18 +138,19 @@ class AeRules:
 def admin_efficiency_by_level(text: str) -> dict[int, float]:
     """Administrative efficiency gained up to each administrative technology level.
 
-    The technology file's blocks are the levels after level 0 (block ``n`` is level
-    ``n + 1``, as the technology costs showed in D-029).
+    A level's effects are in the block at its own position (block 17 grants the first
+    10% at level 17, as the wiki's Overextension page and the idea slots confirm, D-037);
+    only its year is the previous block's (D-029).
     """
     total = 0.0
-    result = {0: 0.0}
+    result = {}
     for index, block in enumerate(get_all(parse(text), "technology")):
         if isinstance(block, dict):
             value = block.get("administrative_efficiency")
             if isinstance(value, int | float):
                 total += float(value)
-        result[index + 1] = total
-    return result
+        result[index] = total
+    return result or {0: 0.0}
 
 
 def parse_positions(text: str) -> dict[int, tuple[float, float]]:

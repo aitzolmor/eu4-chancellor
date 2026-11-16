@@ -113,6 +113,8 @@ class PowerRules:
             :data:`TECH_COST_STATS`), for the modifiers that have any.
         corruption_power_cost: ``all_power_cost`` per point of corruption.
         innovativeness_power_cost: ``all_power_cost`` per point of innovativeness.
+        idea_slots: Administrative technology level → idea group slots from that level
+            on, for the levels that change it (``allowed_idea_groups``, D-037).
     """
 
     defines: dict[str, float] = field(default_factory=lambda: dict(DEFAULT_DEFINES))
@@ -128,6 +130,16 @@ class PowerRules:
     tech_cost_modifiers: dict[str, dict[str, float]] = field(default_factory=dict)
     corruption_power_cost: float = 1.0
     innovativeness_power_cost: float = -0.1
+    idea_slots: dict[int, int] = field(default_factory=dict)
+
+    def slots_at(self, level: int) -> int:
+        """Idea group slots at an administrative technology level."""
+        return max((n for at, n in self.idea_slots.items() if at <= level), default=0)
+
+    def next_slot(self, level: int) -> int | None:
+        """The administrative technology level that adds the next slot, if any."""
+        later = [at for at, n in self.idea_slots.items() if at > level and n > self.slots_at(level)]
+        return min(later, default=None)
 
     def define(self, name: str) -> float:
         """A number from ``defines.lua``, or its 1.37 value."""
@@ -153,9 +165,12 @@ class PowerRules:
                 value = int(year) + (int(month) - 1) / 12 + (int(day) - 1) / 365
                 setattr(rules, "start_year" if name == "START_DATE" else "end_year", value)
         for path in _files(common / "technologies"):
-            category, levels = parse_technology_file(_read(path))
+            text = _read(path)
+            category, levels = parse_technology_file(text)
             if category:
                 rules.techs[category] = levels
+            if category == "adm":
+                rules.idea_slots = idea_slots_by_level(text)
         for path in _files(common / "institutions"):
             rules.institutions += [k for k, v in parse(_read(path)).items() if isinstance(v, dict)]
         for path in _files(common / "advisortypes"):
@@ -215,6 +230,20 @@ def parse_technology_file(text: str) -> tuple[str | None, list[TechLevel]]:
             TechLevel(index, int(year) if isinstance(year, int | float) else 0, institutions)
         )
     return category, levels
+
+
+def idea_slots_by_level(text: str) -> dict[int, int]:
+    """Level → idea group slots, from ``allowed_idea_groups`` in the technology blocks.
+
+    A level's effects sit in the block at its own position: the slots come at 5, 7, 10,
+    14, 18, 22, 26 and 29, as the wiki's Idea groups page lists them (D-037).
+    """
+    slots = {}
+    for index, block in enumerate(get_all(parse(text), "technology")):
+        value = block.get("allowed_idea_groups") if isinstance(block, dict) else None
+        if isinstance(value, int | float):
+            slots[index] = int(value)
+    return slots
 
 
 def _tech_cost_stats(block: object) -> dict[str, float]:

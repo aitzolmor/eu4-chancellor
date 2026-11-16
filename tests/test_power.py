@@ -13,7 +13,12 @@ import pytest
 from chancellor.context.campaign import Campaign
 from chancellor.context.power import months_until_affordable, power_report, render_power
 from chancellor.game.localisation import Localisation
-from chancellor.game.power_rules import PowerRules, TechLevel, parse_technology_file
+from chancellor.game.power_rules import (
+    PowerRules,
+    TechLevel,
+    idea_slots_by_level,
+    parse_technology_file,
+)
 from chancellor.save.parser import parse
 
 # Austria on 1483.3.2, trimmed to what the costs depend on: ruler 3/3/2 (recorded as an
@@ -98,6 +103,32 @@ def test_austria_1483_matches_the_game(campaign, rules):
     assert {c: t.cost for c, t in report.techs.items()} == {"adm": 677, "dip": 653, "mil": 1194}
     assert report.monthly == {"adm": 6, "dip": 8, "mil": 8}
     assert (report.free_leaders, report.leader_upkeep) == (3, 0)
+
+
+def test_idea_slots_and_the_next_one(campaign, rules):
+    # Austria at administrative 6: one slot (from 5), taken by diplomatic ideas.
+    rules.idea_slots = {5: 1, 7: 2, 10: 3}
+    report = power_report(campaign, rules)
+    assert (report.idea_slots, report.idea_groups) == (1, [("diplomatic ideas", 2)])
+    assert report.next_slot == (7, 1479)  # level 7's penalty runs out with block 6's year
+    text = render_power(report)
+    assert (
+        "- Idea groups: 1 of 1 slots chosen (diplomatic ideas 2/7); the next slot comes with "
+        "administrative technology 7 (no ahead-of-time penalty from 1479)." in text
+    )
+    rules.idea_slots = {5: 1, 6: 2}
+    line = next(x for x in render_power(power_report(campaign, rules)).splitlines() if "slots" in x)
+    assert "1 of 2 slots chosen" in line and "1 free slot to pick a group now" in line
+    assert "every slot is unlocked" in line
+    assert (rules.slots_at(4), rules.next_slot(4)) == (0, 5)
+
+
+def test_idea_slots_by_level():
+    text = (
+        "technology = { year = 1350 } technology = { year = 1390 allowed_idea_groups = 1 } "
+        "technology = { year = 1420 } technology = { allowed_idea_groups = 2 }"
+    )
+    assert idea_slots_by_level(text) == {1: 1, 3: 2}
 
 
 def test_technology_parts_are_the_games(campaign, rules):

@@ -678,3 +678,27 @@ Three changes, from weakest to strongest:
 
 Whether this is enough is for the next test; forcing a search on every question would
 cost time for questions the campaign's numbers already answer.
+
+## D-037 — Idea slots in the briefing; a level's effects are in its own block
+
+**Date:** 2026-11-16 · **Status:** Accepted (corrects D-030, D-033 and D-035)
+
+In the second Claude Desktop test (D-036), the model had to recall at which
+administrative technology each idea group slot opens before it searched the wiki for it.
+The briefing now says how many slots the country has, which groups fill them, any free
+slot, and the level that adds the next with the year its ahead-of-time penalty ends.
+For Austria in 1519: two of two slots chosen, the next with administrative technology
+10, without penalty since 1518.
+
+The slots are `allowed_idea_groups` in `technologies/adm.txt`, and they sit in blocks 5,
+7, 10, 14, 18, 22, 26 and 29: the levels the wiki's Idea groups page lists (checked for
+1.36). So a level's effects are in the block at its own position, while its
+ahead-of-time year is the previous block's (D-029 checked that against the game: level
+7's penalty ends in 1479, block 6's year). The administrative efficiency table had
+assumed block `n` was level `n + 1` and placed the 10% steps at 18, 24 and 28; the
+wiki's Overextension page gives 17, 23 and 27, matching the blocks. It now does too.
+That changes AE and coring costs only from administrative technology 17; the checks in
+D-034 and D-033 were at level 6. The cache format was bumped.
+
+Absolutism also adds administrative efficiency (+0.3% a point), as do a few government
+reforms; neither is counted yet (ROADMAP).

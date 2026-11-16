@@ -1,7 +1,14 @@
 import pytest
 
 from chancellor.app import icon_window
-from chancellor.app.icon_window import GOLD, NAVY, FloatingIcon, render_icon
+from chancellor.app.icon_window import (
+    ALERT,
+    BADGE_CENTRE,
+    GOLD,
+    NAVY,
+    FloatingIcon,
+    render_icon,
+)
 from chancellor.app.layout import Rect
 
 SIZE = 96  # 64 logical pixels at 150%
@@ -50,6 +57,17 @@ def test_pixels_are_premultiplied():
 def test_hover_lightens_the_closed_icon_only():
     assert render_icon(SIZE, hover=True) != render_icon(SIZE)
     assert render_icon(SIZE, open_=True, hover=True) == render_icon(SIZE, open_=True)
+
+
+def test_a_fired_watch_adds_a_red_dot_inside_the_disc():
+    plain, badged = render_icon(SIZE), render_icon(SIZE, badge=True)
+    x, y = (round(share * SIZE) for share in BADGE_CENTRE)
+    assert pixel(badged, x, y) == (*ALERT, 255)  # the dot's centre
+    assert pixel(plain, x, y)[:3] != ALERT
+    assert pixel(badged, SIZE // 2, 75) == pixel(plain, SIZE // 2, 75)  # the rest is unchanged
+    # The dot sits inside the disc, so the corners stay transparent.
+    assert pixel(badged, SIZE - 1, 0)[3] == 0
+    assert pixel(render_icon(SIZE, open_=True, badge=True), x, y) == (*ALERT, 255)
 
 
 def test_the_window_is_windows_only(monkeypatch: pytest.MonkeyPatch):

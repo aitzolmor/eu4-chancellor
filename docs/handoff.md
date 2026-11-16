@@ -2,11 +2,11 @@
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
 updated on **2026-11-16** after checking AE and coring against the game and the
-wiki's retrieval (PRs #1–#46 merged; 520 tests passing, CI green on Ubuntu and
+wiki's retrieval (PRs #1–#47 merged; 523 tests passing, CI green on Ubuntu and
 Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-041),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-042),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -286,7 +286,9 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
    recorded what was said. Watches are built too (D-041: "tell me when ...", checked
    on every save, shown in the panel with a *Your plan* section). Tried in
    Claude Desktop: the first call guessed the condition format and failed, the second
-   worked; the format is now typed in the MCP schema (not re-tested yet).
+   worked; the format is now typed in the MCP schema (not re-tested yet). A fired
+   watch now shows outside the page too (D-042: a red dot on the floating icon, a
+   flashing taskbar button for the docked panel), both verified live by the user.
    The user is no expert, so validate numbers against
    the game's tooltips (they can read those), not strategy. Any live API check needs
    the user's go-ahead; mind the 5 EUR balance.

@@ -21,6 +21,7 @@ within a budget (D-020, D-028).
 
 from __future__ import annotations
 
+import contextlib
 import json
 import threading
 import time
@@ -98,6 +99,7 @@ class PanelApi:
         self._quitting = False
         self._stop_icon = threading.Event()
         self._chat: ApiChat | None = None  # the paid API chat, when settings allow it
+        self._announced: set[int] = set()  # fired watches already flashed (D-042)
 
     def status(self) -> dict[str, Any]:
         """The current campaign's key facts, or an error message for the page.
@@ -126,6 +128,7 @@ class PanelApi:
             fired = toolbox.player_plan()["fired"]
         except (RuntimeError, OSError, KeyError, ValueError) as exc:
             return {"ok": False, "error": str(exc) or exc.__class__.__name__}
+        self._announce([w["id"] for w in fired])
         watches = [
             {
                 "kind": "watch",
@@ -136,6 +139,23 @@ class PanelApi:
             for w in fired
         ]
         return {"ok": True, "alerts": watches + [alert.to_dict() for alert in alerts]}
+
+    def _announce(self, fired: list[int]) -> None:
+        """Make fired watches noticeable outside the page (D-042).
+
+        One screen: the floating icon shows a red dot while any fired watch is waiting
+        to be cleared. Two screens: the panel's taskbar button flashes when a new one
+        fires, until the player looks at the panel.
+        """
+        icon = self._windows.get("icon")
+        if icon is not None:
+            icon.set_badge(bool(fired))
+        new = set(fired) - self._announced
+        self._announced = set(fired)
+        if new and self._mode == "two_screens":
+            # No panel window to flash when not on Windows.
+            with contextlib.suppress(DockError, OSError):
+                self._get_docker().flash_panel()
 
     def plan(self) -> dict[str, Any]:
         """The player's goals, wants and limits, decisions and waiting watches (D-041).

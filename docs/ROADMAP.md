@@ -164,9 +164,11 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
   - [x] Watches tried in Claude Desktop (2026-11-16): "France weak or me strong enough"
     became war odds >= 1.5 with no truce and showed in the panel; the first call
     guessed the condition format, so the MCP schema now types it (D-041)
-  - [ ] Watches: a badge on the floating icon and a Windows notification while the
-    overlay is closed; more metrics as requests show (an ally declaring war, a ruler or
-    heir dying); "or" between conditions if a request needs it
+  - [x] A fired watch is noticed outside the page (D-042): a red dot on the floating
+    icon (one screen) and a flashing taskbar button for the docked panel (two screens)
+  - [ ] Watches (the dot and the flash were verified live on 2026-11-16): a Windows
+    notification only if those prove not enough; more metrics as requests show (an ally declaring war, a ruler or heir
+    dying); "or" between conditions if a request needs it
   - [x] Strategy knowledge: the wiki as a searchable source (`search_wiki`, D-032), from
     the player's own `Special:Export` files. Retrieval checked on 2026-11-16 with 12
     queries from the play-tests (D-035): the right section came first for nearly all;

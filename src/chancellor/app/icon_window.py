@@ -30,6 +30,9 @@ from chancellor.app.layout import Rect
 NAVY = (15, 23, 38)
 NAVY_HOVER = (28, 42, 71)
 GOLD = (201, 162, 74)
+ALERT = (224, 122, 100)  # the panel's --danger: a watch has fired (D-042)
+BADGE_RADIUS = 0.15  # the badge's radius, as a share of the size
+BADGE_CENTRE = (0.71, 0.29)  # its centre, top right, inside the disc
 RING = 3 / 64  # gold ring width, as a share of the icon's size
 CROWN_STROKE = 1.8 / 24 * 30 / 64  # the crown's line width, as a share of the size
 # The crown, in a 24-unit box drawn 30/64 of the icon wide and centred (as the old SVG).
@@ -38,8 +41,8 @@ CROWN_BASE = [(5, 21), (19, 21)]
 DRAG_THRESHOLD = 4  # pixels the pointer moves before a press counts as a drag
 
 
-@functools.lru_cache(maxsize=16)  # three states per size; drawing one takes ~0.1 s
-def render_icon(size: int, open_: bool = False, hover: bool = False) -> bytes:
+@functools.lru_cache(maxsize=16)  # a few states per size; drawing one takes ~0.1 s
+def render_icon(size: int, open_: bool = False, hover: bool = False, badge: bool = False) -> bytes:
     """Draw the icon as premultiplied BGRA pixels, top row first.
 
     A navy disc with a gold ring and a gold crown; when ``open_`` the disc is gold and the
@@ -50,6 +53,7 @@ def render_icon(size: int, open_: bool = False, hover: bool = False) -> bytes:
         size: Width and height in physical pixels.
         open_: Draw the "overlay open" state.
         hover: Draw the lighter hover state (closed icon only).
+        badge: Draw a red dot at the top right: a watch has fired (D-042).
 
     Returns:
         ``size * size * 4`` bytes, ready for a 32-bit top-down DIB.
@@ -63,6 +67,8 @@ def render_icon(size: int, open_: bool = False, hover: bool = False) -> bytes:
     scale = 30 / 64 * size / 24
     offset = (size - 30 / 64 * size) / 2
     lines = _segments(CROWN, scale, offset) + _segments(CROWN_BASE, scale, offset)
+    badge_x, badge_y = (share * size for share in BADGE_CENTRE)
+    badge_radius = BADGE_RADIUS * size
 
     pixels = bytearray(size * size * 4)
     for y in range(size):
@@ -80,6 +86,12 @@ def render_icon(size: int, open_: bool = False, hover: bool = False) -> bytes:
             crown_cover = _clamp(half_stroke - _distance_to(lines, px, py) + 0.5)
             if crown_cover > 0:
                 colour = _mix(colour, crown_colour, crown_cover)
+            if badge:
+                dot = math.hypot(px - badge_x, py - badge_y)
+                rim = _clamp(badge_radius - dot + 0.5)
+                if rim > 0:  # a navy rim, so the dot stands out on the gold ring
+                    colour = _mix(colour, NAVY, rim)
+                    colour = _mix(colour, ALERT, _clamp(badge_radius - ring - dot + 0.5))
             index = (y * size + x) * 4
             red, green, blue = (round(c * alpha) for c in colour)
             pixels[index : index + 4] = bytes((blue, green, red, round(255 * alpha)))
@@ -143,6 +155,7 @@ class FloatingIcon:
         self._show = True
         self._open = False
         self._hover = False
+        self._badge = False
         self._ready = threading.Event()
         self._busy = threading.Lock()
         self._thread: threading.Thread | None = None
@@ -163,6 +176,11 @@ class FloatingIcon:
         """Draw the open (gold) or closed (navy) state. Safe from any thread."""
         if self.hwnd:
             _Native.get().user32.PostMessageW(self.hwnd, _WM_SET_OPEN, int(open_), 0)
+
+    def set_badge(self, badge: bool) -> None:
+        """Show or hide the red dot of a fired watch (D-042). Safe from any thread."""
+        if self.hwnd:
+            _Native.get().user32.PostMessageW(self.hwnd, _WM_SET_BADGE, int(badge), 0)
 
     def destroy(self) -> None:
         """Close the window and end its thread. Safe from any thread."""
@@ -185,7 +203,7 @@ class FloatingIcon:
 
     def _paint(self, left: int | None = None, top: int | None = None) -> None:
         size = self.home.width
-        picture = render_icon(size, self._open, self._hover and not self._open)
+        picture = render_icon(size, self._open, self._hover and not self._open, self._badge)
         _Native.get().update_layered(self.hwnd, picture, size, left, top)
 
     def _window_procedure(self, hwnd: int, message: int, wparam: int, lparam: int) -> int:
@@ -235,6 +253,10 @@ class FloatingIcon:
             self._open = bool(wparam)
             self._paint()
             return 0
+        if message == _WM_SET_BADGE:
+            self._badge = bool(wparam)
+            self._paint()
+            return 0
         if message == _WM_CLOSE_ICON:
             user32.DestroyWindow(hwnd)
             return 0
@@ -270,6 +292,7 @@ _WM_MOUSELEAVE = 0x02A3
 _WM_APP = 0x8000
 _WM_SET_OPEN = _WM_APP + 1
 _WM_CLOSE_ICON = _WM_APP + 2
+_WM_SET_BADGE = _WM_APP + 3
 _MA_NOACTIVATE = 3
 _IDC_HAND = 32649
 

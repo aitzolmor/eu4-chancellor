@@ -107,6 +107,56 @@ def test_fired_watches_lead_the_alerts_and_can_be_dismissed():
     assert api.dismiss(99)["ok"] is False
 
 
+class _Icon:
+    def __init__(self) -> None:
+        self.badges: list[bool] = []
+
+    def set_badge(self, badge: bool) -> None:
+        self.badges.append(badge)
+
+
+class _FlashDocker:
+    def __init__(self) -> None:
+        self.flashes = 0
+
+    def flash_panel(self) -> bool:
+        self.flashes += 1
+        return True
+
+
+def test_a_fired_watch_marks_the_icon_and_flashes_the_panel_once():
+    api = PanelApi(_Provider())
+    icon, docker = _Icon(), _FlashDocker()
+    api._attach(icon=icon)
+    api._docker = docker  # two screens: the panel is docked, its taskbar button flashes
+    api.alerts()
+    assert icon.badges == [False] and docker.flashes == 0  # nothing fired yet
+    _Provider().toolbox().run(
+        "create_watch",
+        {"description": "5 ducats", "conditions": [{"metric": "treasury", "op": ">=", "value": 5}]},
+    )
+    api.alerts()
+    api.alerts()  # the next save: still fired, but not new
+    assert icon.badges == [False, True, True] and docker.flashes == 1
+    api.dismiss(1)
+    api.alerts()
+    assert icon.badges[-1] is False
+
+
+def test_one_screen_shows_the_dot_without_flashing():
+    api = PanelApi(_Provider())
+    icon, docker = _Icon(), _FlashDocker()
+    api._attach(icon=icon)
+    api._docker = docker
+    api._mode = "overlay"
+    _Provider().toolbox().run(
+        "create_watch",
+        {"description": "5 ducats", "conditions": [{"metric": "treasury", "op": ">=", "value": 5}]},
+    )
+    api.alerts()
+    assert icon.badges == [True] and docker.flashes == 0
+
+
 def test_alerts_report_errors_to_the_page():
     result = PanelApi(_Provider(RuntimeError("No .eu4 files"))).alerts()
     assert result == {"ok": False, "error": "No .eu4 files"}

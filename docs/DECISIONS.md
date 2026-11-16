@@ -827,3 +827,27 @@ Conditions only combine with "and"; "or" is left out until a request needs it.
 Left for later (ROADMAP): a badge on the floating icon and a Windows notification while
 the overlay is closed, metrics for events (an ally declaring war, a ruler dying), and the
 campaign journal.
+
+## D-042 — A fired watch is noticed on one screen and on two
+
+**Date:** 2026-11-16 · **Status:** Accepted (completes D-041)
+
+A watch exists to interrupt the player, but a fired one only showed inside the panel. On
+one screen the panel is hidden behind the floating icon while the game runs, so "France
+is weak" could go unseen; on two screens the panel is in view, but nothing draws the eye
+to it while the player looks at the game.
+
+- **One screen:** the floating icon gets a red dot (the panel's alert colour, with a navy
+  rim so it stands out on the gold ring) while any fired watch is waiting to be cleared.
+  The dot sits inside the disc, because the native layered window (D-023) only paints
+  the circle. It goes away when the player clears the watch with its ×.
+- **Two screens:** when a new watch fires, the docked panel's taskbar button and caption
+  flash (`FlashWindowEx`, flashing until the window comes to the front), the signal
+  Windows uses for a window that wants attention. A watch already announced does not
+  flash again on later saves.
+- **In the page:** a fired watch heads the alerts framed in red, in both layouts.
+
+The panel works this out each time it reads a save (`PanelApi._announce`). A Windows
+notification (toast) was left out: Windows can hold notifications back while a game is
+in front, and the dot and the flash are where the player already looks. It stays an
+option if the live test shows these are missed.

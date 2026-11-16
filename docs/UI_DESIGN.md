@@ -104,8 +104,10 @@ From top to bottom:
    header, a status line shows results and errors only while there is something to
    say.
 2. **Alerts**: short, ranked lines from data the tools already produce, each linking to
-   the full view. Fired watches come first, each with a × to clear it once seen
-   (D-041):
+   the full view. Fired watches come first, framed in red, each with a × to clear
+   it once seen (D-041). Outside the page (D-042), one screen shows a red dot on the
+   floating icon while any fired watch waits, and two screens flash the panel's
+   taskbar button when a new one fires:
    - a truce with a rival ends soon (estimated, D-017);
    - coalition members and the countries at 50+ aggressive expansion;
    - overextension above 0%, war exhaustion, loans;

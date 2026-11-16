@@ -106,7 +106,12 @@ main {
 .dot.high { background: var(--danger); }
 .dot.medium { background: var(--accent); }
 .dot.info { background: #6f8fc7; }
-.alert-list li.watch { color: var(--text); font-weight: 600; }
+.alert-list li.watch {
+  color: var(--text); font-weight: 600;
+  margin: 0 0 6px; padding: 8px 10px; border: 1px solid var(--danger);
+  border-radius: var(--radius); background: rgba(224, 122, 100, 0.12);
+}
+.alert-list li.watch + li { border-top: none; }
 .grow { flex: 1; min-width: 0; }
 .dismiss {
   flex: none; padding: 0 6px; border: none; border-radius: 4px;

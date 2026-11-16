@@ -394,6 +394,18 @@ class Docker:
             raise DockError("Open Claude Desktop first, then try again.")
         self._api.activate(chat)
 
+    def flash_panel(self) -> bool:
+        """Flash the panel's taskbar button until the player looks at it (D-042).
+
+        Returns:
+            Whether the panel window was found.
+        """
+        panel = self._api.find_window(pid=os.getpid(), title=self.panel_title)
+        if panel is None:
+            return False
+        self._api.flash(panel)
+        return True
+
     def raise_icon(self, title: str) -> None:
         """Keep the floating icon above the overlay column, so it can close it again."""
         icon = self._api.find_window(pid=os.getpid(), title=title)
@@ -417,6 +429,7 @@ class _Win32:
     SWP_NOACTIVATE = 0x0010
     DWMWA_EXTENDED_FRAME_BOUNDS = 9
     PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+    FLASHW_ALL_UNTIL_FRONT = 0x3 | 0xC  # FLASHW_ALL | FLASHW_TIMERNOFG
 
     def __init__(self) -> None:
         from ctypes import wintypes
@@ -615,6 +628,22 @@ class _Win32:
         """Put a window at the top of the always-on-top windows, without activating it."""
         flags = self.SWP_NOMOVE | self.SWP_NOSIZE | self.SWP_NOACTIVATE
         self.user32.SetWindowPos(hwnd, self.HWND_TOPMOST, 0, 0, 0, 0, flags)
+
+    def flash(self, hwnd: int) -> None:
+        """Flash a window's taskbar button and caption until it comes to the front."""
+        wt = self.wintypes
+
+        class FlashInfo(ctypes.Structure):
+            _fields_ = [
+                ("cbSize", wt.UINT),
+                ("hwnd", wt.HWND),
+                ("dwFlags", wt.DWORD),
+                ("uCount", wt.UINT),
+                ("dwTimeout", wt.DWORD),
+            ]
+
+        info = FlashInfo(ctypes.sizeof(FlashInfo), hwnd, self.FLASHW_ALL_UNTIL_FRONT, 0, 0)
+        self.user32.FlashWindowEx(ctypes.byref(info))
 
     def activate(self, hwnd: int) -> None:
         """Restore a window if minimised, then make it the active window."""

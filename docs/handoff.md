@@ -2,11 +2,11 @@
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
 updated on **2026-11-16** after checking AE and coring against the game and the
-wiki's retrieval (PRs #1–#43 merged; 503 tests passing, CI green on Ubuntu and
+wiki's retrieval (PRs #1–#44 merged; 503 tests passing, CI green on Ubuntu and
 Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-037),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-038),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -27,7 +27,9 @@ Phase 4: getting the Chancellor in front of the player while they play.
 - **2026-11-14, second play-test** on the 1483 save: the advice improved, and seven new
   findings went to ROADMAP (coalition risk first).
 - **Ideas recorded, not scheduled:** goal-based watches, goals and a campaign journal
-  for the panel (ROADMAP, *Ideas / later*).
+  for the panel; the player's context kept per campaign (likely next); other models and
+  no paid Claude plan (ROADMAP, *Ideas / later*). Player ratings of answers were set
+  aside (D-038).
 - **First live API call (2026-11-14):** one question from the panel's API chat cost
   $0.031 (Sonnet 5.5, `medium`); the budget counter worked. The answer's facts were
   right but its advice was generic (ROADMAP, *Answer quality of the chat*). The user's
@@ -277,7 +279,9 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
    Claude Desktop never called `search_wiki`; the briefing, targets and war check now
    end with a pointer to it (D-036), and the second try searched three times. The
    idea slots are in the briefing too (D-037, which also moved administrative
-   efficiency to the right levels). Next: player feedback on answers.
+   efficiency to the right levels). Player ratings of answers were set aside (D-038:
+   the player is no expert and would rate correct advice down). Next, agreed with the
+   user: the player's context kept per campaign (ROADMAP, *Ideas / later*).
    The user is no expert, so validate numbers against
    the game's tooltips (they can read those), not strategy. Any live API check needs
    the user's go-ahead; mind the 5 EUR balance.

@@ -1,8 +1,8 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
-updated on **2026-11-15** after checking AE and coring against the game (PRs #1–#40
-merged; 489 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
+updated on **2026-11-16** after checking AE and coring against the game (PRs #1–#42
+merged; 498 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
 [ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-034),
@@ -205,6 +205,13 @@ The full reasoning is in [DECISIONS.md](DECISIONS.md).
   the parser then keeps the bare province ids under the empty key `""`. `_geography`
   dropped them until D-031, so 50 areas (Austria's own among them) and every region built
   from them were short of provinces. `CACHE_FORMAT` was bumped so old caches rebuild.
+- **The wiki blocks automated access.** Its API and anonymous `Special:Export` answer
+  with a bot challenge or 403. Never work around that: the user exports pages in their
+  own browser while logged in, and `chancellor wiki-import` indexes the XML. Many titles
+  are redirects (Aggressive expansion → Relations); after an export, list the redirect
+  targets it lacks and have the user export those too. Run the import from the user's
+  terminal, not from Claude Code: the index lives in `%LOCALAPPDATA%`, which Claude
+  Desktop's container virtualises (see above).
 - **Checking game mechanics.** The game's tooltips show the exact figure and its parts
   (technology cost, monthly power, leader pool), and the user can read them without
   knowing strategy. That is how D-029 was calibrated: a level's year is the block after
@@ -262,8 +269,9 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
    game's, fixed by the player's difficulty (easy, -33%) and a continuous distance
    falloff (D-034); the loser and far countries still come out a little high (ROADMAP).
    Development cost (D-031) and coring cost (D-033: Friaul 61, Treviso 102) match the
-   tooltips. Then the wiki as a searchable source,
-   then player feedback on answers. The user is no expert, so validate numbers against
+   tooltips. The wiki is a searchable source too (D-032, `search_wiki`); next, judge it
+   with the play-test questions in Claude Desktop, then player feedback on answers.
+   The user is no expert, so validate numbers against
    the game's tooltips (they can read those), not strategy. Any live API check needs
    the user's go-ahead; mind the 5 EUR balance.
 4. Remaining data gaps (casus belli, income breakdown), or the watches idea, whichever

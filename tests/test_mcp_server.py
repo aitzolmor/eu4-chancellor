@@ -113,12 +113,17 @@ def test_server_lists_every_tool(provider):
     assert server.name == SERVER_NAME
     assert "Europa Universalis IV" in server.instructions
     writers = {name for name, tool in tools.items() if not tool.annotations.read_only_hint}
-    assert writers == {"update_player_context"}  # the only tool that writes (D-039)
+    assert writers == {"update_player_context", "create_watch"}  # they write (D-039, D-041)
     assert tools["update_player_context"].annotations.destructive_hint is False
     assert set(tools["check_war"].input_schema["required"]) == {"target"}
     assert tools["check_war"].description == next(
         t["description"] for t in TOOL_DEFINITIONS if t["name"] == "check_war"
     )
+    # A watch condition's fields are in the schema, not left to guess (D-041).
+    condition = tools["create_watch"].input_schema["$defs"]["WatchCondition"]
+    assert set(condition["required"]) == {"metric", "op", "value"}
+    assert condition["properties"]["op"]["enum"] == [">=", "<=", "is"]
+    assert "country" in condition["properties"] and "other" in condition["properties"]
 
 
 def test_server_calls_tools(provider):

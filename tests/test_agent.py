@@ -299,7 +299,8 @@ def test_planning_tools_end_with_the_players_context(campaign, tmp_path: Path):
     assert briefing.rstrip().endswith(
         "_Player context: nothing recorded for this campaign yet. If the player states "
         "goals, wants, limits or decisions in this conversation, record each with "
-        "update_player_context and tell them._"
+        "update_player_context and tell them; if they ask to be told when something "
+        "happens, set a watch with create_watch._"
     )
     for kind, text in (("goal", "Gelre"), ("goal", "Naples"), ("preference", "No colonies")):
         toolbox.run("update_player_context", {"action": "add", "kind": kind, "text": text})

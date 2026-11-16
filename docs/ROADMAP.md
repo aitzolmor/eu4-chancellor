@@ -154,7 +154,19 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
     first chat, where the player set out their plans, recorded nothing; the second read
     the empty context, found the plans in Claude Desktop's earlier chats and recorded
     two faithful goals. The planning tools now end with a line on the context (D-040);
-    try again, then show and edit it in the panel
+    try again
+  - [x] Panel: a "Your plan" section with the player's entries and waiting watches,
+    each removable (D-041)
+  - [x] Watches (D-041): "tell me when ..." as conditions on 24 metrics read from the
+    save (treasury, manpower, monarch power, technology, AE, coalition, war odds, war,
+    truce, alliance, year, ...), set with `create_watch`, checked on every save, firing
+    once; fired watches lead the panel's alerts and the planning tools' last line
+  - [x] Watches tried in Claude Desktop (2026-11-16): "France weak or me strong enough"
+    became war odds >= 1.5 with no truce and showed in the panel; the first call
+    guessed the condition format, so the MCP schema now types it (D-041)
+  - [ ] Watches: a badge on the floating icon and a Windows notification while the
+    overlay is closed; more metrics as requests show (an ally declaring war, a ruler or
+    heir dying); "or" between conditions if a request needs it
   - [x] Strategy knowledge: the wiki as a searchable source (`search_wiki`, D-032), from
     the player's own `Special:Export` files. Retrieval checked on 2026-11-16 with 12
     queries from the play-tests (D-035): the right section came first for nearly all;
@@ -263,7 +275,8 @@ Not scheduled. The tools should not require a Claude subscription or the Anthrop
 
 ### Idea: goal-based watches and a campaign journal (2026-11-13)
 
-(The goals part has a base now: the player's context, D-039.)
+(Built so far: the player's context, D-039, and the watches, D-041. Left: tracking a
+goal's progress with the checklists, and the campaign journal.)
 
 Not scheduled. Raised after using the panel: its key numbers and alerts repeat what the
 game already shows, and the game's own alerts are literal (a problem, or something you

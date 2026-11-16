@@ -25,9 +25,13 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import date as real_date
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from chancellor.context.campaign import Campaign
 
 from chancellor.app.state import state_dir
+from chancellor.player.watches import Condition, Reading, Watch, check, describe, from_dict, show
 
 FILE_NAME = "player_context.json"
 FOLDER = "eu4-chancellor"
@@ -80,6 +84,7 @@ class CampaignRecord:
         first_date: Earliest in-game date recorded.
         last_date: Latest in-game date recorded.
         entries: What the player said about it.
+        watches: What the player asked to be told about (D-041).
     """
 
     tag: str
@@ -87,6 +92,7 @@ class CampaignRecord:
     first_date: str = ""
     last_date: str = ""
     entries: list[Entry] = field(default_factory=list)
+    watches: list[Watch] = field(default_factory=list)
 
 
 @dataclass
@@ -154,8 +160,39 @@ class PlayerContextStore:
         self._save(data)
         return entry
 
-    def remove(self, key: SaveKey, entry_id: int) -> Entry:
-        """Remove an entry (a goal reached or dropped, a preference no longer true)."""
+    def add_watch(self, key: SaveKey, description: str, conditions: list[Condition]) -> Watch:
+        """Set a watch for the save's campaign."""
+        description = " ".join(description.split())
+        if not description:
+            raise PlayerContextError("The description is empty.")
+        if len(description) > MAX_TEXT:
+            raise PlayerContextError(f"Keep the description under {MAX_TEXT} characters.")
+        if not conditions:
+            raise PlayerContextError("A watch needs at least one condition.")
+        data = self._load()
+        watch = Watch(
+            data["next_id"], description, conditions, key.date, real_date.today().isoformat()
+        )
+        data["next_id"] += 1
+        self._campaign_for_write(data, key).watches.append(watch)
+        self._save(data)
+        return watch
+
+    def fire(self, key: SaveKey, ids: list[int]) -> None:
+        """Mark watches as fired on the save's date."""
+        if not ids:
+            return
+        data = self._load()
+        index, _ = _match(data["campaigns"], key)
+        if index is None:
+            return
+        for watch in data["campaigns"][index].watches:
+            if watch.id in ids and not watch.fired:
+                watch.fired = key.date
+        self._save(data)
+
+    def remove(self, key: SaveKey, entry_id: int) -> Entry | Watch:
+        """Remove an entry or a watch (a goal reached or dropped, a watch done with)."""
         data = self._load()
         for entries in self._lists(data, key):
             for entry in entries:
@@ -163,11 +200,21 @@ class PlayerContextStore:
                     entries.remove(entry)
                     self._save(data)
                     return entry
+        index, _ = _match(data["campaigns"], key)
+        watches = data["campaigns"][index].watches if index is not None else []
+        for watch in watches:
+            if watch.id == entry_id:
+                watches.remove(watch)
+                self._save(data)
+                return watch
         raise PlayerContextError(f"No entry #{entry_id} for this campaign or the player.")
 
     def replace(self, key: SaveKey, entry_id: int, text: str) -> Entry:
         """Change an entry's text, keeping its kind; it is dated again."""
         old = self.remove(key, entry_id)
+        if isinstance(old, Watch):
+            self._restore_watch(key, old)
+            raise PlayerContextError(f"#{entry_id} is a watch: remove it and set a new one.")
         try:
             return self.add(key, old.kind, text)
         except PlayerContextError:
@@ -175,6 +222,11 @@ class PlayerContextStore:
             raise
 
     # --- helpers ------------------------------------------------------------------------
+
+    def _restore_watch(self, key: SaveKey, watch: Watch) -> None:
+        data = self._load()
+        self._campaign_for_write(data, key).watches.append(watch)
+        self._save(data)
 
     def _restore(self, key: SaveKey, entry: Entry) -> None:
         data = self._load()
@@ -221,12 +273,14 @@ class PlayerContextStore:
                 first_date=str(c.get("first_date", "")),
                 last_date=str(c.get("last_date", "")),
                 entries=[_entry(e) for e in c.get("entries", []) if isinstance(e, dict)],
+                watches=[from_dict(w) for w in c.get("watches", []) if isinstance(w, dict)],
             )
             for c in raw.get("campaigns", [])
             if isinstance(c, dict)
         ]
         player = [_entry(e) for e in raw.get("player", []) if isinstance(e, dict)]
         ids = [e.id for c in campaigns for e in c.entries] + [e.id for e in player]
+        ids += [w.id for c in campaigns for w in c.watches]
         next_id = max([int(raw.get("next_id", 1)), *(i + 1 for i in ids)])
         return {"next_id": next_id, "campaigns": campaigns, "player": player}
 
@@ -243,11 +297,53 @@ class PlayerContextStore:
         temporary.replace(self.path)
 
 
-def render_context(view: ContextView, key: SaveKey, country: str) -> str:
-    """Markdown for ``get_player_context``."""
+def refresh_watches(
+    store: PlayerContextStore, key: SaveKey, campaign: Campaign
+) -> list[tuple[Watch, list[Reading]]]:
+    """Check the campaign's watches on this save; fire those whose conditions all hold.
+
+    Returns every watch with its readings (none for watches that had already fired).
+    """
+    record = store.view(key).campaign
+    if record is None:
+        return []
+    results = []
+    newly = []
+    for watch in record.watches:
+        readings = [] if watch.fired else check(campaign, watch)
+        if readings and all(r.met for r in readings):
+            watch.fired = key.date
+            newly.append(watch.id)
+        results.append((watch, readings))
+    store.fire(key, newly)
+    return results
+
+
+def watch_lines(campaign: Campaign, results: list[tuple[Watch, list[Reading]]]) -> list[str]:
+    """Markdown lines for the watches: fired first, then those waiting with their values."""
+    lines = []
+    for watch, _ in results:
+        if watch.fired:
+            lines.append(
+                f"- #{watch.id} **FIRED** at {watch.fired}: {watch.description} (tell the "
+                "player; remove it once they have seen it)"
+            )
+    for watch, readings in results:
+        if not watch.fired:
+            parts = "; ".join(
+                f"{describe(r.condition, campaign)} (now {show(r.value)})" for r in readings
+            )
+            lines.append(f"- #{watch.id} waiting: {watch.description}. {parts}")
+    return lines
+
+
+def render_context(
+    view: ContextView, key: SaveKey, country: str, watches: list[str] | None = None
+) -> str:
+    """Markdown for ``get_player_context``; ``watches`` from :func:`watch_lines`."""
     lines = [f"# Player context: {country}", ""]
     campaign = view.campaign
-    if campaign is None or not campaign.entries:
+    if campaign is None or not (campaign.entries or campaign.watches):
         lines.append(f"Nothing recorded yet for this campaign ({country}, save of {key.date}).")
     else:
         lines.append(
@@ -264,6 +360,8 @@ def render_context(view: ContextView, key: SaveKey, country: str) -> str:
         if entries:
             lines += ["", f"## {heading}", ""]
             lines += [f"- #{e.id} {e.text} (recorded at {e.game_date})" for e in entries]
+    if watches:
+        lines += ["", "## Watches", "", *watches]
     lines += [
         "",
         "_Recorded from what the player said. Follow it when advising. When the player "

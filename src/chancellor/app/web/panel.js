@@ -22,6 +22,25 @@ function thousands(men) {
 function show(section) {
   for (const id of ["loading", "error", "numbers"]) $(id).hidden = id !== section;
   $("alerts-section").hidden = section !== "numbers";
+  $("plan-section").hidden = section !== "numbers";
+}
+
+// A fired watch or a plan entry the player can clear; Python removes it by id.
+function dismissButton(id, label) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "dismiss";
+  button.textContent = "×";
+  button.title = label;
+  button.setAttribute("aria-label", label);
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    const result = await window.pywebview.api.dismiss(id);
+    if (!result.ok) status(result.error, "negative");
+    loadAlerts();
+    loadPlan();
+  });
+  return button;
 }
 
 function renderAlerts(alerts) {
@@ -33,8 +52,13 @@ function renderAlerts(alerts) {
     dot.className = `dot ${alert.severity}`;
     dot.setAttribute("aria-label", alert.severity);
     const text = document.createElement("span");
-    text.textContent = alert.text;
+    text.className = "grow";
+    text.textContent = alert.watch ? `Watch: ${alert.text}` : alert.text;
     item.append(dot, text);
+    if (alert.watch) {
+      item.classList.add("watch");
+      item.append(dismissButton(alert.watch, "Seen: remove this watch"));
+    }
     list.append(item);
   }
   $("alerts-loading").hidden = alerts.length > 0;
@@ -50,6 +74,38 @@ async function loadAlerts() {
     else setText("alerts-loading", `Alerts unavailable: ${result.error}`);
   } catch (error) {
     setText("alerts-loading", `Alerts unavailable: ${error}`);
+  }
+}
+
+function renderPlan(plan) {
+  const list = $("plan");
+  list.replaceChildren();
+  const rows = [
+    ...plan.entries.map((e) => ({ id: e.id, label: e.label, text: e.text, title: "" })),
+    ...plan.waiting.map((w) => ({ id: w.id, label: "Watching", text: w.description, title: w.now })),
+  ];
+  for (const row of rows) {
+    const item = document.createElement("li");
+    const label = document.createElement("span");
+    label.className = "plan-label";
+    label.textContent = row.label;
+    const text = document.createElement("span");
+    text.className = "grow";
+    text.textContent = row.text;
+    if (row.title) item.title = row.title;
+    item.append(label, text, dismissButton(row.id, "Remove from the plan"));
+    list.append(item);
+  }
+  $("plan-empty").hidden = rows.length > 0;
+}
+
+async function loadPlan() {
+  try {
+    const result = await window.pywebview.api.plan();
+    if (result.ok) renderPlan(result.plan);
+    else setText("plan-empty", `Plan unavailable: ${result.error}`);
+  } catch (error) {
+    setText("plan-empty", `Plan unavailable: ${error}`);
   }
 }
 
@@ -116,6 +172,7 @@ async function load() {
       lastStatus = result.status;
       render(result.status);
       loadAlerts(); // slower (aggressive expansion scan); the numbers show first
+      loadPlan();
     } else {
       setText("error-text", result.error);
       show("error");

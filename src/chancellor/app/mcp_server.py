@@ -19,7 +19,9 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, NotRequired
+
+from typing_extensions import TypedDict
 
 from chancellor.config import Settings
 from chancellor.context.campaign import Campaign, CountryLookupError
@@ -37,7 +39,8 @@ file and the game's own files, so answers can rest on the real state of the camp
 goals, wants and limits and decisions from earlier chats. Follow it. When the player states \
 a goal, a preference or limit, or a decision, or one is reached, dropped or changed, record \
 it with update_player_context and tell them; record only what the player says, never your \
-own suggestions.
+own suggestions. When they ask to be told when something happens, set a watch with \
+create_watch and say which thresholds you chose.
 - Call them whenever a question depends on the campaign: the player's country, another \
 country, a possible war, the world, missions, formable nations or where to expand. \
 Several independent lookups can be made in parallel.
@@ -58,6 +61,23 @@ Skip advice every player already follows.
 """
 
 _DESCRIPTIONS = {tool["name"]: tool["description"] for tool in TOOL_DEFINITIONS}
+
+
+# Typed so the client sees the fields of a condition: a plain list[dict] left Claude
+# Desktop guessing the shape, and its first call failed (D-041). typing_extensions'
+# TypedDict, because pydantic needs it on Python 3.11. The docstring reaches the model.
+class WatchCondition(TypedDict):
+    """One condition of a watch.
+
+    A metric from the tool description, an operator (>= or <= for numbers, is for
+    true/false), a value, and the countries (names or tags; the player when left out).
+    """
+
+    metric: str
+    op: Literal[">=", "<=", "is"]
+    value: float | bool
+    country: NotRequired[str]
+    other: NotRequired[str]
 
 
 @dataclass
@@ -177,6 +197,17 @@ def build_server(provider: CampaignProvider) -> Any:
         action: str, kind: str | None = None, text: str | None = None, entry: int | None = None
     ) -> str:
         return call("update_player_context", action=action, kind=kind, text=text, entry=entry)
+
+    @server.tool(
+        description=_DESCRIPTIONS["create_watch"],
+        annotations=ToolAnnotations(
+            readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False
+        ),
+    )
+    def create_watch(description: str, conditions: list[WatchCondition]) -> str:
+        return call(
+            "create_watch", description=description, conditions=[dict(c) for c in conditions]
+        )
 
     @server.tool(
         description=(

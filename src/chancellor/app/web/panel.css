@@ -106,6 +106,25 @@ main {
 .dot.high { background: var(--danger); }
 .dot.medium { background: var(--accent); }
 .dot.info { background: #6f8fc7; }
+.alert-list li.watch { color: var(--text); font-weight: 600; }
+.grow { flex: 1; min-width: 0; }
+.dismiss {
+  flex: none; padding: 0 6px; border: none; border-radius: 4px;
+  background: transparent; color: var(--text-muted); font-size: 15px; line-height: 1.2;
+  cursor: pointer;
+}
+.dismiss:hover, .dismiss:focus-visible { color: var(--text); background: var(--surface-raised); }
+.plan { margin-bottom: 16px; }
+.plan-list { list-style: none; margin: 0; padding: 0; }
+.plan-list li {
+  display: flex; gap: 10px; align-items: baseline;
+  padding: 6px 0; font-size: 13px; border-top: 1px solid var(--border);
+}
+.plan-list li:first-child { border-top: none; }
+.plan-label {
+  flex: none; min-width: 74px; color: var(--accent);
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+}
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
 .cell {
   background: var(--surface);

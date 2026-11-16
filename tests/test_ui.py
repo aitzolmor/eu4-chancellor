@@ -3,14 +3,15 @@ from pathlib import Path
 
 from chancellor.app.ui import WEB_DIR, PanelApi, save_changed_script
 from chancellor.context.campaign import Campaign
+from chancellor.context.tools import Toolbox
 from chancellor.save.parser import parse_lazy
 
 SAVE = "countries={ HAB={ owned_provinces={ 1 } treasury=10.000 powers={ 1 2 3 } } }"
 
 
-class _Toolbox:
-    def __init__(self, campaign: Campaign) -> None:
-        self.campaign = campaign
+def _Toolbox(campaign: Campaign) -> Toolbox:  # noqa: N802 - stands in for the old fake class
+    """A real toolbox; its player context lives in the test's own state folder."""
+    return Toolbox(campaign, None)
 
 
 class _Provider:
@@ -68,6 +69,42 @@ def test_page_listens_for_new_saves():
 def test_alerts_come_back_as_plain_values():
     result = PanelApi(_Provider()).alerts()
     assert result == {"ok": True, "alerts": []}  # a quiet country
+
+
+def test_fired_watches_lead_the_alerts_and_can_be_dismissed():
+    api = PanelApi(_Provider())
+    toolbox = _Provider().toolbox()
+    toolbox.run(
+        "create_watch",
+        {
+            "description": "When I have 5 ducats",
+            "conditions": [{"metric": "treasury", "op": ">=", "value": 5}],
+        },
+    )
+    toolbox.run(
+        "create_watch",
+        {
+            "description": "When I have 50 ducats",
+            "conditions": [{"metric": "treasury", "op": ">=", "value": 50}],
+        },
+    )
+    toolbox.run("update_player_context", {"action": "add", "kind": "goal", "text": "Gelre"})
+    alerts = api.alerts()["alerts"]
+    assert alerts == [
+        {
+            "kind": "watch",
+            "severity": "high",
+            "text": "When I have 5 ducats (since 1475.6.21)",
+            "watch": 1,
+        }
+    ]
+    plan = api.plan()["plan"]
+    assert [(e["label"], e["text"]) for e in plan["entries"]] == [("Goal", "Gelre")]
+    assert [w["description"] for w in plan["waiting"]] == ["When I have 50 ducats"]
+    assert "treasury of you >= 50 (now 10)" in plan["waiting"][0]["now"]
+    assert api.dismiss(1) == {"ok": True, "message": "Removed watch #1: When I have 5 ducats"}
+    assert api.alerts()["alerts"] == []
+    assert api.dismiss(99)["ok"] is False
 
 
 def test_alerts_report_errors_to_the_page():

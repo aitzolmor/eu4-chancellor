@@ -37,7 +37,18 @@ from chancellor.player.context import (
     PlayerContextStore,
     SaveKey,
     context_path,
+    refresh_watches,
     render_context,
+    watch_lines,
+)
+from chancellor.player.watches import (
+    Watch,
+    WatchError,
+    check,
+    describe,
+    metric_list,
+    show,
+    validate_condition,
 )
 from chancellor.wiki.store import render_hits, search, wiki_path
 
@@ -50,6 +61,14 @@ WIKI_HINTS = {
     "get_expansion_targets": "'vassal', 'coalition', 'aggressive expansion', "
     "'casus belli', the target's English name",
     "check_war": "'coalition', 'aggressive expansion', 'peace treaty', 'war score'",
+}
+# One entry's label in the panel's "Your plan" (KINDS has the section headings).
+PANEL_LABELS = {
+    "goal": "Goal",
+    "preference": "Want / limit",
+    "decision": "Decision",
+    "note": "Note",
+    "player": "About you",
 }
 # Tools used to plan, whose results end with a line on the player's context (D-040).
 PLAYER_HINT_TOOLS = frozenset(
@@ -248,6 +267,47 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "create_watch",
+        "description": (
+            'Set a watch when the player asks to be told when something happens ("tell me '
+            'when France is weak enough to attack", "when I have 200 ducats", "when the '
+            'truce with Naples ends"). Turn their words into conditions on the metrics '
+            "below; all conditions must hold for the watch to fire. It is checked on every "
+            "save, fires once, and shows in the panel and in the planning tools' results; "
+            "get_player_context lists watches with their current values, and "
+            "update_player_context removes one by its id. Make vague words concrete and tell "
+            "the player the thresholds you chose (for 'weak enough to attack', for example, "
+            "war_odds >= 1.5 with no truce). `country` and `other` are names or tags; both "
+            "default to the player. Metrics: " + metric_list() + "."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "description": "What the player asked for, in their words.",
+                },
+                "conditions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "metric": {"type": "string"},
+                            "op": {"type": "string", "enum": [">=", "<=", "is"]},
+                            "value": {"type": ["number", "boolean"]},
+                            "country": {"type": "string"},
+                            "other": {"type": "string"},
+                        },
+                        "required": ["metric", "op", "value"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            "required": ["description", "conditions"],
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -266,6 +326,10 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
     "get_expansion_targets": {"country": _Field(str)},
     "search_wiki": {"query": _Field(str, required=True), "max_results": _Field(int)},
     "get_player_context": {},
+    "create_watch": {
+        "description": _Field(str, required=True),
+        "conditions": _Field(list, required=True),
+    },
     "update_player_context": {
         "action": _Field(str, required=True),
         "kind": _Field(str),
@@ -333,21 +397,33 @@ class Toolbox:
 
     def _player_hint(self) -> str:
         """One line on the player's recorded context, for the planning tools (D-040)."""
-        view = PlayerContextStore(self.context_file).view(self._save_key())
+        store = PlayerContextStore(self.context_file)
+        key = self._save_key()
+        watches = refresh_watches(store, key, self.campaign)
+        view = store.view(key)
         entries = view.campaign.entries if view.campaign else []
-        if not entries:
+        fired = [w for w, _ in watches if w.fired]
+        alert = "".join(
+            f" WATCH FIRED #{w.id} at {w.fired}: {w.description} (tell the player)." for w in fired
+        )
+        if not entries and not watches:
             return (
                 "_Player context: nothing recorded for this campaign yet. If the player "
                 "states goals, wants, limits or decisions in this conversation, record each "
-                "with update_player_context and tell them._"
+                "with update_player_context and tell them; if they ask to be told when "
+                "something happens, set a watch with create_watch._"
             )
         counts: dict[str, int] = {}
         for entry in entries:
-            counts[entry.kind] = counts.get(entry.kind, 0) + 1
-        listed = ", ".join(f"{n} {KINDS[k].lower()}" for k, n in counts.items() if k in KINDS)
+            label = KINDS[entry.kind].lower() if entry.kind in KINDS else entry.kind
+            counts[label] = counts.get(label, 0) + 1
+        waiting = len(watches) - len(fired)
+        if waiting:
+            counts["watches waiting"] = waiting
+        listed = ", ".join(f"{n} {label}" for label, n in counts.items()) or "only fired watches"
         return (
             f"_Player context: {listed} recorded for this campaign (get_player_context; "
-            "follow them). Record new ones the player states with update_player_context._"
+            f"follow them). Record new ones the player states with update_player_context.{alert}_"
         )
 
     # --- handlers -----------------------------------------------------------------------
@@ -395,8 +471,41 @@ class Toolbox:
 
     def _get_player_context(self, args: dict[str, Any]) -> str:
         key = self._save_key()
-        view = PlayerContextStore(self.context_file).view(key)
-        return render_context(view, key, self.campaign.label(key.tag))
+        store = PlayerContextStore(self.context_file)
+        results = refresh_watches(store, key, self.campaign)
+        view = store.view(key)
+        lines = watch_lines(self.campaign, results)
+        return render_context(view, key, self.campaign.label(key.tag), lines)
+
+    def _create_watch(self, args: dict[str, Any]) -> str:
+        raw = args["conditions"]
+        if not raw:
+            raise ToolInputError("create_watch needs at least one condition")
+        try:
+            conditions = [validate_condition(item) for item in raw]
+        except WatchError as exc:
+            raise ToolInputError(str(exc)) from exc
+        for condition in conditions:  # countries by name or tag, stored as tags
+            if condition.country:
+                condition.country = self._tag(condition.country)
+            if condition.other:
+                condition.other = self._tag(condition.other)
+        key = self._save_key()
+        store = PlayerContextStore(self.context_file)
+        try:
+            watch = store.add_watch(key, args["description"], conditions)
+        except PlayerContextError as exc:
+            raise ToolInputError(str(exc)) from exc
+        readings = check(self.campaign, watch)
+        now = "; ".join(
+            f"{describe(r.condition, self.campaign)}: now {show(r.value)}" for r in readings
+        )
+        state = (
+            "All conditions already hold: it fires with this save."
+            if all(r.met for r in readings)
+            else "It fires on the first save where all conditions hold."
+        )
+        return f"Watch #{watch.id} set: {watch.description}. {now}. {state}"
 
     def _update_player_context(self, args: dict[str, Any]) -> str:
         store = PlayerContextStore(self.context_file)
@@ -412,8 +521,10 @@ class Toolbox:
                 if entry_id is None:
                     raise ToolInputError(f"{action} needs `entry` (the id)")
                 if action == "remove":
-                    entry = store.remove(key, entry_id)
-                    return f"Removed #{entry.id} ({entry.kind}): {entry.text}"
+                    removed = store.remove(key, entry_id)
+                    if isinstance(removed, Watch):
+                        return f"Removed watch #{removed.id}: {removed.description}"
+                    return f"Removed #{removed.id} ({removed.kind}): {removed.text}"
                 if text is None:
                     raise ToolInputError("replace needs `text`")
                 entry = store.replace(key, entry_id, text)
@@ -425,6 +536,45 @@ class Toolbox:
     def _save_key(self) -> SaveKey:
         campaign = self.campaign
         return SaveKey(campaign.campaign_id, campaign.player, campaign.date)
+
+    def player_plan(self) -> dict[str, Any]:
+        """The player's context and watches as plain values, for the panel (D-041).
+
+        Checks the watches on this save first, so ones that now hold are fired.
+        """
+        store = PlayerContextStore(self.context_file)
+        key = self._save_key()
+        results = refresh_watches(store, key, self.campaign)
+        view = store.view(key)
+        entries = [*(view.campaign.entries if view.campaign else []), *view.player]
+        return {
+            "entries": [
+                {
+                    "id": e.id,
+                    "kind": e.kind,
+                    "label": PANEL_LABELS.get(e.kind, e.kind),
+                    "text": e.text,
+                }
+                for e in entries
+            ],
+            "waiting": [
+                {
+                    "id": w.id,
+                    "description": w.description,
+                    "now": "; ".join(
+                        f"{describe(r.condition, self.campaign)} (now {show(r.value)})"
+                        for r in readings
+                    ),
+                }
+                for w, readings in results
+                if not w.fired
+            ],
+            "fired": [
+                {"id": w.id, "description": w.description, "fired": w.fired}
+                for w, _ in results
+                if w.fired
+            ],
+        }
 
     def _search_wiki(self, args: dict[str, Any]) -> str:
         query = str(args["query"])

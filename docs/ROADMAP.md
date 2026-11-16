@@ -139,7 +139,8 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
     calibrate at the next conquest
   - [ ] Technology cost changes from idea bonuses, policies, reforms and estate
     privileges
-  - [ ] Strategy knowledge: the wiki as a searchable source (`search_wiki`)
+  - [x] Strategy knowledge: the wiki as a searchable source (`search_wiki`, D-032), from
+    the player's own `Special:Export` files; to be judged with the play-test questions
   - [ ] Player feedback on answers (thumbs up or down with a note) to find bad advice
 
 ### Play-test findings (2026-11-13, Austria 1475 save, through the MCP tools)

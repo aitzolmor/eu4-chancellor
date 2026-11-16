@@ -140,6 +140,22 @@ before it could cost more than its cap (default $0.50), and once the total budge
 (default $5) is spent the chat refuses new questions. `/usage` shows the tokens and money
 spent. The desktop panel has the same chat as a mode you switch on in its "…" menu.
 
+## Add the game wiki (optional)
+
+The Chancellor can search a local copy of the [EU4 wiki](https://eu4.paradoxwikis.com/) for
+how mechanics work and for strategy. The wiki does not allow automated downloads, so you
+export the pages yourself: log in, open `Special:Export`, paste a list of page titles
+(and categories such as `Guides`), keep "current revision only", and save the XML. Then:
+
+```bash
+chancellor wiki-import Europa+Universalis+4+Wiki-*.xml
+chancellor wiki-search coalition
+```
+
+The index stays on your computer (next to the app's state, not in the repository); every
+result links to its page and says which game version it was last checked for. Run the
+import again with fresh exports to update it.
+
 ## Use it from Claude Desktop (no API key needed)
 
 If you have a Claude subscription, Claude Desktop can use the Chancellor's tools directly

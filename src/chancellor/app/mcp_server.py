@@ -39,7 +39,14 @@ Several independent lookups can be made in parallel.
 - Every call reads the newest save, so after the player saves, look things up again.
 - The tools do not know war score or casus belli. Truces are known, but their end dates \
 are estimates. Requirements marked [?] could not be checked automatically.
-- Give concrete, prioritised advice with the numbers and names behind it, then the risks.
+- Use the computed mechanics instead of rules of thumb: the country briefing says what \
+monarch power buys (technology, ideas, stability, generals, development) and the war check \
+estimates the aggressive expansion of a conquest. Never recommend buying what the country \
+cannot afford or does not need.
+- For how a mechanic works or for strategy, use search_wiki with English game terms and cite \
+the page; the save and the computed numbers take precedence over the wiki.
+- Give concrete, prioritised advice with the numbers and names behind it, then the risks. \
+Skip advice every player already follows.
 """
 
 _DESCRIPTIONS = {tool["name"]: tool["description"] for tool in TOOL_DEFINITIONS}
@@ -143,6 +150,10 @@ def build_server(provider: CampaignProvider) -> Any:
     @server.tool(description=_DESCRIPTIONS["get_expansion_targets"], annotations=read_only)
     def get_expansion_targets(country: str | None = None) -> str:
         return call("get_expansion_targets", country=country)
+
+    @server.tool(description=_DESCRIPTIONS["search_wiki"], annotations=read_only)
+    def search_wiki(query: str, max_results: int | None = None) -> str:
+        return call("search_wiki", query=query, max_results=max_results)
 
     @server.tool(
         description=(

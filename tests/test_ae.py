@@ -177,13 +177,14 @@ def test_rules_are_read_from_the_game_files(tmp_path: Path):
     assert rules.difficulty_ae_impact == {"easy": -0.25, "normal": 0.0}
     assert rules.define("AE_SAME_CULTURE") == 0.6
     assert rules.define("PO_DEMAND_PROVINCES_AE") == 0.6  # the 1.37 value
-    assert rules.admin_efficiency == {0: 0.0, 1: 0.0, 2: 0.1}
+    assert rules.admin_efficiency == {0: 0.0, 1: 0.1}
     assert rules.positions == {1: (3085.0, 1723.0)}
 
 
 def test_parsers():
     assert parse_positions("2={ position={ 1.5 -2.0 } }") == {2: (1.5, -2.0)}
-    assert admin_efficiency_by_level("technology = { administrative_efficiency = 0.1 }") == {
-        0: 0.0,
-        1: 0.1,
-    }
+    # A level's effects sit in the block at its own position (D-037).
+    text = "technology = { year = 1350 } technology = { administrative_efficiency = 0.1 }"
+    assert admin_efficiency_by_level(text) == {0: 0.0, 1: 0.1}
+    assert admin_efficiency_by_level("technology = { administrative_efficiency = 0.1 }") == {0: 0.1}
+    assert admin_efficiency_by_level("") == {0: 0.0}

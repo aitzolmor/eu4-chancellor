@@ -103,6 +103,11 @@ class PowerReport:
         idea_cost: Base cost of the next idea (administrative, diplomatic or military,
             depending on the idea group).
         ideas_taken: Ideas taken in idea groups (national ideas not counted).
+        idea_groups: The idea groups chosen, ``(name, ideas taken)``, national ideas not
+            counted.
+        idea_slots: Idea group slots at the country's administrative technology.
+        next_slot: The administrative technology level that adds a slot, and the year
+            from which buying it carries no ahead-of-time penalty, if any.
         stability_cost: Administrative cost of one point of stability.
         general_cost: Military cost of recruiting a general.
         leaders: The country's leaders.
@@ -119,6 +124,9 @@ class PowerReport:
     techs: dict[str, TechCost]
     idea_cost: int
     ideas_taken: int
+    idea_groups: list[tuple[str, int]]
+    idea_slots: int
+    next_slot: tuple[int, int | None] | None
     stability_cost: int
     general_cost: int
     leaders: list[Person]
@@ -155,6 +163,20 @@ def power_report(campaign: Campaign, rules: PowerRules, tag: str | None = None) 
         if group != national and category and isinstance(count, int):
             ideas_by_category[category] = ideas_by_category.get(category, 0) + count
 
+    groups = [
+        (campaign.text(str(group)), int(count))
+        for group, count in ideas.items()
+        if group != national and isinstance(count, int)
+    ]
+    adm_level = int((country.get("technology") or {}).get("adm_tech", 0) or 0)
+    next_level = rules.next_slot(adm_level)
+    next_slot = None
+    if next_level is not None:
+        adm_levels = rules.techs.get("adm") or []
+        # The ahead-of-time penalty of a level runs out with the previous block's year (D-029).
+        year = adm_levels[next_level - 1].year if 0 < next_level <= len(adm_levels) else None
+        next_slot = (next_level, year)
+
     leaders = _leaders(country)
     advisors, advisor_power = _advisors(campaign, country, rules)
     emperor = campaign.emperor == tag
@@ -178,6 +200,9 @@ def power_report(campaign: Campaign, rules: PowerRules, tag: str | None = None) 
         techs=techs,
         idea_cost=round(rules.define("PS_BUY_IDEA")),
         ideas_taken=ideas_taken,
+        idea_groups=groups,
+        idea_slots=rules.slots_at(adm_level),
+        next_slot=next_slot,
         stability_cost=round(rules.define("PS_BOOST_STABILITY")),
         general_cost=round(rules.define("PS_BUY_GENERAL")),
         leaders=leaders,
@@ -218,6 +243,7 @@ def render_power(report: PowerReport) -> str:
     lines += [
         f"- Next idea: {report.idea_cost} points of its group's category "
         f"({report.ideas_taken} ideas taken in idea groups).",
+        _slots_line(report),
         f"- One point of stability: {report.stability_cost} administrative points"
         + ("" if can_raise else " (stability is already at its maximum of +3)")
         + ".",
@@ -250,6 +276,24 @@ def render_power(report: PowerReport) -> str:
         "than the game's own estimate, which keeps today's cost._",
     ]
     return "\n".join(lines)
+
+
+def _slots_line(report: PowerReport) -> str:
+    """Idea group slots: chosen, free, and the technology that adds the next."""
+    chosen = len(report.idea_groups)
+    groups = ", ".join(f"{name} {taken}/7" for name, taken in report.idea_groups)
+    line = f"- Idea groups: {chosen} of {report.idea_slots} slots chosen"
+    line += f" ({groups})" if groups else ""
+    free = report.idea_slots - chosen
+    if free > 0:
+        line += f"; {free} free slot{'s' if free > 1 else ''} to pick a group now"
+    if report.next_slot:
+        level, year = report.next_slot
+        line += f"; the next slot comes with administrative technology {level}"
+        line += f" (no ahead-of-time penalty from {year})" if year else ""
+    else:
+        line += "; every slot is unlocked"
+    return line + "."
 
 
 # --- technology -------------------------------------------------------------------------

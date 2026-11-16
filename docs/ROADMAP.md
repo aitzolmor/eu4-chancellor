@@ -156,9 +156,11 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
     groups) never called `search_wiki`; the tool, the prompts and the strategy tools'
     results now point to it (D-036). Second try, same idea-group question: three
     searches ("Austria strategy idea groups", idea slots, the candidate groups)
-  - [ ] Briefing: idea slots taken and free, and the administrative technology that
-    unlocks the next (`allowed_idea_groups` in `technologies/adm.txt`); the model had to
-    recall the thresholds or search the wiki for them
+  - [x] Briefing: idea slots chosen and free, and the administrative technology that
+    unlocks the next with the year its penalty ends (D-037); the model had to recall the
+    thresholds or search the wiki for them
+  - [ ] Administrative efficiency from absolutism (+0.3% a point, up to 30%) and from
+    government reforms, for AE and coring; only technology is counted
   - [ ] Player feedback on answers (thumbs up or down with a note) to find bad advice
 
 ### Play-test findings (2026-11-13, Austria 1475 save, through the MCP tools)

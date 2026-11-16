@@ -139,11 +139,26 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
   - [x] Development cost per province (D-031), with each province's terrain read from the
     map images; matches the game's tooltips (Vienna 59, Ostmark 53, Tirol 56)
   - [x] Coring cost per uncored province (D-033), in the briefing; matches the game's
-    tooltips (Friaul 61 in 37 months, Treviso 102)
+    tooltips (Friaul 61 in 37 months, Treviso 102); administrative efficiency now
+    multiplies after the sum (D-035)
+  - [ ] Coring: permanent claims (-25%; the save lists only `claims`, so every claim
+    counts as temporary, -10%) and the higher cost of provinces whose core belongs to a
+    country with `enemy_core_creation` ideas
   - [ ] Technology cost changes from idea bonuses, policies, reforms and estate
     privileges
   - [x] Strategy knowledge: the wiki as a searchable source (`search_wiki`, D-032), from
-    the player's own `Special:Export` files; to be judged with the play-test questions
+    the player's own `Special:Export` files. Retrieval checked on 2026-11-16 with 12
+    queries from the play-tests (D-035): the right section came first for nearly all;
+    a long section no longer fills several results
+  - [ ] Judge the wiki in real answers: ask play-test questions in Claude Desktop and
+    check that it searches, cites and lets the computed numbers win. First try
+    (2026-11-16): better answers, but two strategy questions (an expansion plan, idea
+    groups) never called `search_wiki`; the tool, the prompts and the strategy tools'
+    results now point to it (D-036). Second try, same idea-group question: three
+    searches ("Austria strategy idea groups", idea slots, the candidate groups)
+  - [ ] Briefing: idea slots taken and free, and the administrative technology that
+    unlocks the next (`allowed_idea_groups` in `technologies/adm.txt`); the model had to
+    recall the thresholds or search the wiki for them
   - [ ] Player feedback on answers (thumbs up or down with a note) to find bad advice
 
 ### Play-test findings (2026-11-13, Austria 1475 save, through the MCP tools)

@@ -63,8 +63,20 @@ def test_a_claim_and_a_state(campaign, rules, game_rules):
     celje = next(c for c in coring_costs(campaign, rules, game_rules) if c.name == "Celje")
     assert (celje.territory, celje.claim) == (False, True)
     # 9 development x 10 x (1 + 0.031 - 0.007 - 0.1), full price in a state.
-    assert celje.cost == round(90 * 0.924)
-    assert celje.months == round(36 * 0.924)
+    assert celje.cost == 83  # 83.16, rounded down
+    assert celje.months == 33  # 33.3, to the nearest month
+
+
+def test_administrative_efficiency_multiplies_after_the_sum(campaign, rules, game_rules):
+    rules.admin_efficiency = {6: 0.1}
+    costs = {c.name: c for c in coring_costs(campaign, rules, game_rules)}
+    # Treviso: 200 x 1.024 x (1 - 0.1) x 0.5 = 92.16; summed with the parts it would be 92.4.
+    treviso = costs["Treviso"]
+    assert (treviso.cost, treviso.admin_efficiency) == (92, 0.1)
+    assert "administrative efficiency" not in dict(treviso.parts)
+    assert treviso.months == 37  # the time does not change
+    line = render_coring(list(costs.values()))
+    assert "then administrative efficiency -10%" in line
 
 
 def test_render(campaign, rules, game_rules):

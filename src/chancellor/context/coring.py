@@ -1,12 +1,14 @@
-"""What coring each province costs (D-033).
+"""What coring each province costs (D-033, D-035).
 
-``cost = round(10 x min(development, 30) x max(1 + parts, 0.2) x 0.5 for a territory)``
+``cost = floor(10 x min(development, 30) x max(1 + parts, 0.2) x
+(1 - administrative efficiency) x 0.5 for a territory)``
 
 The parts add up: war exhaustion, corruption and innovativeness (each cut to a thousandth,
 as the tooltip shows them), ideas, policies, government reforms, estate privileges, the
-golden bull, imperial reforms, country and province modifiers, administrative efficiency
-and a claim. A territory pays half on top. Coring takes ``36 x (1 + parts)`` months
-(between 6 and 240). Rules in :class:`CoringRules`.
+golden bull, imperial reforms, country and province modifiers and a claim.
+Administrative efficiency and a territory's half price multiply after the sum, and the
+cost is rounded down (the wiki's Core page, checked for 1.37). Coring takes
+``36 x (1 + parts)`` months (between 6 and 240). Rules in :class:`CoringRules`.
 
 Checked against the game's tooltips for Austria in 1492 at war: Friaul (12 development, a
 territory) 61 and Treviso (20) 102, with war exhaustion +3.1% and innovativeness -0.7%;
@@ -44,6 +46,7 @@ class CoringCost:
         territory: Whether it is a territory (outside a state), which halves the cost.
         claim: Whether the country has a claim on it.
         parts: The changes that add up, as ``(description, share)``.
+        admin_efficiency: The administrative efficiency that multiplies the cost.
     """
 
     province: int
@@ -54,6 +57,7 @@ class CoringCost:
     territory: bool
     claim: bool
     parts: list[tuple[str, float]] = field(default_factory=list)
+    admin_efficiency: float = 0.0
 
 
 def coring_costs(
@@ -63,6 +67,8 @@ def coring_costs(
     tag = tag or campaign.player
     country = campaign.country(tag) or {}
     shared = country_parts(campaign, rules, tag, country)
+    level = int((country.get("technology") or {}).get("adm_tech", 0) or 0)
+    efficiency = rules.admin_efficiency.get(level, 0.0)
     areas = _areas(game_rules)
     costs = []
     for province in as_list(country.get("owned_provinces")):
@@ -72,7 +78,7 @@ def coring_costs(
         if tag in as_list(data.get("cores")):
             continue
         territory = not _in_state(campaign, areas.get(province), tag)
-        costs.append(coring_cost(campaign, rules, province, tag, shared, territory))
+        costs.append(coring_cost(campaign, rules, province, tag, shared, territory, efficiency))
     return sorted(costs, key=lambda c: (c.cost, c.name))
 
 
@@ -83,8 +89,13 @@ def coring_cost(
     tag: str,
     shared: list[tuple[str, float]],
     territory: bool,
+    efficiency: float = 0.0,
 ) -> CoringCost:
-    """What coring one province costs; ``shared`` are the country-wide parts."""
+    """What coring one province costs.
+
+    ``shared`` are the country-wide parts; ``efficiency`` is the country's administrative
+    efficiency, which multiplies the cost after the parts are summed.
+    """
     data = campaign.province(province) or {}
     development = sum(
         float(data.get(k) or 0) for k in ("base_tax", "base_production", "base_manpower")
@@ -100,6 +111,7 @@ def coring_cost(
         parts.append(("claim", -rules.define("CORE_HAD_CLAIM")))
     factor = max(1 + sum(share for _, share in parts), 1 + MODIFIER_FLOOR)
     cost = rules.define("PS_MAKE_PROVINCE_CORE") * min(development, DEVELOPMENT_CAP) * factor
+    cost *= 1 - efficiency
     if territory:
         cost *= TERRITORY_FACTOR
     months = min(
@@ -110,7 +122,10 @@ def coring_cost(
         int(rules.define("MONTHS_TO_CORE_MAXIMUM")),
     )
     name = str(data.get("name") or campaign.loc.province(province))
-    return CoringCost(province, name, development, _round(cost), months, territory, claim, parts)
+    cost_points = math.floor(cost + 1e-9)
+    return CoringCost(
+        province, name, development, cost_points, months, territory, claim, parts, efficiency
+    )
 
 
 def render_coring(costs: list[CoringCost], shown: int = 6) -> str:
@@ -124,11 +139,10 @@ def render_coring(costs: list[CoringCost], shown: int = 6) -> str:
     ]
     more = f" and {len(costs) - shown} more" if len(costs) > shown else ""
     parts = costs[0].parts
-    reasons = (
-        "; cost changed by " + ", ".join(f"{text} {share:+.1%}" for text, share in parts)
-        if parts
-        else ""
-    )
+    changes = [f"{text} {share:+.1%}" for text, share in parts]
+    if costs[0].admin_efficiency:
+        changes.append(f"then administrative efficiency {-costs[0].admin_efficiency:+.0%}")
+    reasons = "; cost changed by " + ", ".join(changes) if changes else ""
     return f"- Coring: {', '.join(items)}{more}{reasons}."
 
 
@@ -185,10 +199,6 @@ def country_parts(
         change = rules.modifiers.get(str(name)) if name else None
         if change:
             parts.append((campaign.text(str(name)), change))
-    level = int((country.get("technology") or {}).get("adm_tech", 0) or 0)
-    efficiency = rules.admin_efficiency.get(level, 0.0)
-    if efficiency:
-        parts.append(("administrative efficiency", -efficiency))
     return parts
 
 
@@ -228,4 +238,5 @@ def _cut(value: float) -> float:
 
 
 def _round(value: float) -> int:
+    """Months round to the nearest (36 x 1.024 is 37 in the game's tooltip)."""
     return math.floor(value + 0.5 + 1e-9)

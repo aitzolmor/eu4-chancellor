@@ -104,6 +104,24 @@ def test_import_and_search(export, tmp_path: Path):
     assert search("!!", 1, database) == []
 
 
+def test_a_long_section_is_one_result(tmp_path: Path):
+    # About 6000 characters: indexed in several chunks, every one of them about coring.
+    lines = "\n".join(f"Coring line {i} about core creation cost." for i in range(150))
+    page = (
+        f"<page><title>Core</title><revision><text>== Coring costs ==\n{lines}\n"
+        "</text></revision></page>"
+        "<page><title>Claim</title><revision><text>== Fabrication ==\n"
+        "A claim lowers the core creation cost.</text></revision></page>"
+    )
+    path = tmp_path / "long.xml"
+    path.write_text(f"<mediawiki>{page}</mediawiki>", encoding="utf-8")
+    database = tmp_path / "wiki.sqlite"
+    assert import_exports([path], database).chunks > 2
+    hits = search("core creation cost", 3, database)
+    found = [(h.page, h.heading) for h in hits]
+    assert found == [("Core", "Coring costs"), ("Claim", "Fabrication")]
+
+
 def test_render_hits_cites_the_source(export, tmp_path: Path):
     database = tmp_path / "wiki.sqlite"
     import_exports([export], database)

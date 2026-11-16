@@ -1,11 +1,11 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
-updated on **2026-11-14** after the second play-test (PRs #1–#40 merged;
-490 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
+updated on **2026-11-16** after checking AE and coring against the game (PRs #1–#42
+merged; 498 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-032),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-034),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -219,6 +219,10 @@ The full reasoning is in [DECISIONS.md](DECISIONS.md).
   neighbour bonus is a flat -5%, ideas only discount their own category, and
   corruption and innovativeness are cut to a thousandth. Ask for a screenshot of the
   tooltip rather than guessing.
+- **The difficulty changes the player's numbers.** The user plays on easy
+  (`setgameplayoptions` starts with 1), and `difficulty_easy_player` cuts AE by a third
+  among other things. When an estimate is off by a constant factor for every country,
+  look at the difficulty modifiers first (D-034).
 - **Diagnosing the live app.** A run that logs the button state, cursor, foreground
   window and icon actions (only on change) found the elevation problem in one try;
   keep that approach for input issues.
@@ -260,14 +264,14 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
 3. **Answer quality** (ROADMAP): the first live answer gave generic advice. The plan
    agreed with the user (2026-11-14): Claude stays the orchestrator and the "expert" is
    knowledge it can look up, not another model. First layer done: game mechanics
-   computed in the tools (D-029, monarch power; D-030, AE of a conquest). **Check D-030
-   in the user's next war**: the peace screen shows the AE of each demanded province;
-   compare with `war-check` for that enemy (the distance falloff and the reach are the
-   wiki's 1.24 rules). Development cost is done too (D-031, matches the tooltips).
-   **Coring cost** waits for a tooltip at the user's next conquest (the wiki's Core page,
-   checked for 1.37, now describes its modifiers). The wiki is a searchable source too
-   (D-032, `search_wiki`); next, judge it with the play-test questions in Claude
-   Desktop, then player feedback on answers. The user is no expert, so validate numbers against
+   computed in the tools (D-029, monarch power; D-030, AE of a conquest). On
+   2026-11-15 a peace deal against Trento checked the AE estimate: it was twice the
+   game's, fixed by the player's difficulty (easy, -33%) and a continuous distance
+   falloff (D-034); the loser and far countries still come out a little high (ROADMAP).
+   Development cost (D-031) and coring cost (D-033: Friaul 61, Treviso 102) match the
+   tooltips. The wiki is a searchable source too (D-032, `search_wiki`); next, judge it
+   with the play-test questions in Claude Desktop, then player feedback on answers.
+   The user is no expert, so validate numbers against
    the game's tooltips (they can read those), not strategy. Any live API check needs
    the user's go-ahead; mind the 5 EUR balance.
 4. Remaining data gaps (casus belli, income breakdown), or the watches idea, whichever

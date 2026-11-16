@@ -131,12 +131,15 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
     power buys (technology costs with their parts, matching the game's tooltip exactly
     for Austria in 1483; ideas, stability, generals), the monthly gain, the months to
     each technology, leaders and advisors
-  - [x] The AE a conquest adds (D-030), in the war check; to be checked against a peace
-    deal in game (distance falloff and reach)
+  - [x] The AE a conquest adds (D-030), in the war check; checked against a peace deal
+    on 2026-11-15 (D-034): continuous distance falloff, the player's difficulty
+  - [ ] AE leftovers from that check: the loser of a province (Cilli: 12.7 estimated,
+    about 10 in game) and a distant country (Poland: 5.2, about 4) come out high; Milan
+    and Mantua were missing from the game's coalition list for an unknown reason
   - [x] Development cost per province (D-031), with each province's terrain read from the
     map images; matches the game's tooltips (Vienna 59, Ostmark 53, Tirol 56)
-  - [ ] Coring cost: no tooltip yet (the one non-cored province was already being cored);
-    calibrate at the next conquest
+  - [x] Coring cost per uncored province (D-033), in the briefing; matches the game's
+    tooltips (Friaul 61 in 37 months, Treviso 102)
   - [ ] Technology cost changes from idea bonuses, policies, reforms and estate
     privileges
   - [x] Strategy knowledge: the wiki as a searchable source (`search_wiki`, D-032), from

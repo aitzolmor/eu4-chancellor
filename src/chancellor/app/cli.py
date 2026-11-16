@@ -20,6 +20,7 @@ from chancellor.context.war_check import check_war, render_war_check
 from chancellor.context.world import render_world, world_overview
 from chancellor.game.ae_rules import AeRules
 from chancellor.game.cache import cache_dir, clear_cache
+from chancellor.game.coring_rules import CoringRules
 from chancellor.game.decisions import DecisionLibrary
 from chancellor.game.development_rules import DevelopmentRules
 from chancellor.game.imperial_reforms import ImperialReformLibrary
@@ -241,6 +242,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 reforms=_imperial_reforms(settings),
                 power_rules=_power_rules(settings),
                 development=_development(settings),
+                coring=CoringRules.load(settings.game_dir) if settings.game_dir else None,
             )
             return _emit(args, briefing, f"Briefing for {save_path.name}")
         if args.command == "country":
@@ -253,6 +255,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 reforms=_imperial_reforms(settings),
                 power_rules=_power_rules(settings),
                 development=_development(settings),
+                coring=CoringRules.load(settings.game_dir) if settings.game_dir else None,
             )
             return _emit(args, briefing, f"Briefing of {campaign.label(tag)}")
         if args.command == "war-check":

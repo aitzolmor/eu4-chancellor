@@ -4,20 +4,22 @@ The coalition risk (D-024) reads the AE countries already hold; this says what t
 particular provinces would add to it, so the advice can say how much land is safe to
 take. For each province:
 
-``base = min(development, 30) x 0.6 x casus belli x (1 + prestige effect) x
+``base = min(development, 30) x 0.6 x casus belli x (1 + prestige effect + difficulty) x
 (1 - administrative efficiency)``
 
 The casus belli factor is 0.25 for a core of the attacker and 1 otherwise (a claim, or
-no casus belli). Every country within reach then receives
+no casus belli). The difficulty counts for the player only (easy: -33%). Every country
+within reach then receives
 
 ``base x (1 + religion + infidel conquest + culture + Empire + same overlord) x
 distance falloff``, times 2/3 for the attacker's allies and 0.1 for its subjects.
 
-Rules come from the game files (:class:`AeRules`). The distance falloff and the reach
-follow the game wiki (written for 1.24): distance to the receiver's nearest province,
-rounded down to hundreds and capped at 400, ``1 / (1 + 0.75 x distance / 100)``;
-countries farther than that are left out. Both are estimates until checked against a
-peace deal in game.
+Rules come from the game files (:class:`AeRules`). The distance falloff,
+``1 / (1 + 0.75 x distance / 100)`` with the distance to the receiver's nearest province,
+is continuous: a peace deal in the player's game (D-034) matched it within about one AE
+for 15 of 17 countries, where rounding the distance down to hundreds (the wiki's 1.24
+reading) gave every neighbour the full share. Countries farther than 400 map units are
+left out; that reach is not checked.
 """
 
 from __future__ import annotations
@@ -122,7 +124,8 @@ def conquest_ae(
     if att is None:
         raise KeyError(f"Country {attacker} is not in the save")
 
-    reduction = _reduction(att, ae_rules)
+    difficulty = campaign.difficulty if attacker == campaign.player else None
+    reduction = _reduction(att, ae_rules, difficulty)
     factor = 1 + sum(share for _, share in reduction)
     taken = []
     for province_id in provinces:
@@ -233,10 +236,9 @@ def render_conquest_ae(campaign: Campaign, estimate: ConquestAe, shown: int = 8)
         )
         + ".",
         "",
-        "_AE estimate: the per-development rate, casus belli, prestige, culture, religion and "
-        "Empire factors come from the game files; the distance falloff and which distant "
-        "countries are left out follow the game wiki and are not yet checked for 1.37. A "
-        "claim and no casus belli count the same here._",
+        "_AE estimate: the rules come from the game files and matched a 1.37 peace deal "
+        "within about one AE for most countries; the loser and distant countries were "
+        "less exact. A claim and no casus belli count the same here._",
     ]
     return lines
 
@@ -244,12 +246,17 @@ def render_conquest_ae(campaign: Campaign, estimate: ConquestAe, shown: int = 8)
 # --- shares -------------------------------------------------------------------------------
 
 
-def _reduction(country: dict[str, Any], rules: AeRules) -> list[tuple[str, float]]:
-    """The attacker's own changes to AE: prestige and administrative efficiency."""
+def _reduction(
+    country: dict[str, Any], rules: AeRules, difficulty: str | None = None
+) -> list[tuple[str, float]]:
+    """The attacker's own changes to AE: prestige, difficulty, administrative efficiency."""
     parts = []
     prestige = float(country.get("prestige") or 0.0)
     if prestige:
         parts.append(("prestige", prestige / 100 * rules.prestige_ae_impact))
+    impact = rules.difficulty_ae_impact.get(difficulty or "", 0.0)
+    if impact:
+        parts.append((f"{(difficulty or '').replace('_', ' ')} difficulty", impact))
     level = int((country.get("technology") or {}).get("adm_tech", 0) or 0)
     efficiency = rules.admin_efficiency.get(level, 0.0)
     if efficiency:
@@ -318,10 +325,9 @@ def _shares(
         if isinstance(overlord, str) and overlord == loser.get("overlord"):
             parts.append(("same overlord", rules.define("AE_SAME_OVERLORD")))
         factor = max(1 + sum(share for _, share in parts), 0.0)
-        steps = min(math.floor(distance / 100) * 100, MAX_DISTANCE)
-        falloff = 1 / (1 + rules.define("AE_DISTANCE_BASE") * steps / 100)
-        if falloff < 1:
-            parts.append((f"distance {steps:.0f}", falloff - 1))
+        falloff = 1 / (1 + rules.define("AE_DISTANCE_BASE") * distance / 100)
+        if distance >= 50:  # nearer than that the cut is small; not worth a reason
+            parts.append((f"distance {distance:.0f}", falloff - 1))
         share = province.base * factor * falloff
         if tag in allies:
             share *= 2 / 3

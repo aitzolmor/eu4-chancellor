@@ -23,6 +23,7 @@ from chancellor.context.targets import find_targets, render_targets
 from chancellor.context.war_check import check_war, render_war_check
 from chancellor.context.world import render_world, world_overview
 from chancellor.game.ae_rules import AeRules
+from chancellor.game.coring_rules import CoringRules
 from chancellor.game.decisions import DecisionLibrary
 from chancellor.game.development_rules import DevelopmentRules
 from chancellor.game.imperial_reforms import ImperialReformLibrary
@@ -240,6 +241,7 @@ class Toolbox:
             reforms=self._imperial_reforms,
             power_rules=self._power_rules,
             development=development,
+            coring=self._coring_rules if self.game_dir else None,
         )
 
     def _check_war(self, args: dict[str, Any]) -> str:
@@ -317,6 +319,10 @@ class Toolbox:
     @cached_property
     def _ae_rules(self) -> AeRules:
         return AeRules.load(self._game_dir())
+
+    @cached_property
+    def _coring_rules(self) -> CoringRules:
+        return CoringRules.load(self._game_dir())
 
     @cached_property
     def _power_rules(self) -> PowerRules | None:

@@ -95,14 +95,14 @@ def test_shares_follow_religion_culture_distance_and_relations(campaign, ae_rule
     base = 10 * 0.6 * 0.85
     # Owner: same religion +50%, same culture +50%, no distance.
     assert added["VEN"] == pytest.approx(base * 2.0)
-    # Milan, 50 away: same religion, same culture group, distance rounds down to 0.
-    assert added["MLO"] == pytest.approx(base * 1.75)
-    # The orthodox country 250 away: other religion group? no, same group (0); greek culture
-    # is another group; distance 200 → 1 / (1 + 1.5).
-    assert added["ITA"] == pytest.approx(base * 1.0 / 2.5)
+    # Milan, 50 away: same religion, same culture group; the falloff is continuous (D-034).
+    assert added["MLO"] == pytest.approx(base * 1.75 / (1 + 0.75 * 0.5))
+    # The orthodox country 250 away: same religion group (0); greek culture is another group.
+    assert added["ITA"] == pytest.approx(base * 1.0 / (1 + 0.75 * 2.5))
     assert "FAR" not in added  # beyond reach
-    assert added["SAV"] == pytest.approx(base * 1.75 * 2 / 3)  # an ally takes 2/3
-    assert added["LAN"] == pytest.approx(base * 2.0 * 0.1)  # a subject takes a tenth
+    # An ally takes 2/3, a subject a tenth (60 and 20 away).
+    assert added["SAV"] == pytest.approx(base * 1.75 / (1 + 0.75 * 0.6) * 2 / 3)
+    assert added["LAN"] == pytest.approx(base * 2.0 / (1 + 0.75 * 0.2) * 0.1)
     assert "HAB" not in added
 
 
@@ -122,9 +122,21 @@ def test_claimed_provinces_and_the_war_check_section(campaign, ae_rules, game_ru
     assert "Taking 2 provinces (50 development, 1 of them your cores)" in text
     assert "| Venice (VEN) | 40 |" in text
     assert "would cross it now: Venice" in text
-    assert "not yet checked for 1.37" in text
+    assert "matched a 1.37 peace deal" in text
     empty = render_ae_section(campaign, ae_rules, game_rules, "MLO")
     assert "has no claims or cores on Milan's provinces" in empty
+
+
+def test_the_players_difficulty_lowers_ae(ae_rules, game_rules):
+    settings = "gameplaysettings={ setgameplayoptions={ 1 1 0 } }"
+    campaign = Campaign({"player": "HAB"}, parse(settings + WORLD), Localisation())
+    assert campaign.difficulty == "easy"
+    estimate = conquest_ae(campaign, ae_rules, game_rules, [1])
+    assert dict(estimate.reduction)["easy difficulty"] == -0.33
+    assert estimate.provinces[0].base == pytest.approx(10 * 0.6 * (1 - 0.05 - 0.33 - 0.1))
+    # Only the player plays on a difficulty: another attacker is not helped.
+    other = conquest_ae(campaign, ae_rules, game_rules, [1], attacker="MLO")
+    assert "easy difficulty" not in dict(other.reduction)
 
 
 def test_province_owners_are_read_without_parsing(campaign):
@@ -142,7 +154,10 @@ def test_rules_are_read_from_the_game_files(tmp_path: Path):
     )
     (common / "static_modifiers").mkdir()
     (common / "static_modifiers" / "s.txt").write_text(
-        "prestige = { ae_impact = -0.2 }\n", encoding="utf-8"
+        "prestige = { ae_impact = -0.2 }\n"
+        "difficulty_easy_player = { ae_impact = -0.25 }\n"
+        "difficulty_normal_player = { global_unrest = 1 }\n",
+        encoding="utf-8",
     )
     (common / "technologies").mkdir()
     (common / "technologies" / "adm.txt").write_text(
@@ -159,6 +174,7 @@ def test_rules_are_read_from_the_game_files(tmp_path: Path):
     rules = AeRules.load(tmp_path)
     assert (rules.claim_factor, rules.core_factor) == (1.0, 0.3)
     assert rules.prestige_ae_impact == -0.2
+    assert rules.difficulty_ae_impact == {"easy": -0.25, "normal": 0.0}
     assert rules.define("AE_SAME_CULTURE") == 0.6
     assert rules.define("PO_DEMAND_PROVINCES_AE") == 0.6  # the 1.37 value
     assert rules.admin_efficiency == {0: 0.0, 1: 0.0, 2: 0.1}

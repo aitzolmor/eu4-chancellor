@@ -18,6 +18,7 @@ from chancellor.save.loader import RawSave
 from chancellor.save.parser import LazyBlock, get_all, parse, parse_lazy
 
 DYNAMIC_TAG = re.compile(r"^[A-Z]\d\d$")
+DIFFICULTIES = ("very_easy", "easy", "normal", "hard", "very_hard")
 _MAX_CANDIDATES = 25
 _OWNS_LAND = re.compile(r"\bowned_provinces=\{\s*\d")
 _RAW_DEVELOPMENT = re.compile(r"\braw_development=(-?[\d.]+)")
@@ -234,6 +235,23 @@ class Campaign:
         block = self.gamestate.get("flags", {})
         result = block.parse() if isinstance(block, LazyBlock) else block
         return result if isinstance(result, dict) else {}
+
+    @cached_property
+    def difficulty(self) -> str | None:
+        """The game's difficulty (``very_easy`` to ``very_hard``), if the save records it.
+
+        It is the first of the numbered ``setgameplayoptions`` (0 is very easy). It
+        matters for the player's aggressive expansion: very easy and easy cut it by a
+        third (D-034).
+        """
+        block = self.gamestate.get("gameplaysettings", {})
+        if isinstance(block, LazyBlock):
+            block = block.parse()
+        options = block.get("setgameplayoptions") if isinstance(block, dict) else None
+        first = options[0] if isinstance(options, list) and options else None
+        if isinstance(first, int) and 0 <= first < len(DIFFICULTIES):
+            return DIFFICULTIES[first]
+        return None
 
     @cached_property
     def diplomacy(self) -> dict[str, Any]:

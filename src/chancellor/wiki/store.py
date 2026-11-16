@@ -8,7 +8,8 @@ the cache and out of the repository. Redirects are kept as aliases of their targ
 searching for "aggressive expansion" finds the section on the "Relations" page.
 
 Every result carries its page, section, link and the game version it was last checked
-for, because the wiki lags behind patches.
+for, because the wiki lags behind patches. A long section is indexed in chunks, but
+returns as one result: its best-matching chunk (D-035).
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from chancellor.wiki.wikitext import page_sections, redirect_target
 WIKI_URL = "https://eu4.paradoxwikis.com/"
 _DB = "wiki.sqlite"
 _MAX_CHUNK = 1500  # characters per indexed chunk; long sections are split at lines
+_ROWS_PER_HIT = 5  # chunks read per wanted result, to fill the results after merging
 
 
 @dataclass(frozen=True)
@@ -137,17 +139,22 @@ def search(query: str, limit: int = 5, database: Path | None = None) -> list[Wik
         return []
     connection = sqlite3.connect(database)
     try:
+        # A long section is indexed in several chunks; ask for more rows than needed and
+        # keep each section's best chunk, so one section never fills several places.
         rows = connection.execute(
             "SELECT page, heading, anchor, version, body FROM chunks WHERE chunks MATCH ? "
             "ORDER BY bm25(chunks, 8.0, 1.0) LIMIT ?",
-            (" OR ".join(terms), limit),
+            (" OR ".join(terms), limit * _ROWS_PER_HIT),
         ).fetchall()
     finally:
         connection.close()
-    return [
-        WikiHit(page, heading, version, _url(page, anchor), body)
-        for page, heading, anchor, version, body in rows
-    ]
+    hits: dict[tuple[str, str], WikiHit] = {}
+    for page, heading, anchor, version, body in rows:
+        if (page, anchor) not in hits:
+            hits[(page, anchor)] = WikiHit(page, heading, version, _url(page, anchor), body)
+        if len(hits) == limit:
+            break
+    return list(hits.values())
 
 
 def render_hits(query: str, hits: list[WikiHit], max_chars: int = 1200) -> str:

@@ -15,6 +15,7 @@ from chancellor.context.tools import TOOL_DEFINITIONS, Toolbox, ToolInputError, 
 from chancellor.game.localisation import Localisation
 from chancellor.llm.client import MAX_TOOL_ROUNDS, SYSTEM_PROMPT, ChancellorAgent
 from chancellor.save.loader import load_save
+from chancellor.wiki.store import import_exports
 
 FIXTURE = Path(__file__).parent / "fixtures" / "mini_save.txt"
 
@@ -271,6 +272,25 @@ def test_toolbox_runs_save_tools(campaign):
     assert toolbox.run("get_world_overview", {}).startswith("# World overview")
     with pytest.raises(ToolInputError, match="EU4_GAME_DIR"):
         toolbox.run("get_missions", {})
+
+
+def test_strategy_tools_point_to_the_wiki_once_it_is_imported(campaign, tmp_path: Path):
+    toolbox = Toolbox(campaign, None)
+    assert "search_wiki" not in toolbox.run("get_country_briefing", {})  # no wiki yet
+    export = tmp_path / "export.xml"
+    export.write_text(
+        "<mediawiki><page><title>Core</title><revision><text>A core.</text></revision>"
+        "</page></mediawiki>",
+        encoding="utf-8",
+    )
+    import_exports([export])  # into the test's own state folder (conftest)
+    briefing = toolbox.run("get_country_briefing", {})
+    assert briefing.rstrip().endswith(
+        "_For the strategy behind these numbers, search_wiki has the game wiki; for example "
+        "'idea groups guide', the country's English name plus 'strategy', 'Holy Roman "
+        "Empire', 'estates'._"
+    )
+    assert "search_wiki" not in toolbox.run("get_world_overview", {})
 
 
 def test_toolbox_runs_game_file_tools(campaign, tmp_path: Path):

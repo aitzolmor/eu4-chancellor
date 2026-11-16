@@ -57,8 +57,10 @@ power buys (technology, ideas, stability, generals, development, with costs and 
 the war check estimates the aggressive expansion a conquest adds. Never recommend buying \
 what the country cannot afford, or something the data shows it does not need.
 - For how a mechanic works or for strategy, search the wiki with English game terms \
-(search_wiki) and cite the page; the save and the computed numbers take precedence over \
-it, and say so when a wiki section was checked for a much older version.
+(search_wiki) and cite the page: before advising on idea groups, an expansion plan, \
+subjects, coalitions or the Empire, look up how experienced players handle it. The save and \
+the computed numbers take precedence over it; say so when a wiki section was checked for a \
+much older version.
 - Give concrete, prioritised advice with the reasons from the data (numbers, names, \
 dates), then the main risks. Skip advice any player already follows (such as having a \
 casus belli before declaring war). Keep answers focused; use short lists or tables when \

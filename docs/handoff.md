@@ -1,11 +1,11 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
-updated on **2026-11-16** after checking AE and coring against the game (PRs #1–#42
-merged; 498 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
+updated on **2026-11-16** after checking AE and coring against the game and the
+wiki's retrieval (PRs #1–#43 merged; 501 tests passing, CI green on Ubuntu and Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-034),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-036),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -269,8 +269,13 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
    game's, fixed by the player's difficulty (easy, -33%) and a continuous distance
    falloff (D-034); the loser and far countries still come out a little high (ROADMAP).
    Development cost (D-031) and coring cost (D-033: Friaul 61, Treviso 102) match the
-   tooltips. The wiki is a searchable source too (D-032, `search_wiki`); next, judge it
-   with the play-test questions in Claude Desktop, then player feedback on answers.
+   tooltips. The wiki is a searchable source too (D-032, `search_wiki`). Its retrieval
+   was checked on 2026-11-16 (D-035: one result per section; the Core page also
+   corrected how administrative efficiency enters the coring cost); next, judge it in
+   real answers with the play-test questions in Claude Desktop. In the first try
+   Claude Desktop never called `search_wiki`; the briefing, targets and war check now
+   end with a pointer to it (D-036), and the second try searched three times. Next:
+   idea slots in the briefing, then player feedback on answers.
    The user is no expert, so validate numbers against
    the game's tooltips (they can read those), not strategy. Any live API check needs
    the user's go-ahead; mind the 5 EUR balance.

@@ -624,3 +624,57 @@ still high and are left open: Cilli, which lost Celje (12.7 against about 10), a
 Poland, the farthest (5.2 against about 4). The game's coalition list also left out Milan
 and Mantua, which hold 90+ AE, for a reason not found. The estimate stays labelled as an
 estimate.
+
+## D-035 — Wiki retrieval checked; one result per section; coring follows the Core page
+
+**Date:** 2026-11-16 · **Status:** Accepted (refines D-032 and D-033)
+
+The wiki's retrieval (D-032) was checked with twelve queries a model would make for the
+play-test questions (reducing AE, joining coalitions, passing imperial reforms,
+integrating a union, Austria's strategy, overextension, fabricating claims, war score,
+coring cost, idea groups, Revoke the Privilegia, improving relations). The right
+section came first for nearly all of them. One fault: a long section is indexed in
+chunks of about 1500 characters, and each matching chunk came back as its own result,
+so "Revoke the Privilegia" filled all three places with the same section. Search now
+reads five chunks per wanted result and keeps the best chunk of each section.
+
+Reading the results also corrected D-033. The Core page, checked for 1.37, says
+administrative efficiency and a territory's half price multiply after the other
+modifiers are summed, and the cost is rounded down. Administrative efficiency had been
+added to the sum; it is now a factor of its own, shown after the summed parts. It is
+zero before administrative technology 18, so the tooltips that D-033 matched are
+unchanged. Rounding down also matches them (61.44 and 102.4); the months still round to
+the nearest, since 36 x 1.024 shows as 37.
+
+The same page lists a permanent claim at -25% and a temporary one at -10%. The save's
+province block has a single `claims` list, so every claim still counts as temporary;
+that and the higher cost of coring a province whose core belongs to a country with
+`enemy_core_creation` ideas are on the ROADMAP.
+
+## D-036 — Strategy tools point to the wiki in their results
+
+**Date:** 2026-11-16 · **Status:** Accepted (refines D-032)
+
+The first real test in Claude Desktop asked two strategy questions: whether an expansion
+plan (take a province from Gelre, release it as a vassal and feed it land, then face
+Naples and France) made sense, and which idea groups suit Austria now. The answers were
+much better than before, but neither called `search_wiki`. Claude Desktop loads tools on
+demand and picks them by their descriptions, and the briefing, targets and war check
+looked like enough.
+
+Three changes, from weakest to strongest:
+
+- The tool's description now says when to call it (choosing idea groups, judging an
+  expansion plan or war route, subjects, coalitions and AE, the Empire, estates,
+  explaining a mechanic), not only what it holds.
+- The MCP instructions and the API chat's system prompt say to look up how experienced
+  players handle it before advising on those topics.
+- While the wiki is imported, the results of `get_country_briefing`,
+  `get_expansion_targets` and `check_war` end with one line naming `search_wiki` and
+  example queries in English. A pointer inside a result is read at the moment the model
+  plans its answer, which a description is not. Without an imported wiki the line is
+  left out, so it never sends the model to a tool that would only report a missing
+  index.
+
+Whether this is enough is for the next test; forcing a search on every question would
+cost time for questions the campaign's numbers already answer.

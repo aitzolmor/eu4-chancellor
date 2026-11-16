@@ -31,9 +31,18 @@ from chancellor.game.missions import MissionLibrary
 from chancellor.game.modifiers import ModifierLibrary
 from chancellor.game.power_rules import PowerRules
 from chancellor.game.rules import GameRules
-from chancellor.wiki.store import render_hits, search
+from chancellor.wiki.store import render_hits, search, wiki_path
 
 WIKI_RESULTS = 4
+# A line added to these tools' results while the wiki is imported, so the model thinks of
+# it for the strategy around the numbers (D-036). Queries are examples, in English.
+WIKI_HINTS = {
+    "get_country_briefing": "'idea groups guide', the country's English name plus "
+    "'strategy', 'Holy Roman Empire', 'estates'",
+    "get_expansion_targets": "'vassal', 'coalition', 'aggressive expansion', "
+    "'casus belli', the target's English name",
+    "check_war": "'coalition', 'aggressive expansion', 'peace treaty', 'war score'",
+}
 
 
 class ToolInputError(ValueError):
@@ -152,7 +161,12 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "description": (
             "Search the Europa Universalis 4 Wiki (a local copy the player imported) for how "
             "game mechanics work and for strategy: guides, idea groups, diplomacy, warfare, "
-            "estates, the Holy Roman Empire, country pages such as Austria. Write the query "
+            "estates, the Holy Roman Empire, country pages such as Austria. Call it whenever "
+            "advice goes beyond the campaign's numbers: choosing idea groups, judging an "
+            "expansion plan or a war route, using subjects (vassals, marches, unions), "
+            "handling coalitions and aggressive expansion, the Empire, estates, or explaining "
+            "a mechanic. The other tools say what the campaign holds; this one says how "
+            "experienced players use it. Write the query "
             "with English game terms (e.g. 'coalition', 'core creation cost', 'Austria "
             "strategy'), even when the player writes in another language. Each result gives "
             "the page, section, link and the game version it was last checked for. Numbers "
@@ -228,7 +242,14 @@ class Toolbox:
         """
         args = validate(name, arguments)
         handler: Callable[[dict[str, Any]], str] = getattr(self, f"_{name}")
-        return handler(args)
+        text = handler(args)
+        hint = WIKI_HINTS.get(name)
+        if hint and wiki_path().is_file():
+            text = (
+                f"{text.rstrip()}\n\n_For the strategy behind these numbers, search_wiki has "
+                f"the game wiki; for example {hint}._\n"
+            )
+        return text
 
     # --- handlers -----------------------------------------------------------------------
 

@@ -20,6 +20,7 @@ from chancellor.config import Settings
 from chancellor.context.campaign import Campaign
 from chancellor.context.tools import Toolbox
 from chancellor.llm.client import ChancellorAgent
+from chancellor.player.context import context_path
 
 HELP = """\
 Ask anything about your campaign, e.g. "Should I attack Burgundy?" or "What should my
@@ -67,7 +68,7 @@ class ChatSession:
         self.loaded = self._load_current()
         self.agent = ChancellorAgent(
             client,
-            Toolbox(self.loaded.campaign, settings.game_dir),
+            Toolbox(self.loaded.campaign, settings.game_dir, context_path(settings.save_dir)),
             model=settings.model,
             effort=settings.effort,
         )
@@ -83,7 +84,9 @@ class ChatSession:
             return False
         previous = self.loaded
         self.loaded = self._load_current()
-        self.agent.toolbox = Toolbox(self.loaded.campaign, self.settings.game_dir)
+        self.agent.toolbox = Toolbox(
+            self.loaded.campaign, self.settings.game_dir, context_path(self.settings.save_dir)
+        )
         self.agent.note(
             f"The player saved again: the campaign is now at {self.loaded.campaign.date} "
             f"(was {previous.campaign.date}). Tool results from earlier in this conversation "

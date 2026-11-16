@@ -68,6 +68,7 @@ chancellor app              # desktop panel (needs: pip install -e ".[ui]")
 chancellor clear-cache      # drop cached game data (tests use a temp cache via conftest)
 chancellor wiki-import FILE.xml...  # index pages exported from the wiki (Special:Export)
 chancellor wiki-search coalition   # search the imported wiki
+chancellor player-context   # goals and preferences recorded in chats (--remove ID)
 ```
 
 Exploring real saves: load with `chancellor.save.loader.load_save`, then `parse_lazy` and

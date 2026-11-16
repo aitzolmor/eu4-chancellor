@@ -1,0 +1,313 @@
+"""The player's context, kept per campaign outside any chat (D-039).
+
+The tools read the campaign from the save; nothing in the save says what the *player*
+wants. This store keeps it: goals, wants and limits, decisions taken and notes for each
+campaign, and what the player said about themselves. The model reads it at the start of
+a chat (``get_player_context``) and records what the player states
+(``update_player_context``), so a new chat, or another model, starts where the last one
+left off.
+
+A campaign is recognised by the save's ``campaign_id``. That id changes within one
+campaign (the user's Austria game had four between 1455 and 1519), so a save with an
+unknown id is matched to the campaign of the same country whose first recorded date is
+not later than the save's; a new game of the same country starts in 1444 and stays
+apart. On the next write the new id joins that campaign.
+
+The file lives in the game's user data folder (next to ``save games``), not under
+``AppData``: Claude Desktop is a Store app whose processes see a private copy of
+``AppData`` (see the handoff), and the MCP server it starts, the panel and the CLI must
+all read the same file.
+"""
+
+from __future__ import annotations
+
+import json
+from dataclasses import asdict, dataclass, field
+from datetime import date as real_date
+from pathlib import Path
+from typing import Any
+
+from chancellor.app.state import state_dir
+
+FILE_NAME = "player_context.json"
+FOLDER = "eu4-chancellor"
+MAX_TEXT = 300
+
+# Kind → heading, in the order shown. "player" entries belong to the player, not to a
+# campaign.
+KINDS: dict[str, str] = {
+    "goal": "Goals",
+    "preference": "Wants and limits",
+    "decision": "Decisions taken",
+    "note": "Notes",
+    "player": "About the player",
+}
+
+
+def context_path(save_dir: Path | None) -> Path:
+    """Where the context is kept: the game's user data folder when known."""
+    if save_dir is not None:
+        return save_dir.parent / FOLDER / FILE_NAME
+    return state_dir() / FILE_NAME
+
+
+@dataclass
+class Entry:
+    """One thing the player said.
+
+    Attributes:
+        id: Number, unique in the file.
+        kind: One of :data:`KINDS`.
+        text: What the player wants, rules out, decided or said.
+        game_date: In-game date of the save it was recorded with.
+        written: Real date it was recorded.
+    """
+
+    id: int
+    kind: str
+    text: str
+    game_date: str
+    written: str
+
+
+@dataclass
+class CampaignRecord:
+    """One campaign's entries.
+
+    Attributes:
+        tag: The player's country.
+        campaign_ids: Every ``campaign_id`` seen for it.
+        first_date: Earliest in-game date recorded.
+        last_date: Latest in-game date recorded.
+        entries: What the player said about it.
+    """
+
+    tag: str
+    campaign_ids: list[str] = field(default_factory=list)
+    first_date: str = ""
+    last_date: str = ""
+    entries: list[Entry] = field(default_factory=list)
+
+
+@dataclass
+class SaveKey:
+    """What identifies a save's campaign."""
+
+    campaign_id: str | None
+    tag: str
+    date: str
+
+
+@dataclass
+class ContextView:
+    """The context for one save.
+
+    Attributes:
+        campaign: Its campaign record, if any.
+        matched_by_country: Whether it was matched by country and date, not by id.
+        player: Entries about the player.
+    """
+
+    campaign: CampaignRecord | None
+    matched_by_country: bool
+    player: list[Entry]
+
+
+class PlayerContextError(ValueError):
+    """A request the store cannot carry out (bad kind, unknown entry, empty text)."""
+
+
+class PlayerContextStore:
+    """Reads and writes the context file. A missing or unreadable file is empty."""
+
+    def __init__(self, path: Path) -> None:
+        """Use the file at ``path`` (created on the first write)."""
+        self.path = path
+
+    # --- reading ------------------------------------------------------------------------
+
+    def view(self, key: SaveKey) -> ContextView:
+        """The context for a save."""
+        data = self._load()
+        index, by_country = _match(data["campaigns"], key)
+        campaign = data["campaigns"][index] if index is not None else None
+        return ContextView(campaign, by_country, data["player"])
+
+    # --- writing ------------------------------------------------------------------------
+
+    def add(self, key: SaveKey, kind: str, text: str) -> Entry:
+        """Record an entry for the save's campaign (or about the player)."""
+        if kind not in KINDS:
+            raise PlayerContextError(f"Unknown kind '{kind}'; use one of: {', '.join(KINDS)}.")
+        text = " ".join(text.split())
+        if not text:
+            raise PlayerContextError("The text is empty.")
+        if len(text) > MAX_TEXT:
+            raise PlayerContextError(f"Keep it under {MAX_TEXT} characters; it is one entry.")
+        data = self._load()
+        entry = Entry(data["next_id"], kind, text, key.date, real_date.today().isoformat())
+        data["next_id"] += 1
+        if kind == "player":
+            data["player"].append(entry)
+        else:
+            self._campaign_for_write(data, key).entries.append(entry)
+        self._save(data)
+        return entry
+
+    def remove(self, key: SaveKey, entry_id: int) -> Entry:
+        """Remove an entry (a goal reached or dropped, a preference no longer true)."""
+        data = self._load()
+        for entries in self._lists(data, key):
+            for entry in entries:
+                if entry.id == entry_id:
+                    entries.remove(entry)
+                    self._save(data)
+                    return entry
+        raise PlayerContextError(f"No entry #{entry_id} for this campaign or the player.")
+
+    def replace(self, key: SaveKey, entry_id: int, text: str) -> Entry:
+        """Change an entry's text, keeping its kind; it is dated again."""
+        old = self.remove(key, entry_id)
+        try:
+            return self.add(key, old.kind, text)
+        except PlayerContextError:
+            self._restore(key, old)
+            raise
+
+    # --- helpers ------------------------------------------------------------------------
+
+    def _restore(self, key: SaveKey, entry: Entry) -> None:
+        data = self._load()
+        if entry.kind == "player":
+            data["player"].append(entry)
+        else:
+            self._campaign_for_write(data, key).entries.append(entry)
+        self._save(data)
+
+    def _lists(self, data: dict[str, Any], key: SaveKey) -> list[list[Entry]]:
+        index, _ = _match(data["campaigns"], key)
+        lists = [data["player"]]
+        if index is not None:
+            lists.insert(0, data["campaigns"][index].entries)
+        return lists
+
+    def _campaign_for_write(self, data: dict[str, Any], key: SaveKey) -> CampaignRecord:
+        """The save's campaign, created or joined by this save's id and date."""
+        campaigns: list[CampaignRecord] = data["campaigns"]
+        index, _ = _match(campaigns, key)
+        if index is None:
+            campaigns.append(CampaignRecord(key.tag, first_date=key.date, last_date=key.date))
+            index = len(campaigns) - 1
+        campaign = campaigns[index]
+        if key.campaign_id and key.campaign_id not in campaign.campaign_ids:
+            campaign.campaign_ids.append(key.campaign_id)
+        if not campaign.first_date or _date(key.date) < _date(campaign.first_date):
+            campaign.first_date = key.date
+        if _date(key.date) > _date(campaign.last_date):
+            campaign.last_date = key.date
+        return campaign
+
+    def _load(self) -> dict[str, Any]:
+        try:
+            raw = json.loads(self.path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            raw = {}
+        if not isinstance(raw, dict):
+            raw = {}
+        campaigns = [
+            CampaignRecord(
+                tag=str(c.get("tag", "")),
+                campaign_ids=[str(i) for i in c.get("campaign_ids", [])],
+                first_date=str(c.get("first_date", "")),
+                last_date=str(c.get("last_date", "")),
+                entries=[_entry(e) for e in c.get("entries", []) if isinstance(e, dict)],
+            )
+            for c in raw.get("campaigns", [])
+            if isinstance(c, dict)
+        ]
+        player = [_entry(e) for e in raw.get("player", []) if isinstance(e, dict)]
+        ids = [e.id for c in campaigns for e in c.entries] + [e.id for e in player]
+        next_id = max([int(raw.get("next_id", 1)), *(i + 1 for i in ids)])
+        return {"next_id": next_id, "campaigns": campaigns, "player": player}
+
+    def _save(self, data: dict[str, Any]) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "version": 1,
+            "next_id": data["next_id"],
+            "player": [asdict(e) for e in data["player"]],
+            "campaigns": [asdict(c) for c in data["campaigns"]],
+        }
+        temporary = self.path.with_suffix(".tmp")
+        temporary.write_text(json.dumps(payload, indent=2, ensure_ascii=False), "utf-8")
+        temporary.replace(self.path)
+
+
+def render_context(view: ContextView, key: SaveKey, country: str) -> str:
+    """Markdown for ``get_player_context``."""
+    lines = [f"# Player context: {country}", ""]
+    campaign = view.campaign
+    if campaign is None or not campaign.entries:
+        lines.append(f"Nothing recorded yet for this campaign ({country}, save of {key.date}).")
+    else:
+        lines.append(
+            f"Recorded in this campaign's chats, saves from {campaign.first_date} to "
+            f"{campaign.last_date}; this save is {key.date}."
+        )
+        if view.matched_by_country:
+            lines.append(
+                "This save has a new campaign id, so the campaign was matched by country "
+                "and date. If the player says this is a different game, do not use it."
+            )
+    for kind, heading in KINDS.items():
+        entries = view.player if kind == "player" else _of_kind(campaign, kind)
+        if entries:
+            lines += ["", f"## {heading}", ""]
+            lines += [f"- #{e.id} {e.text} (recorded at {e.game_date})" for e in entries]
+    lines += [
+        "",
+        "_Recorded from what the player said. Follow it when advising. When the player "
+        "states a new goal, preference, limit or decision, or one is reached, dropped or "
+        "changed, update it with update_player_context and tell them. Record only what "
+        "the player says, never your own suggestions._",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def _of_kind(campaign: CampaignRecord | None, kind: str) -> list[Entry]:
+    return [e for e in campaign.entries if e.kind == kind] if campaign else []
+
+
+def _match(campaigns: list[CampaignRecord], key: SaveKey) -> tuple[int | None, bool]:
+    """The save's campaign: by id, else by country and date. ``(index, by_country)``."""
+    if key.campaign_id:
+        for index, campaign in enumerate(campaigns):
+            if key.campaign_id in campaign.campaign_ids:
+                return index, False
+    candidates = [
+        index
+        for index, campaign in enumerate(campaigns)
+        if campaign.tag == key.tag and _date(campaign.first_date) <= _date(key.date)
+    ]
+    if not candidates:
+        return None, False
+    # The latest campaign that had reached this far, if several (an older game kept).
+    best = max(candidates, key=lambda i: _date(campaigns[i].last_date))
+    return best, True
+
+
+def _entry(raw: dict[str, Any]) -> Entry:
+    return Entry(
+        id=int(raw.get("id", 0)),
+        kind=str(raw.get("kind", "note")),
+        text=str(raw.get("text", "")),
+        game_date=str(raw.get("game_date", "")),
+        written=str(raw.get("written", "")),
+    )
+
+
+def _date(text: str) -> tuple[int, ...]:
+    try:
+        return tuple(int(part) for part in text.split("."))
+    except ValueError:
+        return (0,)

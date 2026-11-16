@@ -285,12 +285,31 @@ def test_strategy_tools_point_to_the_wiki_once_it_is_imported(campaign, tmp_path
     )
     import_exports([export])  # into the test's own state folder (conftest)
     briefing = toolbox.run("get_country_briefing", {})
-    assert briefing.rstrip().endswith(
+    assert (
         "_For the strategy behind these numbers, search_wiki has the game wiki; for example "
         "'idea groups guide', the country's English name plus 'strategy', 'Holy Roman "
-        "Empire', 'estates'._"
+        "Empire', 'estates'._" in briefing
     )
     assert "search_wiki" not in toolbox.run("get_world_overview", {})
+
+
+def test_planning_tools_end_with_the_players_context(campaign, tmp_path: Path):
+    toolbox = Toolbox(campaign, None, tmp_path / "context.json")
+    briefing = toolbox.run("get_country_briefing", {})
+    assert briefing.rstrip().endswith(
+        "_Player context: nothing recorded for this campaign yet. If the player states "
+        "goals, wants, limits or decisions in this conversation, record each with "
+        "update_player_context and tell them._"
+    )
+    for kind, text in (("goal", "Gelre"), ("goal", "Naples"), ("preference", "No colonies")):
+        toolbox.run("update_player_context", {"action": "add", "kind": kind, "text": text})
+    briefing = toolbox.run("get_country_briefing", {})
+    assert briefing.rstrip().endswith(
+        "_Player context: 2 goals, 1 wants and limits recorded for this campaign "
+        "(get_player_context; follow them). Record new ones the player states with "
+        "update_player_context._"
+    )
+    assert "Player context" not in toolbox.run("get_world_overview", {})
 
 
 def test_toolbox_runs_game_file_tools(campaign, tmp_path: Path):

@@ -41,6 +41,9 @@ dlc_enabled={ "Conquest of Paradise" "Wealth of Nations" ... }
 ```
 
 - `player` — the player's country tag. Entry point for everything else.
+- `campaign_id` — a UUID, but **not stable across one campaign**: the user's Austria
+  game (1455–1519) carried four ids and a Castile game five, each covering a run of
+  saves. Use it with the country and the date (D-039).
 - `date` — in-game date, `YYYY.M.D` without zero padding.
 
 ### `gamestate`

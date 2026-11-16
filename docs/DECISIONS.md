@@ -702,3 +702,23 @@ D-034 and D-033 were at level 6. The cache format was bumped.
 
 Absolutism also adds administrative efficiency (+0.3% a point), as do a few government
 reforms; neither is counted yet (ROADMAP).
+
+## D-038 — Player ratings of answers are set aside
+
+**Date:** 2026-11-16 · **Status:** Set aside (an idea kept, not planned)
+
+The answer-quality plan ended with player feedback: a thumbs up or down with a note on
+each answer, to find bad advice and turn each complaint into a fix. The user declined
+it. They are not an expert in the game, so a correct answer they do not expect could be
+rated as wrong, and the ratings would pull the Chancellor towards what the player
+already believes instead of what is right.
+
+The approach that has worked stays the way to judge answers: check numbers against the
+game's own tooltips and screens, which the player can read without knowing strategy
+(D-029, D-031, D-033, D-034), and take strategy from the wiki (D-032, D-036). Ratings
+could come back if the Chancellor gets players who know the game well, or as a way to
+report a factual error the player can show (a tooltip, a screen), not a judgment on
+advice.
+
+What the player wants is better captured as context than as ratings: their goals,
+preferences and limits per campaign (ROADMAP, *Ideas / later*).

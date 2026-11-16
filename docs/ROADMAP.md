@@ -161,7 +161,6 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
     thresholds or search the wiki for them
   - [ ] Administrative efficiency from absolutism (+0.3% a point, up to 30%) and from
     government reforms, for AE and coring; only technology is counted
-  - [ ] Player feedback on answers (thumbs up or down with a note) to find bad advice
 
 ### Play-test findings (2026-11-13, Austria 1475 save, through the MCP tools)
 
@@ -237,6 +236,41 @@ Goal: explore how far the assistant can act, not just advise.
 
 - Ironman support via a token file
 - Package as a single executable
+
+### Idea: the player's context, kept per campaign (2026-11-16)
+
+Not scheduled yet; agreed with the user as the likely next development. Every new chat
+knows the campaign (the tools read the save) but nothing about the *player*: what they
+want, what they rule out, what was already decided. A long chat that reaches its limit
+loses all of it. The Chancellor could keep that context itself, outside any chat:
+
+- **Per campaign:** goals ("form Germany", "Naples after Gelre"), preferences and limits
+  ("no colonising", "keep the alliance with Castile"), plans under way and decisions
+  taken, each short and dated.
+- **Per player:** how much they know ("not an expert: explain the mechanics").
+- **Two MCP tools:** `get_player_context`, which the server instructions ask the model to
+  read at the start of a chat, and `update_player_context`, which records what the
+  player *says*. It must not store the model's own inferences, and it says when it
+  records something. The player can read and correct the entries (panel or command).
+- **Stored locally** next to the app's state, so the context survives a new chat and
+  also a change of client or model (see the next idea).
+- **To check first:** how to recognise the same campaign across saves and save names.
+- It is the base the goals and watches below need: a watch is a goal made concrete.
+
+### Idea: other models, and no need for a paid Claude plan (2026-11-16)
+
+Not scheduled. The tools should not require a Claude subscription or the Anthropic API.
+
+- **Cheap step:** MCP is an open protocol, so the server already works with other MCP
+  clients, some of them free or running local models (Ollama, LM Studio). Test one,
+  document it, and let `mcp-config` write that client's configuration. Which clients
+  support local MCP servers well changes quickly: check when doing it.
+- **Costlier step, only if worth it:** let the panel's API chat talk to other providers
+  through an OpenAI-compatible API. Today `llm.client` is Anthropic-specific (streaming,
+  caching, thinking, and the per-model prices of the budget, D-028).
+- **Risk:** small and local models handle tools and long results (the briefing) worse,
+  so answers would be free but weaker. The computed mechanics in the tools help a
+  weaker model most.
 
 ### Idea: goal-based watches and a campaign journal (2026-11-13)
 

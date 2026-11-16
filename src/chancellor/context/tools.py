@@ -31,6 +31,14 @@ from chancellor.game.missions import MissionLibrary
 from chancellor.game.modifiers import ModifierLibrary
 from chancellor.game.power_rules import PowerRules
 from chancellor.game.rules import GameRules
+from chancellor.player.context import (
+    KINDS,
+    PlayerContextError,
+    PlayerContextStore,
+    SaveKey,
+    context_path,
+    render_context,
+)
 from chancellor.wiki.store import render_hits, search, wiki_path
 
 WIKI_RESULTS = 4
@@ -43,6 +51,16 @@ WIKI_HINTS = {
     "'casus belli', the target's English name",
     "check_war": "'coalition', 'aggressive expansion', 'peace treaty', 'war score'",
 }
+# Tools used to plan, whose results end with a line on the player's context (D-040).
+PLAYER_HINT_TOOLS = frozenset(
+    {
+        "get_country_briefing",
+        "get_expansion_targets",
+        "check_war",
+        "get_missions",
+        "get_decisions",
+    }
+)
 
 
 class ToolInputError(ValueError):
@@ -187,6 +205,49 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "get_player_context",
+        "description": (
+            "What the player wants in this campaign, from earlier conversations: their "
+            "goals, wants and limits (what they rule out), decisions taken and notes, and "
+            "what they said about themselves (such as how well they know the game). Call it "
+            "at the start of every conversation, before advising, so advice follows the "
+            "player's own plans; it carries over between chats and models. Each entry has an "
+            "id for update_player_context."
+        ),
+        "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
+    },
+    {
+        "name": "update_player_context",
+        "description": (
+            "Record what the player says about their plans so later conversations know it. "
+            "`add` an entry of a `kind`: goal (what they want to achieve), preference (what "
+            "they want or rule out), decision (something they chose), note, or player "
+            "(about the player, not the campaign). `remove` an entry by its id when a goal "
+            "is reached or dropped, or `replace` its text when it changes. Record only what "
+            "the player states or explicitly agrees to, never your own inference or "
+            "suggestion; keep each entry short, in the player's language; and tell the "
+            "player what you recorded."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["add", "remove", "replace"]},
+                "kind": {
+                    "type": "string",
+                    "enum": ["goal", "preference", "decision", "note", "player"],
+                    "description": "For add.",
+                },
+                "text": {
+                    "type": "string",
+                    "description": "For add and replace: one short statement.",
+                },
+                "entry": {"type": "integer", "description": "For remove and replace: the id."},
+            },
+            "required": ["action"],
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -204,6 +265,13 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
     "get_decisions": {"country": _Field(str), "formables_only": _Field(bool)},
     "get_expansion_targets": {"country": _Field(str)},
     "search_wiki": {"query": _Field(str, required=True), "max_results": _Field(int)},
+    "get_player_context": {},
+    "update_player_context": {
+        "action": _Field(str, required=True),
+        "kind": _Field(str),
+        "text": _Field(str),
+        "entry": _Field(int),
+    },
 }
 
 
@@ -214,10 +282,20 @@ _GAME_DATA = ("_missions", "_decisions", "_rules", "_modifiers")
 class Toolbox:
     """Runs tools against one loaded save; game data is loaded on first use."""
 
-    def __init__(self, campaign: Campaign, game_dir: Path | None) -> None:
-        """Bind the tools to a campaign and, optionally, the game installation."""
+    def __init__(
+        self, campaign: Campaign, game_dir: Path | None, context_file: Path | None = None
+    ) -> None:
+        """Bind the tools to a campaign and, optionally, the game installation.
+
+        Args:
+            campaign: The loaded save.
+            game_dir: The game installation, for the tools that read game files.
+            context_file: Where the player's context is kept (:func:`context_path`);
+                the app's state folder by default.
+        """
         self.campaign = campaign
         self.game_dir = game_dir
+        self.context_file = context_file or context_path(None)
 
     @property
     def definitions(self) -> list[dict[str, Any]]:
@@ -226,7 +304,7 @@ class Toolbox:
 
     def with_campaign(self, campaign: Campaign) -> Toolbox:
         """A toolbox for another save that reuses the game data already loaded here."""
-        other = Toolbox(campaign, self.game_dir)
+        other = Toolbox(campaign, self.game_dir, self.context_file)
         for name in _GAME_DATA:
             if name in self.__dict__:  # cached_property values live in the instance dict
                 other.__dict__[name] = self.__dict__[name]
@@ -249,7 +327,28 @@ class Toolbox:
                 f"{text.rstrip()}\n\n_For the strategy behind these numbers, search_wiki has "
                 f"the game wiki; for example {hint}._\n"
             )
+        if name in PLAYER_HINT_TOOLS:
+            text = f"{text.rstrip()}\n\n{self._player_hint()}\n"
         return text
+
+    def _player_hint(self) -> str:
+        """One line on the player's recorded context, for the planning tools (D-040)."""
+        view = PlayerContextStore(self.context_file).view(self._save_key())
+        entries = view.campaign.entries if view.campaign else []
+        if not entries:
+            return (
+                "_Player context: nothing recorded for this campaign yet. If the player "
+                "states goals, wants, limits or decisions in this conversation, record each "
+                "with update_player_context and tell them._"
+            )
+        counts: dict[str, int] = {}
+        for entry in entries:
+            counts[entry.kind] = counts.get(entry.kind, 0) + 1
+        listed = ", ".join(f"{n} {KINDS[k].lower()}" for k, n in counts.items() if k in KINDS)
+        return (
+            f"_Player context: {listed} recorded for this campaign (get_player_context; "
+            "follow them). Record new ones the player states with update_player_context._"
+        )
 
     # --- handlers -----------------------------------------------------------------------
 
@@ -293,6 +392,39 @@ class Toolbox:
             formables_only=bool(args.get("formables_only")),
         )
         return render_decisions(self.campaign, tag, checks, self._modifiers)
+
+    def _get_player_context(self, args: dict[str, Any]) -> str:
+        key = self._save_key()
+        view = PlayerContextStore(self.context_file).view(key)
+        return render_context(view, key, self.campaign.label(key.tag))
+
+    def _update_player_context(self, args: dict[str, Any]) -> str:
+        store = PlayerContextStore(self.context_file)
+        key = self._save_key()
+        action, text, entry_id = args["action"], args.get("text"), args.get("entry")
+        try:
+            if action == "add":
+                if "kind" not in args or text is None:
+                    raise ToolInputError("add needs `kind` and `text`")
+                entry = store.add(key, args["kind"], text)
+                return f"Recorded #{entry.id} ({entry.kind}): {entry.text}"
+            if action in ("remove", "replace"):
+                if entry_id is None:
+                    raise ToolInputError(f"{action} needs `entry` (the id)")
+                if action == "remove":
+                    entry = store.remove(key, entry_id)
+                    return f"Removed #{entry.id} ({entry.kind}): {entry.text}"
+                if text is None:
+                    raise ToolInputError("replace needs `text`")
+                entry = store.replace(key, entry_id, text)
+                return f"Replaced #{entry_id} with #{entry.id} ({entry.kind}): {entry.text}"
+        except PlayerContextError as exc:
+            raise ToolInputError(str(exc)) from exc
+        raise ToolInputError("`action` must be add, remove or replace")
+
+    def _save_key(self) -> SaveKey:
+        campaign = self.campaign
+        return SaveKey(campaign.campaign_id, campaign.player, campaign.date)
 
     def _search_wiki(self, args: dict[str, Any]) -> str:
         query = str(args["query"])

@@ -156,6 +156,12 @@ class Campaign:
         """In-game date of the save, ``YYYY.M.D``."""
         return str(self.meta.get("date", "?"))
 
+    @property
+    def campaign_id(self) -> str | None:
+        """The save's ``campaign_id``. It is not stable across a whole campaign (D-039)."""
+        value = self.meta.get("campaign_id")
+        return str(value) if value else None
+
     @cached_property
     def country_blocks(self) -> dict[str, Any]:
         """Every country in the save, keyed by tag, as lazy (unparsed) blocks."""

@@ -16,6 +16,7 @@ from chancellor.context.decisions import check_decisions, render_decisions
 from chancellor.context.missions import mission_tree, render_missions
 from chancellor.context.summarizer import summarize
 from chancellor.context.targets import find_targets, render_targets
+from chancellor.context.tools import Toolbox, ToolInputError
 from chancellor.context.war_check import check_war, render_war_check
 from chancellor.context.world import render_world, world_overview
 from chancellor.game.ae_rules import AeRules
@@ -29,6 +30,7 @@ from chancellor.game.missions import MissionLibrary
 from chancellor.game.modifiers import ModifierLibrary
 from chancellor.game.power_rules import PowerRules
 from chancellor.game.rules import GameRules
+from chancellor.player.context import context_path
 from chancellor.save.loader import SaveFormatError, find_current_save, load_save
 from chancellor.wiki.store import import_exports, render_hits, search, wiki_path
 
@@ -138,6 +140,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     targets.add_argument("name", nargs="*", help="Country tag or name (default: you).")
     targets.add_argument("--top", type=int, default=15, help="War targets to list (default 15).")
+
+    player = sub.add_parser(
+        "player-context",
+        parents=[common],
+        help="What you told the Chancellor you want in this campaign.",
+        description=(
+            "Your goals, wants and limits, decisions and notes recorded in chats for the "
+            "current campaign, and what you said about yourself. Remove a wrong entry with "
+            "--remove."
+        ),
+    )
+    player.add_argument("--remove", type=int, metavar="ID", help="Remove the entry with this id.")
 
     sub.add_parser(
         "mcp",
@@ -343,6 +357,17 @@ def main(argv: Sequence[str] | None = None) -> int:
             from chancellor.app.chat import run_chat  # deferred: the SDK is slow to import
 
             return run_chat(settings, load)
+        if args.command == "player-context":
+            settings = load_settings()
+            campaign, _ = _load_campaign(args, settings)
+            toolbox = Toolbox(campaign, settings.game_dir, context_path(settings.save_dir))
+            if args.remove is not None:
+                done = toolbox.run(
+                    "update_player_context", {"action": "remove", "entry": args.remove}
+                )
+                print(done, file=sys.stderr)
+            text = toolbox.run("get_player_context", {})
+            return _emit(args, text, "Player context")
         if args.command == "targets":
             settings = load_settings()
             if settings.game_dir is None:
@@ -360,7 +385,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _emit(args, text, f"Expansion targets of {campaign.label(tag)}")
     except ValueError as exc:  # e.g. a country attacking itself
         return _fail(str(exc))
-    except (CliError, CountryLookupError) as exc:
+    except (CliError, CountryLookupError, ToolInputError) as exc:
         return _fail(str(exc))
     print(f"'{args.command}' is not implemented yet. See docs/ROADMAP.md.", file=sys.stderr)
     return 1

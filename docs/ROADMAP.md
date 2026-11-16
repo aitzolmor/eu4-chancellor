@@ -146,6 +146,15 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
     country with `enemy_core_creation` ideas
   - [ ] Technology cost changes from idea bonuses, policies, reforms and estate
     privileges
+  - [x] The player's context kept per campaign (D-039): goals, wants and limits,
+    decisions and notes, and what the player says about themselves, read at the start of
+    a chat (`get_player_context`) and recorded as the player states them
+    (`update_player_context`); `chancellor player-context` shows it
+  - [ ] Player context: first try across two Claude Desktop chats (2026-11-16): the
+    first chat, where the player set out their plans, recorded nothing; the second read
+    the empty context, found the plans in Claude Desktop's earlier chats and recorded
+    two faithful goals. The planning tools now end with a line on the context (D-040);
+    try again, then show and edit it in the panel
   - [x] Strategy knowledge: the wiki as a searchable source (`search_wiki`, D-032), from
     the player's own `Special:Export` files. Retrieval checked on 2026-11-16 with 12
     queries from the play-tests (D-035): the right section came first for nearly all;
@@ -237,26 +246,6 @@ Goal: explore how far the assistant can act, not just advise.
 - Ironman support via a token file
 - Package as a single executable
 
-### Idea: the player's context, kept per campaign (2026-11-16)
-
-Not scheduled yet; agreed with the user as the likely next development. Every new chat
-knows the campaign (the tools read the save) but nothing about the *player*: what they
-want, what they rule out, what was already decided. A long chat that reaches its limit
-loses all of it. The Chancellor could keep that context itself, outside any chat:
-
-- **Per campaign:** goals ("form Germany", "Naples after Gelre"), preferences and limits
-  ("no colonising", "keep the alliance with Castile"), plans under way and decisions
-  taken, each short and dated.
-- **Per player:** how much they know ("not an expert: explain the mechanics").
-- **Two MCP tools:** `get_player_context`, which the server instructions ask the model to
-  read at the start of a chat, and `update_player_context`, which records what the
-  player *says*. It must not store the model's own inferences, and it says when it
-  records something. The player can read and correct the entries (panel or command).
-- **Stored locally** next to the app's state, so the context survives a new chat and
-  also a change of client or model (see the next idea).
-- **To check first:** how to recognise the same campaign across saves and save names.
-- It is the base the goals and watches below need: a watch is a goal made concrete.
-
 ### Idea: other models, and no need for a paid Claude plan (2026-11-16)
 
 Not scheduled. The tools should not require a Claude subscription or the Anthropic API.
@@ -273,6 +262,8 @@ Not scheduled. The tools should not require a Claude subscription or the Anthrop
   weaker model most.
 
 ### Idea: goal-based watches and a campaign journal (2026-11-13)
+
+(The goals part has a base now: the player's context, D-039.)
 
 Not scheduled. Raised after using the panel: its key numbers and alerts repeat what the
 game already shows, and the game's own alerts are literal (a problem, or something you

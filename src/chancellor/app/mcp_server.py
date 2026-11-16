@@ -24,6 +24,7 @@ from typing import Any
 from chancellor.config import Settings
 from chancellor.context.campaign import Campaign, CountryLookupError
 from chancellor.context.tools import TOOL_DEFINITIONS, Toolbox, ToolInputError
+from chancellor.player.context import context_path
 from chancellor.save.loader import find_current_save
 
 SERVER_NAME = "eu4-chancellor"
@@ -32,6 +33,11 @@ INSTRUCTIONS = """\
 Tools for Europa Universalis IV (game version 1.37). They read the player's latest save \
 file and the game's own files, so answers can rest on the real state of the campaign.
 
+- At the start of a conversation, read the player's context (get_player_context): their \
+goals, wants and limits and decisions from earlier chats. Follow it. When the player states \
+a goal, a preference or limit, or a decision, or one is reached, dropped or changed, record \
+it with update_player_context and tell them; record only what the player says, never your \
+own suggestions.
 - Call them whenever a question depends on the campaign: the player's country, another \
 country, a possible war, the world, missions, formable nations or where to expand. \
 Several independent lookups can be made in parallel.
@@ -94,7 +100,7 @@ class CampaignProvider:
             toolbox = (
                 current.toolbox.with_campaign(campaign)
                 if current
-                else Toolbox(campaign, self.settings.game_dir)
+                else Toolbox(campaign, self.settings.game_dir, context_path(self.settings.save_dir))
             )
             self._loaded = _Loaded(path, mtime, toolbox)
         return self._loaded.toolbox
@@ -156,6 +162,21 @@ def build_server(provider: CampaignProvider) -> Any:
     @server.tool(description=_DESCRIPTIONS["search_wiki"], annotations=read_only)
     def search_wiki(query: str, max_results: int | None = None) -> str:
         return call("search_wiki", query=query, max_results=max_results)
+
+    @server.tool(description=_DESCRIPTIONS["get_player_context"], annotations=read_only)
+    def get_player_context() -> str:
+        return call("get_player_context")
+
+    @server.tool(
+        description=_DESCRIPTIONS["update_player_context"],
+        annotations=ToolAnnotations(
+            readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False
+        ),
+    )
+    def update_player_context(
+        action: str, kind: str | None = None, text: str | None = None, entry: int | None = None
+    ) -> str:
+        return call("update_player_context", action=action, kind=kind, text=text, entry=entry)
 
     @server.tool(
         description=(

@@ -156,6 +156,20 @@ The index stays on your computer (next to the app's state, not in the repository
 result links to its page and says which game version it was last checked for. Run the
 import again with fresh exports to update it.
 
+## Your goals carry over between chats
+
+Tell the Chancellor what you want in a campaign ("I want to form Germany", "no
+colonies", "Gelre will be my vassal") and it records it; every new chat, in Claude
+Desktop or the panel, reads it first. See or correct what it recorded with:
+
+```bash
+chancellor player-context
+chancellor player-context --remove 3
+```
+
+It is kept in a small file in the game's user folder (`Europa Universalis
+IV\eu4-chancellor\player_context.json`), never in the repository.
+
 ## Use it from Claude Desktop (no API key needed)
 
 If you have a Claude subscription, Claude Desktop can use the Chancellor's tools directly

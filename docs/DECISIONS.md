@@ -722,3 +722,60 @@ advice.
 
 What the player wants is better captured as context than as ratings: their goals,
 preferences and limits per campaign (ROADMAP, *Ideas / later*).
+
+## D-039 — The player's context, kept per campaign outside any chat
+
+**Date:** 2026-11-16 · **Status:** Accepted
+
+Every new chat knows the campaign, because the tools read the save, but nothing about
+the player: what they want, what they rule out, what they already decided. A long chat
+that reaches its limit loses all of it, and so does a change of client or model. The
+Chancellor now keeps it (`player.context`):
+
+- **What:** per campaign, goals, wants and limits ("preference"), decisions taken and
+  notes; per player, what they say about themselves ("not an expert"). Each entry is
+  one short statement in the player's words, with the in-game date of the save it was
+  recorded with and an id.
+- **Two tools**, shared by the MCP server and the API chat: `get_player_context`, which
+  the instructions and the system prompt ask the model to read at the start of a
+  conversation, and `update_player_context` (add, remove, replace), the only tool that
+  writes. The model records only what the player states or explicitly agrees to, never
+  its own inferences or suggestions, and tells the player what it recorded.
+  `chancellor player-context` shows the context and removes a wrong entry.
+- **Which campaign:** the save's `campaign_id` is not stable. The user's Austria game
+  carried four ids between 1455 and 1519, a Castile game five, each covering a run of
+  saves. A save is matched by id first; an unknown id goes to the campaign of the same
+  country whose first recorded date is not later than the save's (the latest of them if
+  several), and the id joins it on the next write. The output says when a campaign was
+  matched that way. A new game of the same country starts in 1444, before any recorded
+  date, and stays apart. Two games of one country played side by side could still be
+  confused; that is rare enough to accept for now.
+- **Where:** a JSON file in the game's user data folder
+  (`...\Europa Universalis IV\eu4-chancellor\player_context.json`), not under
+  `AppData`. Claude Desktop is a Store app whose processes see a private copy of
+  `AppData`, so the MCP server it starts and the panel or CLI started from a terminal
+  would read different files. The game's user folder is shared by all of them (and
+  synced with OneDrive here). Reading never creates the file; writes go through a
+  temporary file.
+
+Ratings of answers were set aside (D-038); this is how the Chancellor learns what the
+player wants instead. It is also the base the goal-based watches in the ROADMAP need.
+
+## D-040 — Planning tools end with a line on the player's context
+
+**Date:** 2026-11-16 · **Status:** Accepted (refines D-039)
+
+The first test of the player's context in Claude Desktop went half well. In a new chat
+the player set out their plans (Gelre as a vassal, then Naples and France) and asked for
+an opinion; the answer used the war check and the expansion targets but recorded
+nothing. In a second new chat the model read the context, found it empty, looked the
+plans up in Claude Desktop's own earlier chats, answered from them and then recorded
+two goals, faithful to what the player had said.
+
+It is the pattern D-036 found for the wiki: Claude Desktop loads tools on demand and
+follows what it reads while planning its answer; the server instructions asking it to
+record weigh less than a line in a result. So the tools used to plan (the briefing,
+expansion targets, war check, missions and decisions) now end with one line: what is
+recorded for the campaign ("2 goals, 1 wants and limits recorded ... follow them"), or
+that nothing is and that goals, wants, limits or decisions the player states in the
+conversation are to be recorded. The line reads the small context file on each call.

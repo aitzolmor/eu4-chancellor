@@ -104,15 +104,19 @@ From top to bottom:
    header, a status line shows results and errors only while there is something to
    say.
 2. **Alerts**: short, ranked lines from data the tools already produce, each linking to
-   the full view:
+   the full view. Fired watches come first, each with a × to clear it once seen
+   (D-041):
    - a truce with a rival ends soon (estimated, D-017);
    - coalition members and the countries at 50+ aggressive expansion;
    - overextension above 0%, war exhaustion, loans;
    - an imperial reform can be proposed (authority ≥ 50);
    - a mission or formable became available since the previous save.
-3. **Key numbers**: treasury and monthly balance, manpower, stability, monarch power,
+3. **Your plan**: what the player told the Chancellor in chats (goals, wants and
+   limits, decisions, D-039) and the watches still waiting, each with a × to remove it.
+   With nothing recorded it says what to tell Claude.
+4. **Key numbers**: treasury and monthly balance, manpower, stability, monarch power,
    army size against rivals.
-4. **Quick questions**: buttons such as "How is my campaign going?" or "Where should I
+5. **Quick questions**: buttons such as "How is my campaign going?" or "Where should I
    expand?". In Claude Desktop mode they copy the question to the clipboard and bring
    Claude Desktop to the front; in API mode they send it to the chat tab.
 

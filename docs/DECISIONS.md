@@ -779,3 +779,51 @@ expansion targets, war check, missions and decisions) now end with one line: wha
 recorded for the campaign ("2 goals, 1 wants and limits recorded ... follow them"), or
 that nothing is and that goals, wants, limits or decisions the player states in the
 conversation are to be recorded. The line reads the small context file on each call.
+
+## D-041 — Watches: "tell me when ..." checked on every save
+
+**Date:** 2026-11-16 · **Status:** Accepted (builds on D-039)
+
+The panel's alerts repeat what the game shows and know nothing of the player's plans.
+The player's context (D-039) says what they want; watches say when the moment has come.
+
+- **A watch** is the player's words plus conditions the model builds with
+  `create_watch` from a closed list of 24 metrics, all read from the save
+  (`player.watches`): the player's or any country's treasury, manpower (and its
+  percentage), monarch points, stability, war exhaustion, overextension, prestige,
+  technology, development, regiments; the AE a country holds against another, how many
+  countries hold 50+, coalition members; the war check's odds; at war, truce, alliance,
+  existence; the in-game year. Numbers take `>=` or `<=`, the rest `is` true or false.
+  All conditions must hold. The tool description asks the model to make vague words
+  concrete and to tell the player the thresholds it chose; the reply shows each
+  condition's current value.
+- **War odds** are the attacker's likely regiments over the defenders' worst case, the
+  cautious reading of the war check (D-025), so "France is weak" is not announced on
+  allies who may not come.
+- **Firing.** Watches are checked when the panel reads a new save and whenever the
+  planning tools or `get_player_context` run. A watch fires once, on the first check
+  where every condition holds, and keeps the in-game date of that save; with neither
+  the panel nor a chat running, it fires at the next check, dated by that save.
+- **Where it shows.** A fired watch leads the panel's alerts, with a × to clear it, and
+  the planning tools' last line (D-040) names it so the model tells the player. The
+  panel also gained a *Your plan* section: goals, wants and limits, decisions and the
+  waiting watches, each removable, which was the open item of D-039.
+- **Storage.** Watches live with the campaign's entries in the player's context file and
+  share its ids, so `update_player_context` removes either. A watch cannot be replaced:
+  the model removes it and sets a new one.
+
+First test in Claude Desktop: "tell me when France is weak enough to attack, or I
+am strong enough to face it" became one watch, war odds against France >= 1.5 with no
+truce (1.06 now), and the model explained that the odds rise either way, so one
+condition covers both halves. The panel showed it under *Your plan*. Its first
+`create_watch` call failed, though: the MCP tool declared `conditions` as a list of
+plain dictionaries, so the client saw no fields and guessed. The MCP schema now types a
+condition (`WatchCondition`: metric, op as `>=`, `<=` or `is`, value, country, other),
+and conditions forgive common slips: numbers and true/false written as text, `>` for
+`>=`, `=` for `is`.
+
+Conditions only combine with "and"; "or" is left out until a request needs it.
+
+Left for later (ROADMAP): a badge on the floating icon and a Windows notification while
+the overlay is closed, metrics for events (an ally declaring war, a ruler dying), and the
+campaign journal.

@@ -121,11 +121,43 @@ class PanelApi:
             ``{"ok": False, "error": "<message>"}``.
         """
         try:
-            campaign = self._provider.toolbox().campaign
-            alerts = campaign_alerts(campaign, reforms=self._imperial_reforms())
+            toolbox = self._provider.toolbox()
+            alerts = campaign_alerts(toolbox.campaign, reforms=self._imperial_reforms())
+            fired = toolbox.player_plan()["fired"]
         except (RuntimeError, OSError, KeyError, ValueError) as exc:
             return {"ok": False, "error": str(exc) or exc.__class__.__name__}
-        return {"ok": True, "alerts": [alert.to_dict() for alert in alerts]}
+        watches = [
+            {
+                "kind": "watch",
+                "severity": "high",
+                "text": f"{w['description']} (since {w['fired']})",
+                "watch": w["id"],
+            }
+            for w in fired
+        ]
+        return {"ok": True, "alerts": watches + [alert.to_dict() for alert in alerts]}
+
+    def plan(self) -> dict[str, Any]:
+        """The player's goals, wants and limits, decisions and waiting watches (D-041).
+
+        Returns:
+            ``{"ok": True, "plan": {"entries", "waiting", "fired"}}`` or
+            ``{"ok": False, "error": "<message>"}``.
+        """
+        try:
+            return {"ok": True, "plan": self._provider.toolbox().player_plan()}
+        except (RuntimeError, OSError, KeyError, ValueError) as exc:
+            return {"ok": False, "error": str(exc) or exc.__class__.__name__}
+
+    def dismiss(self, entry_id: int) -> dict[str, Any]:
+        """Remove a fired watch, or an entry of the plan, by its id."""
+        try:
+            done = self._provider.toolbox().run(
+                "update_player_context", {"action": "remove", "entry": int(entry_id)}
+            )
+        except (RuntimeError, OSError, KeyError, ValueError) as exc:
+            return {"ok": False, "error": str(exc) or exc.__class__.__name__}
+        return {"ok": True, "message": done}
 
     def _imperial_reforms(self) -> ImperialReformLibrary | None:
         if self._reforms is None and self._game_dir is not None:

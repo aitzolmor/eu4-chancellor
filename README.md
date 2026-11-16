@@ -170,6 +170,12 @@ chancellor player-context --remove 3
 It is kept in a small file in the game's user folder (`Europa Universalis
 IV\eu4-chancellor\player_context.json`), never in the repository.
 
+You can also ask to be told when something happens: "tell me when France is weak enough
+to attack", "when I have 200 ducats", "when the truce with Naples ends". Claude turns it
+into concrete conditions and tells you the thresholds it chose; every save checks them,
+and a watch that fires shows at the top of the panel and in the next answer. The
+panel's *Your plan* section lists your goals and the watches still waiting.
+
 ## Use it from Claude Desktop (no API key needed)
 
 If you have a Claude subscription, Claude Desktop can use the Chancellor's tools directly

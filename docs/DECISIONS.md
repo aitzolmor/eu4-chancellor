@@ -942,3 +942,33 @@ found, and searched the wiki for trade. As with D-036 and D-040, the planning to
 last line now says how many saves the journal holds and to use `get_trends` for how
 the economy, army or growth evolved. The answer also named a gap: the tools say nothing
 about trade (nodes, power shares, merchants), though the save holds it.
+
+## D-046 — Trade from the save's nodes and the game's node map
+
+**Date:** 2026-11-17 · **Status:** Accepted
+
+Asked how to earn more from trade at Venice, the model had to ask the player for their
+share of power in each node and where their merchants were; the tools said nothing about
+trade, though the save holds it.
+
+- **From the save** (`context.trade`): the `trade` block has a node per trade node with
+  its value (`current + outgoing`) and everyone's power (`total`), and an entry per
+  country with its power, the base from provinces and light ships, the ships
+  protecting trade, a merchant (`has_trader`; `type=1` steers, otherwise it collects),
+  the home node (`has_capital`) and what it collects there (`money`). Parsing it whole
+  takes about half a second.
+- **From the game files** (`game.trade_nodes`): which nodes feed which, from
+  `common/tradenodes`, so the report can say whether each node's trade can reach the
+  home node and how many steps away, and which feeders hold no power of the country.
+  The save does not record which way a steering merchant pushes; the report says so.
+- **Where it shows.** `get_trade` lists the home node (and whether it is an end node),
+  the share and income there, the merchants, the light ships, a table of the nodes
+  ordered home, feeders by distance, then the rest, the feeders without power and the
+  embargoes. The player's briefing ends with one line on it, and the prompts point to
+  it for trade.
+
+On the user's Austria in 1525: home node Venice, an end node, with 46% of its power and
+8.62 ducats a month collected; merchants collecting at Venice and steering at Vienna;
+six light ships at Venice; Vienna (19%), Pest (7%) and Alexandria (3%) feeding it; and
+embargoes from the Ottomans, Great Britain, France and Newfoundland. Asked again in
+Claude Desktop, the trade question was answered from `get_trade`.

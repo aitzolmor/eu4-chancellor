@@ -209,6 +209,21 @@ and `cultural_sphere_of_influence_subject` override it to `no`.
 (global flags) and `current_age`. Country modifiers use the same repeated
 `modifier={ modifier="…" }` shape.
 
+#### Trade (`trade`)
+
+`trade={ node={ ... } node={ ... } }`, one `node` per trade node (80 in 1.37), about
+0.5 s to parse whole. A node has `definitions="venice"` (its key; the localisation key
+gives the name, "Venecia"), `current` (value kept in the node), `outgoing` (value
+flowing on; the node's value is `current + outgoing`), `local_value`, `retention`,
+`total` (everyone's trade power) and one block per country present. A country's block:
+`val` (its trade power), `max_pow`, `province_power` and `ship_power` (base, before
+modifiers), `light_ship` (ships protecting trade), `has_trader=yes` (a merchant;
+`type=1` steers, no `type` collects), `has_capital=yes` (its home node), `money` (what
+it collects there a month), `trading_policy`. The direction a steering merchant pushes
+was not found. The links between nodes are in the game files
+(`common/tradenodes/00_tradenodes.txt`, `outgoing = { name = "..." }`). The country
+block has `trade_embargoed_by={ ... }` and `merchants={ envoy={ ... } }`.
+
 #### Great powers
 
 `great_powers={ original={ rank=1 country="CAS" value=1073.5 } … }` lists the eight great

@@ -256,9 +256,13 @@ Goal: visual analysis of the campaign inside the workspace.
   and reads the groups the player picks into the journal; `get_trends` gives the model
   the same numbers as a table
 - [ ] Income/expense breakdown by category (the ledger's indices are not mapped yet)
-- [ ] Trade: the player's share of trade power in each node, merchants (where, collecting
-  or steering, which way) and the flows into the home node; the save's `trade` block
-  holds them. A trade question in Claude Desktop (2026-11-17) had to ask the player
+- [x] Trade (D-046): `get_trade` gives the home node and the share there, merchants
+  (collecting or steering), light ships, power and share in every node with whether it
+  feeds home, the feeders where the country has no power, and embargoes; the briefing
+  points to it. A trade question in Claude Desktop (2026-11-17) had to ask the player;
+  asked again with `get_trade`, it answered from the save
+- [ ] Trade: which way a steering merchant pushes is not in the save; check whether a
+  later save field or the country block records it
 - [ ] Let the model reference charts in its answers
 
 ## Phase 6 — Claude plays (experimental)

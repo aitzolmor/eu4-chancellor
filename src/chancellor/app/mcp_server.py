@@ -43,7 +43,7 @@ it with update_player_context and tell them; record only what the player says, n
 own suggestions. When they ask to be told when something happens, set a watch with \
 create_watch and say which thresholds you chose. For what happened recently in \
 the campaign, read get_campaign_journal; for how the numbers moved over time, \
-get_trends.
+get_trends. For trade, get_trade.
 - Call them whenever a question depends on the campaign: the player's country, another \
 country, a possible war, the world, missions, formable nations or where to expand. \
 Several independent lookups can be made in parallel.
@@ -201,6 +201,10 @@ def build_server(provider: CampaignProvider) -> Any:
     @server.tool(description=_DESCRIPTIONS["get_trends"], annotations=read_only)
     def get_trends() -> str:
         return call("get_trends")
+
+    @server.tool(description=_DESCRIPTIONS["get_trade"], annotations=read_only)
+    def get_trade(country: str | None = None) -> str:
+        return call("get_trade", country=country)
 
     @server.tool(
         description=_DESCRIPTIONS["update_player_context"],

@@ -20,6 +20,7 @@ from chancellor.context.decisions import check_decisions, render_decisions
 from chancellor.context.missions import mission_tree, render_missions
 from chancellor.context.summarizer import summarize
 from chancellor.context.targets import find_targets, render_targets
+from chancellor.context.trade import render_trade, trade_line, trade_report
 from chancellor.context.war_check import check_war, render_war_check
 from chancellor.context.world import render_world, world_overview
 from chancellor.game.ae_rules import AeRules
@@ -31,6 +32,7 @@ from chancellor.game.missions import MissionLibrary
 from chancellor.game.modifiers import ModifierLibrary
 from chancellor.game.power_rules import PowerRules
 from chancellor.game.rules import GameRules
+from chancellor.game.trade_nodes import TradeGraph
 from chancellor.player.context import (
     KINDS,
     PlayerContextError,
@@ -352,6 +354,23 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         ),
         "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
     },
+    {
+        "name": "get_trade",
+        "description": (
+            "A country's trade, read from the save: its home trade node and its share of "
+            "the trade power there, what it collects there each month, where its merchants "
+            "are and whether each collects or steers, its light ships protecting trade, its "
+            "trade power and share in every node (home first, then the nodes that feed it, "
+            "nearest first), the nodes feeding home where it has no power, and who embargoes "
+            "it. Use it for any question about trade income, merchants, trade steering or "
+            "where to put a trade capital or centre of trade. Omit `country` for the player."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"country": _COUNTRY},
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -372,6 +391,7 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
     "get_player_context": {},
     "get_campaign_journal": {"saves": _Field(int)},
     "get_trends": {},
+    "get_trade": {"country": _Field(str)},
     "create_watch": {
         "description": _Field(str, required=True),
         "conditions": _Field(list, required=True),
@@ -386,7 +406,7 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
 
 
 # Game data the toolbox loads lazily; shared when the save changes (see with_campaign).
-_GAME_DATA = ("_missions", "_decisions", "_rules", "_modifiers")
+_GAME_DATA = ("_missions", "_decisions", "_rules", "_modifiers", "_trade_graph")
 
 
 class Toolbox:
@@ -491,7 +511,7 @@ class Toolbox:
     def _get_country_briefing(self, args: dict[str, Any]) -> str:
         tag = self._tag(args.get("country"))
         development = (self._development_rules, self._rules) if self.game_dir else None
-        return summarize(
+        text = summarize(
             self.campaign,
             tag,
             reforms=self._imperial_reforms,
@@ -499,6 +519,16 @@ class Toolbox:
             development=development,
             coring=self._coring_rules if self.game_dir else None,
         )
+        if self.game_dir is not None:  # a pointer to the trade tool (D-046)
+            line = trade_line(trade_report(self.campaign, self._trade_graph, tag))
+            if line:
+                text = f"{text.rstrip()}\n\n_{line}_\n"
+        return text
+
+    def _get_trade(self, args: dict[str, Any]) -> str:
+        tag = self._tag(args.get("country"))
+        report = trade_report(self.campaign, self._trade_graph, tag)
+        return render_trade(self.campaign, report)
 
     def _check_war(self, args: dict[str, Any]) -> str:
         target = self._tag(args["target"])
@@ -745,6 +775,10 @@ class Toolbox:
     @cached_property
     def _ae_rules(self) -> AeRules:
         return AeRules.load(self._game_dir())
+
+    @cached_property
+    def _trade_graph(self) -> TradeGraph:
+        return TradeGraph.load(self._game_dir())
 
     @cached_property
     def _coring_rules(self) -> CoringRules:

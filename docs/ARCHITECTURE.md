@@ -63,6 +63,7 @@ flowchart LR
 | `wiki.wikitext` | Wiki pages to plain sections: headings, the game version each was checked for, no markup (D-032) | 4 |
 | `player.context` | The player's context per campaign: goals, wants and limits, decisions, notes; matched by campaign id or by country and date; a JSON file in the game's user folder (D-039) | 4 |
 | `player.watches` | Watches: the player's "tell me when ..." as conditions on metrics read from the save, checked on every save, firing once (D-041) | 4 |
+| `player.journal` | Campaign journal: a snapshot of the player's country per save read, and the changes between consecutive ones (D-043) | 4 |
 | `wiki.store` | Import `Special:Export` XML into a local SQLite FTS5 index (redirects as aliases); search with BM25 | 4 |
 | `context.development` | What developing each province costs, cheapest first, with its parts (D-031) | 4 |
 | `game.development_rules` | Its rules: static modifiers, centres of trade, institutions, golden bulls, imperial reforms, event modifiers, climate | 4 |

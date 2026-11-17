@@ -41,6 +41,13 @@ from chancellor.player.context import (
     render_context,
     watch_lines,
 )
+from chancellor.player.journal import (
+    JournalStore,
+    journal_entries,
+    journal_path,
+    render_journal,
+    take_snapshot,
+)
 from chancellor.player.watches import (
     Watch,
     WatchError,
@@ -53,6 +60,7 @@ from chancellor.player.watches import (
 from chancellor.wiki.store import render_hits, search, wiki_path
 
 WIKI_RESULTS = 4
+JOURNAL_STEPS = 6  # journal steps shown by default
 # A line added to these tools' results while the wiki is imported, so the model thinks of
 # it for the strategy around the numbers (D-036). Queries are examples, in English.
 WIKI_HINTS = {
@@ -308,6 +316,28 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "get_campaign_journal",
+        "description": (
+            "What changed in the player's campaign between the saves the Chancellor has "
+            "read: provinces gained, lost or cored; wars begun and ended; allies, subjects, "
+            "rivals, truces and coalition members gained or lost; a new ruler or heir; ideas "
+            "and technology taken; a new Emperor or imperial reform; and the key numbers "
+            "(treasury, income, manpower, regiments, development, AE ...), newest first. "
+            "Use it for questions about what happened recently, how the campaign is "
+            "trending, or to remember what came before this chat."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "saves": {
+                    "type": "integer",
+                    "description": "How many steps back to show (1-30, default 6).",
+                },
+            },
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -326,6 +356,7 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
     "get_expansion_targets": {"country": _Field(str)},
     "search_wiki": {"query": _Field(str, required=True), "max_results": _Field(int)},
     "get_player_context": {},
+    "get_campaign_journal": {"saves": _Field(int)},
     "create_watch": {
         "description": _Field(str, required=True),
         "conditions": _Field(list, required=True),
@@ -406,12 +437,19 @@ class Toolbox:
         alert = "".join(
             f" WATCH FIRED #{w.id} at {w.fired}: {w.description} (tell the player)." for w in fired
         )
+        latest = self.journal(1)
+        since = ""
+        if latest and latest[0][2]:
+            since = (
+                f" Since the previous save ({latest[0][0]}): {len(latest[0][2])} changes "
+                "(get_campaign_journal)."
+            )
         if not entries and not watches:
             return (
                 "_Player context: nothing recorded for this campaign yet. If the player "
                 "states goals, wants, limits or decisions in this conversation, record each "
                 "with update_player_context and tell them; if they ask to be told when "
-                "something happens, set a watch with create_watch._"
+                f"something happens, set a watch with create_watch.{since}_"
             )
         counts: dict[str, int] = {}
         for entry in entries:
@@ -423,7 +461,8 @@ class Toolbox:
         listed = ", ".join(f"{n} {label}" for label, n in counts.items()) or "only fired watches"
         return (
             f"_Player context: {listed} recorded for this campaign (get_player_context; "
-            f"follow them). Record new ones the player states with update_player_context.{alert}_"
+            f"follow them). Record new ones the player states with update_player_context.{alert}"
+            f"{since}_"
         )
 
     # --- handlers -----------------------------------------------------------------------
@@ -533,6 +572,37 @@ class Toolbox:
             raise ToolInputError(str(exc)) from exc
         raise ToolInputError("`action` must be add, remove or replace")
 
+    def remember_save(self) -> bool:
+        """Record this save in the campaign's journal (D-043); once per in-game date.
+
+        Returns:
+            Whether a new snapshot was written.
+        """
+        key = self._save_key()
+        campaign_key = PlayerContextStore(self.context_file).campaign_key(key)
+        journal = JournalStore(journal_path(self.context_file))
+        return journal.record(campaign_key, take_snapshot(self.campaign))
+
+    def journal(self, saves: int = JOURNAL_STEPS) -> list[tuple[str, str, list[str]]]:
+        """The journal's steps up to this save, newest first (see :func:`journal_entries`)."""
+        key = self._save_key()
+        view = PlayerContextStore(self.context_file).view(key)
+        if view.campaign is None:
+            return []
+        snapshots = JournalStore(journal_path(self.context_file)).snapshots(view.campaign.key)
+        return journal_entries(snapshots, key.date, self.campaign, saves)
+
+    def _get_campaign_journal(self, args: dict[str, Any]) -> str:
+        saves = min(max(int(args.get("saves") or JOURNAL_STEPS), 1), 30)
+        key = self._save_key()
+        view = PlayerContextStore(self.context_file).view(key)
+        recorded = 0
+        if view.campaign is not None:
+            recorded = len(
+                JournalStore(journal_path(self.context_file)).snapshots(view.campaign.key)
+            )
+        return render_journal(self.journal(saves), self.campaign.label(key.tag), recorded)
+
     def _save_key(self) -> SaveKey:
         campaign = self.campaign
         return SaveKey(campaign.campaign_id, campaign.player, campaign.date)
@@ -573,6 +643,10 @@ class Toolbox:
                 {"id": w.id, "description": w.description, "fired": w.fired}
                 for w, _ in results
                 if w.fired
+            ],
+            "since": [
+                {"from": start, "to": end, "events": events}
+                for start, end, events in self.journal(1)
             ],
         }
 

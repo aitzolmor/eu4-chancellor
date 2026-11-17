@@ -85,6 +85,8 @@ class CampaignRecord:
         last_date: Latest in-game date recorded.
         entries: What the player said about it.
         watches: What the player asked to be told about (D-041).
+        key: Stable name of the campaign, for its journal (D-043): its first campaign
+            id, or the country and first date.
     """
 
     tag: str
@@ -93,6 +95,7 @@ class CampaignRecord:
     last_date: str = ""
     entries: list[Entry] = field(default_factory=list)
     watches: list[Watch] = field(default_factory=list)
+    key: str = ""
 
 
 @dataclass
@@ -191,6 +194,20 @@ class PlayerContextStore:
                 watch.fired = key.date
         self._save(data)
 
+    def campaign_key(self, key: SaveKey) -> str:
+        """The stable key of the save's campaign, recording the campaign if it is new.
+
+        Reading a save is enough to start a campaign's record: its journal (D-043) needs
+        one before the player says anything.
+        """
+        data = self._load()
+        index, by_country = _match(data["campaigns"], key)
+        before = len(data["campaigns"])
+        campaign = self._campaign_for_write(data, key)
+        if index is None or by_country or len(data["campaigns"]) != before:
+            self._save(data)
+        return campaign.key
+
     def remove(self, key: SaveKey, entry_id: int) -> Entry | Watch:
         """Remove an entry or a watch (a goal reached or dropped, a watch done with)."""
         data = self._load()
@@ -248,7 +265,10 @@ class PlayerContextStore:
         campaigns: list[CampaignRecord] = data["campaigns"]
         index, _ = _match(campaigns, key)
         if index is None:
-            campaigns.append(CampaignRecord(key.tag, first_date=key.date, last_date=key.date))
+            name = key.campaign_id or f"{key.tag}@{key.date}"
+            campaigns.append(
+                CampaignRecord(key.tag, first_date=key.date, last_date=key.date, key=name)
+            )
             index = len(campaigns) - 1
         campaign = campaigns[index]
         if key.campaign_id and key.campaign_id not in campaign.campaign_ids:
@@ -274,6 +294,7 @@ class PlayerContextStore:
                 last_date=str(c.get("last_date", "")),
                 entries=[_entry(e) for e in c.get("entries", []) if isinstance(e, dict)],
                 watches=[from_dict(w) for w in c.get("watches", []) if isinstance(w, dict)],
+                key=str(c.get("key") or _default_key(c)),
             )
             for c in raw.get("campaigns", [])
             if isinstance(c, dict)
@@ -392,6 +413,12 @@ def _match(campaigns: list[CampaignRecord], key: SaveKey) -> tuple[int | None, b
     # The latest campaign that had reached this far, if several (an older game kept).
     best = max(candidates, key=lambda i: _date(campaigns[i].last_date))
     return best, True
+
+
+def _default_key(raw: dict[str, Any]) -> str:
+    """The key of a campaign recorded before keys existed: stable across reads."""
+    ids = raw.get("campaign_ids") or []
+    return str(ids[0]) if ids else f"{raw.get('tag', '')}@{raw.get('first_date', '')}"
 
 
 def _entry(raw: dict[str, Any]) -> Entry:

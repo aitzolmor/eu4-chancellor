@@ -153,6 +153,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     player.add_argument("--remove", type=int, metavar="ID", help="Remove the entry with this id.")
 
+    journal = sub.add_parser(
+        "journal",
+        parents=[common],
+        help="What changed between the saves the Chancellor has read.",
+        description=(
+            "Provinces, wars, allies, rulers, ideas and key numbers that changed between "
+            "the saves of the current campaign the Chancellor has read, newest first. "
+            "Reading a save here records it too."
+        ),
+    )
+    journal.add_argument("--saves", type=int, default=6, help="Steps back to show (default 6).")
+
     sub.add_parser(
         "mcp",
         help="Run the MCP server so Claude Desktop can use the Chancellor's tools.",
@@ -357,6 +369,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             from chancellor.app.chat import run_chat  # deferred: the SDK is slow to import
 
             return run_chat(settings, load)
+        if args.command == "journal":
+            settings = load_settings()
+            campaign, _ = _load_campaign(args, settings)
+            toolbox = Toolbox(campaign, settings.game_dir, context_path(settings.save_dir))
+            toolbox.remember_save()
+            text = toolbox.run("get_campaign_journal", {"saves": args.saves})
+            return _emit(args, text, "Campaign journal")
         if args.command == "player-context":
             settings = load_settings()
             campaign, _ = _load_campaign(args, settings)

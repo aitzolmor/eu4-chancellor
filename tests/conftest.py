@@ -18,3 +18,11 @@ def isolated_state(monkeypatch, tmp_path: Path) -> Path:
     folder = tmp_path / "state"
     monkeypatch.setenv("CHANCELLOR_STATE_DIR", str(folder))
     return folder
+
+
+@pytest.fixture(autouse=True)
+def isolated_user_config(monkeypatch, tmp_path: Path) -> Path:
+    """Keep the user's real config (``chancellor setup``) out of every test."""
+    path = tmp_path / "user-config" / "config.env"
+    monkeypatch.setenv("CHANCELLOR_CONFIG", str(path))
+    return path

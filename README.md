@@ -39,9 +39,10 @@ flowchart LR
 See [docs/VISION.md](docs/VISION.md) for the goals and [docs/ROADMAP.md](docs/ROADMAP.md)
 for the detailed task list.
 
-## Installation (development)
+## Installation
 
-Requires Python 3.11+.
+Requires Python 3.11+ and Europa Universalis IV (tested on 1.37; saves must not be
+ironman).
 
 ```bash
 git clone https://github.com/aitzolmor/eu4-chancellor.git
@@ -50,8 +51,16 @@ python -m venv .venv
 .venv\Scripts\activate          # Windows
 # source .venv/bin/activate     # macOS / Linux
 pip install -e ".[dev]"
-cp .env.example .env            # then fill in your values
+chancellor setup
 ```
+
+`chancellor setup` finds the game (in a Steam library, among installed programs, or in a
+usual folder such as `C:\Games`) and your EU4 data folder (in *Documents*, wherever
+Windows redirected it, OneDrive included), checks them, reads your game's language and
+saves all three to `~/.eu4-chancellor/config.env`. From then on every command works from
+any folder. `chancellor setup --check` only shows what it finds; `--game-dir` and
+`--user-dir` override it. Environment variables and a `.env` in the current folder (see
+`.env.example`) still win over that file, which is handy for development.
 
 ## Usage
 
@@ -200,7 +209,8 @@ If you have a Claude subscription, Claude Desktop can use the Chancellor's tools
 through MCP. You chat in Claude Desktop as usual, and questions about your campaign are
 answered from your save, at no extra cost beyond your plan.
 
-1. Print the configuration for your machine:
+1. Run `chancellor setup` if you have not, then print the configuration for your
+   machine:
 
    ```bash
    chancellor mcp-config

@@ -54,7 +54,8 @@ the chat agent as a tool (D-009).
 - [x] `chancellor world`: great powers, rankings, alliance networks, major wars, unions, HRE
 - [ ] Structured return types (dataclasses) shared by CLI rendering and agent tools
   (done for `war-check` and `world`; briefings still render directly to Markdown)
-- [ ] Run from any folder (user-level config instead of `./.env` only)
+- [x] Run from any folder: `chancellor setup` finds the game and the player's folder
+  and writes `~/.eu4-chancellor/config.env` (D-047)
 
 ## Phase 3 — Game knowledge
 

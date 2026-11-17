@@ -181,6 +181,19 @@ notes what changed since the previous one (provinces gained or lost, wars, allie
 ruler, ideas, technology and the key numbers). Ask "what has happened lately?" in a chat,
 look at *Since your last save* in the panel, or run `chancellor journal`.
 
+The panel's **Charts** tab draws the campaign's numbers over time from that
+journal: treasury, income and expenses, regiments, manpower, development and the
+countries that could join a coalition, with wars and new rulers marked. To start
+the charts from your older saves of the same campaign:
+
+```bash
+chancellor journal --backfill                # lists your saves by campaign id
+chancellor journal --backfill --ids 1c4db895,11e70c34   # reads the groups you pick
+```
+
+The game changes a campaign's id now and then, so you pick the groups that belong
+to the game you are playing (about 7 seconds a save).
+
 ## Use it from Claude Desktop (no API key needed)
 
 If you have a Claude subscription, Claude Desktop can use the Chancellor's tools directly

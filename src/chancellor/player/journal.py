@@ -277,6 +277,96 @@ def render_journal(entries: list[tuple[str, str, list[str]]], country: str, reco
     return "\n".join(lines) + "\n"
 
 
+# Numbers charted and tabled as trends (D-045), in display order.
+TREND_KEYS = (
+    "treasury",
+    "income",
+    "expenses",
+    "manpower",
+    "regiments",
+    "development",
+    "provinces",
+    "prestige",
+    "overextension",
+    "at_coalition_ae",
+)
+# Journal lines worth marking on a chart: the moments the numbers usually move around.
+_MARKED = ("War began", "War ended", "New ruler", "Gained", "Lost")
+TREND_ROWS = 12
+
+
+def trend_data(snapshots: list[dict[str, Any]], date: str, campaign: Campaign) -> dict[str, Any]:
+    """The journal's numbers up to ``date`` as series, and its main events, for charts.
+
+    Returns:
+        ``{"dates": [...], "years": [...], "series": {key: [value | None]},
+        "labels": {key: label}, "events": [{"date", "year", "text"}]}``.
+    """
+    known = [s for s in snapshots if _date(str(s.get("date", ""))) <= _date(date)]
+    labels = dict((k, label) for k, label, _ in NUMBERS)
+    events = []
+    for before, after in zip(known, known[1:], strict=False):
+        for line in changes(before, after, campaign):
+            if line.startswith(_MARKED):
+                text = line if len(line) <= 70 else line[:67] + "..."
+                events.append({"date": after["date"], "year": _year(after["date"]), "text": text})
+    return {
+        "dates": [str(s["date"]) for s in known],
+        "years": [_year(str(s["date"])) for s in known],
+        "series": {key: [s.get("numbers", {}).get(key) for s in known] for key in TREND_KEYS},
+        "labels": {key: labels[key] for key in TREND_KEYS},
+        "events": events,
+    }
+
+
+def render_trends(data: dict[str, Any], country: str) -> str:
+    """Markdown for ``get_trends``: a table of up to :data:`TREND_ROWS` dates."""
+    dates = data["dates"]
+    lines = [f"# Trends: {country}", ""]
+    if len(dates) < 2:
+        lines.append(
+            "Not enough saves recorded yet for a trend: the journal records each save the "
+            "Chancellor reads (and `chancellor journal --backfill` can add older ones)."
+        )
+        return "\n".join(lines) + "\n"
+    rows = _sample(len(dates), TREND_ROWS)
+    keys = list(data["series"])
+    lines.append(f"{len(dates)} saves recorded, {dates[0]} to {dates[-1]}; {len(rows)} shown.")
+    lines += [
+        "",
+        "| Date | " + " | ".join(data["labels"][k] for k in keys) + " |",
+        "| --- |" + " --- |" * len(keys),
+    ]
+    digits = dict((k, d) for k, _, d in NUMBERS)
+    for i in rows:
+        cells = ["-" if (v := data["series"][k][i]) is None else _fmt(v, digits[k]) for k in keys]
+        lines.append(f"| {dates[i]} | " + " | ".join(cells) + " |")
+    if data["events"]:
+        lines += ["", "Main events:", ""]
+        lines += [f"- {e['date']}: {e['text']}" for e in data["events"][-12:]]
+    lines += [
+        "",
+        "_From the campaign journal: one record per save the Chancellor read, so the "
+        "spacing between dates varies._",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def _sample(count: int, rows: int) -> list[int]:
+    """Up to ``rows`` indexes spread evenly over ``count``, first and last included."""
+    if count <= rows:
+        return list(range(count))
+    return sorted({round(i * (count - 1) / (rows - 1)) for i in range(rows)})
+
+
+def _year(date: str) -> float:
+    parts = _date(date)
+    if len(parts) < 3:
+        return float(parts[0])
+    year, month, day = parts[:3]
+    return year + (month - 1) / 12 + (day - 1) / 365
+
+
 def _person(person: dict[str, Any] | None) -> str:
     if not person:
         return ""

@@ -128,7 +128,8 @@ There is no footer: everything the player does not need while playing lives in t
 menu, so the overlay panel (about 350 px high on one screen) keeps its room for the
 alerts and numbers.
 
-Later tabs: **Charts** and **History** (Phase 5), **API chat** (when the mode is on).
+Tabs: **Campaign** (the sections above), **Charts** (D-045: the campaign's numbers
+over time, from the journal) and **Chat** (only while the API mode is on).
 
 ## Architecture
 
@@ -189,4 +190,6 @@ as a calm instrument panel, not compete with the map.
 6. API chat tab behind the chat-mode switch, on a budget (D-028). **Done**
    (`chancellor.app.api_chat`, `llm.cost`, `app.budget`); the page was checked with a
    stubbed bridge.
-7. Charts and history (Phase 5).
+7. Charts and history (Phase 5). **Charts done** (D-045, `charts.js`): six small
+   line charts from the campaign journal, checked in the browser with 21 real
+   saves. A world view (PDX Tools) is still to evaluate.

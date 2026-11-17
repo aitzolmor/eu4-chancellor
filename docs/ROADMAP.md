@@ -248,9 +248,17 @@ findings, most harmful first:
 Goal: visual analysis of the campaign inside the workspace.
 
 - [ ] Evaluate PDX Tools: link, embed in a tab, or reuse its open-source parsing libraries
-- [ ] Charts view: income/expense breakdown, army strength, development
-- [ ] Save history: index past saves and chart trends over time (the campaign
-  journal, D-043, keeps every read save's key numbers: the data is there)
+- [x] Charts tab (D-045): treasury, income and expenses, regiments, manpower,
+  development and countries at 50+ AE over the campaign, from the journal's records,
+  with its main events marked on the time axis; plain SVG, offline, hover tooltips and
+  a table view
+- [x] Save history: `chancellor journal --backfill` lists older saves by campaign id
+  and reads the groups the player picks into the journal; `get_trends` gives the model
+  the same numbers as a table
+- [ ] Income/expense breakdown by category (the ledger's indices are not mapped yet)
+- [ ] Trade: the player's share of trade power in each node, merchants (where, collecting
+  or steering, which way) and the flows into the home node; the save's `trade` block
+  holds them. A trade question in Claude Desktop (2026-11-17) had to ask the player
 - [ ] Let the model reference charts in its answers
 
 ## Phase 6 — Claude plays (experimental)

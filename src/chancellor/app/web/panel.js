@@ -1,6 +1,7 @@
 // The Chancellor panel: asks Python for the campaign's key facts and lays them out.
 // Python side: chancellor.app.ui.PanelApi, reached through pywebview's js_api bridge.
 
+import { renderCharts } from "./charts.js";
 import { renderMarkdown } from "./markdown.js";
 
 const $ = (id) => document.getElementById(id);
@@ -209,6 +210,7 @@ window.addEventListener("save-changed", (event) => {
   const name = event.detail?.save;
   setText("meta", name ? `New save ${name}, reading…` : "New save, reading…");
   load();
+  if (currentTab === "charts") loadCharts(); // the new save is in the journal now
 });
 
 // --- Status line -----------------------------------------------------------------------
@@ -403,20 +405,53 @@ function showChatMode(state) {
       ? `API chat on: ${chat.model}, up to ${dollars(chat.question_cap)} a question.`
       : "The chat runs in Claude Desktop and reads the same save.",
   );
-  $("tabs").hidden = !on;
-  if (!on) showTab("campaign");
+  $("tab-chat").hidden = !on;
+  if (!on && currentTab === "chat") showTab("campaign");
   setBusy(Boolean(chat.busy));
 }
 
+let currentTab = "campaign";
+
+// Three tabs: Campaign (the default), Charts (D-045) and Chat (only in API mode).
 function showTab(name) {
-  const onChat = name === "chat" && chat.mode === "api";
-  $("tab-campaign").setAttribute("aria-selected", String(!onChat));
-  $("tab-chat").setAttribute("aria-selected", String(onChat));
-  $("content").hidden = onChat;
-  $("ask").hidden = onChat;
-  $("chat").hidden = !onChat;
-  if (onChat) $("chat-input").focus();
+  if (name === "chat" && chat.mode !== "api") name = "campaign";
+  currentTab = name;
+  for (const tab of ["campaign", "charts", "chat"]) {
+    $(`tab-${tab}`).setAttribute("aria-selected", String(tab === name));
+  }
+  $("content").hidden = name !== "campaign";
+  $("ask").hidden = name !== "campaign";
+  $("charts").hidden = name !== "charts";
+  $("chat").hidden = name !== "chat";
+  if (name === "chat") $("chat-input").focus();
+  if (name === "charts") loadCharts();
 }
+
+let trends = null;
+
+async function loadCharts() {
+  $("charts-loading").hidden = false;
+  try {
+    const result = await window.pywebview.api.trends();
+    if (!result.ok) {
+      setText("charts-loading", `Charts unavailable: ${result.error}`);
+      return;
+    }
+    trends = result.trends;
+    $("charts-loading").hidden = true;
+    renderCharts($("charts-body"), trends);
+  } catch (error) {
+    setText("charts-loading", `Charts unavailable: ${error}`);
+  }
+}
+
+// The charts are drawn to the panel's width; draw them again when it changes.
+let resizeTimer = null;
+window.addEventListener("resize", () => {
+  if (currentTab !== "charts" || !trends) return;
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => renderCharts($("charts-body"), trends), 150);
+});
 
 function askToTurnOn() {
   const text =
@@ -460,6 +495,7 @@ $("api-confirm-no").addEventListener("click", () => {
 });
 $("tab-campaign").addEventListener("click", () => showTab("campaign"));
 $("tab-chat").addEventListener("click", () => showTab("chat"));
+$("tab-charts").addEventListener("click", () => showTab("charts"));
 
 function setBusy(busy) {
   $("chat-send").disabled = busy;

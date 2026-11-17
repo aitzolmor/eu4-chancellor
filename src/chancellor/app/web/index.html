@@ -55,9 +55,10 @@
   <p id="status" class="status" role="status" hidden></p>
 
   <!-- Only while the API chat is on: the campaign view or the chat. -->
-  <nav id="tabs" class="tabs" role="tablist" hidden>
+  <nav id="tabs" class="tabs" role="tablist">
     <button id="tab-campaign" type="button" role="tab" aria-selected="true" aria-controls="content">Campaign</button>
-    <button id="tab-chat" type="button" role="tab" aria-selected="false" aria-controls="chat">Chat</button>
+    <button id="tab-charts" type="button" role="tab" aria-selected="false" aria-controls="charts">Charts</button>
+    <button id="tab-chat" type="button" role="tab" aria-selected="false" aria-controls="chat" hidden>Chat</button>
   </nav>
 
   <main id="content" aria-live="polite">
@@ -102,6 +103,11 @@
       </dl>
     </section>
   </main>
+
+  <section id="charts" class="charts" role="tabpanel" aria-labelledby="tab-charts" hidden>
+    <p id="charts-loading" class="quiet">Reading the campaign journal…</p>
+    <div id="charts-body"></div>
+  </section>
 
   <section id="chat" class="chat" role="tabpanel" aria-labelledby="tab-chat" hidden>
     <div id="chat-log" class="chat-log" aria-live="polite">

@@ -157,6 +157,18 @@ class PanelApi:
             with contextlib.suppress(DockError, OSError):
                 self._get_docker().flash_panel()
 
+    def trends(self) -> dict[str, Any]:
+        """The journal's numbers over the campaign, for the Charts tab (D-045).
+
+        Returns:
+            ``{"ok": True, "trends": {"dates", "years", "series", "labels", "events"}}``
+            or ``{"ok": False, "error": "<message>"}``.
+        """
+        try:
+            return {"ok": True, "trends": self._provider.toolbox().trends()}
+        except (RuntimeError, OSError, KeyError, ValueError) as exc:
+            return {"ok": False, "error": str(exc) or exc.__class__.__name__}
+
     def plan(self) -> dict[str, Any]:
         """The player's goals, wants and limits, decisions and waiting watches (D-041).
 

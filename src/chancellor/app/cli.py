@@ -30,6 +30,7 @@ from chancellor.game.missions import MissionLibrary
 from chancellor.game.modifiers import ModifierLibrary
 from chancellor.game.power_rules import PowerRules
 from chancellor.game.rules import GameRules
+from chancellor.player.backfill import backfill, pick, render_groups, save_groups
 from chancellor.player.context import context_path
 from chancellor.save.loader import SaveFormatError, find_current_save, load_save
 from chancellor.wiki.store import import_exports, render_hits, search, wiki_path
@@ -164,6 +165,16 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     journal.add_argument("--saves", type=int, default=6, help="Steps back to show (default 6).")
+    journal.add_argument(
+        "--backfill",
+        action="store_true",
+        help="Add older saves of this campaign: lists them by campaign id; with --ids, reads "
+        "the groups picked (about 3 s a save).",
+    )
+    journal.add_argument(
+        "--ids",
+        help="Campaign id prefixes to backfill, comma-separated (from --backfill's list).",
+    )
 
     sub.add_parser(
         "mcp",
@@ -374,6 +385,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             campaign, _ = _load_campaign(args, settings)
             toolbox = Toolbox(campaign, settings.game_dir, context_path(settings.save_dir))
             toolbox.remember_save()
+            if args.backfill:
+                return _backfill(args, settings, campaign, toolbox)
             text = toolbox.run("get_campaign_journal", {"saves": args.saves})
             return _emit(args, text, "Campaign journal")
         if args.command == "player-context":
@@ -425,6 +438,34 @@ def _development(settings: Settings) -> tuple[DevelopmentRules, GameRules] | Non
 def _power_rules(settings: Settings) -> PowerRules | None:
     """Monarch power cost rules for briefings, or ``None`` without the game files."""
     return PowerRules.load(settings.game_dir) if settings.game_dir else None
+
+
+def _backfill(
+    args: argparse.Namespace, settings: Settings, campaign: Campaign, toolbox: Toolbox
+) -> int:
+    """List the country's older saves by campaign id, or read the groups picked (D-045)."""
+    if settings.save_dir is None:
+        raise CliError("Set EU4_SAVE_DIR to backfill from its saves.")
+    groups = save_groups(settings.save_dir, campaign.player)
+    if not args.ids:
+        _write_stdout(
+            f"Saves of {campaign.label(campaign.player)} by campaign id. The game changes the "
+            "id within one campaign, so pick the groups that belong to this one, e.g.\n"
+            "  chancellor journal --backfill --ids 1c4db895,11e70c34\n\n"
+            + render_groups(groups, campaign.campaign_id)
+        )
+        return 0
+    picked = pick(groups, args.ids.split(","))
+    if not picked:
+        raise CliError(f"No campaign id starts with: {args.ids}")
+    loc = campaign.loc
+
+    def record(path: Path) -> bool:
+        return toolbox.remember_other(Campaign.from_raw(load_save(path), loc))
+
+    count = backfill(picked, record, lambda text: print(text, file=sys.stderr))
+    _write_stdout(f"Recorded {count} saves in the journal.\n")
+    return 0
 
 
 def _load_campaign(args: argparse.Namespace, settings: Settings) -> tuple[Campaign, Path]:

@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from chancellor.context.ae import render_ae_section
-from chancellor.context.campaign import Campaign, CountryLookupError
+from chancellor.context.campaign import Campaign, CountryLookupError, _date_key
 from chancellor.context.decisions import check_decisions, render_decisions
 from chancellor.context.missions import mission_tree, render_missions
 from chancellor.context.summarizer import summarize
@@ -46,7 +46,9 @@ from chancellor.player.journal import (
     journal_entries,
     journal_path,
     render_journal,
+    render_trends,
     take_snapshot,
+    trend_data,
 )
 from chancellor.player.watches import (
     Watch,
@@ -338,6 +340,18 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "get_trends",
+        "description": (
+            "How the player's key numbers moved over the campaign, from the journal's "
+            "record of each save read: treasury, monthly income and expenses, manpower, "
+            "regiments, development, provinces, prestige, overextension and countries at "
+            "50+ AE, as a table of up to 12 dates from the first record to this save, with "
+            "the main events (wars, rulers) between them. Use it for 'how is my economy "
+            "doing', 'am I growing', or to judge a plan against the trend."
+        ),
+        "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
+    },
 ]
 
 
@@ -357,6 +371,7 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
     "search_wiki": {"query": _Field(str, required=True), "max_results": _Field(int)},
     "get_player_context": {},
     "get_campaign_journal": {"saves": _Field(int)},
+    "get_trends": {},
     "create_watch": {
         "description": _Field(str, required=True),
         "conditions": _Field(list, required=True),
@@ -443,6 +458,12 @@ class Toolbox:
             since = (
                 f" Since the previous save ({latest[0][0]}): {len(latest[0][2])} changes "
                 "(get_campaign_journal)."
+            )
+        recorded = self._recorded_dates()
+        if len(recorded) >= 2:  # point to the trends for "how has it evolved?" (D-045)
+            since += (
+                f" The journal holds {len(recorded)} saves from {recorded[0]} to "
+                f"{recorded[-1]}: for how the economy, army or growth evolved, use get_trends."
             )
         if not entries and not watches:
             return (
@@ -583,6 +604,31 @@ class Toolbox:
         journal = JournalStore(journal_path(self.context_file))
         return journal.record(campaign_key, take_snapshot(self.campaign))
 
+    def remember_other(self, campaign: Campaign) -> bool:
+        """Record another save of this campaign in this campaign's journal (backfill)."""
+        campaign_key = PlayerContextStore(self.context_file).campaign_key(self._save_key())
+        journal = JournalStore(journal_path(self.context_file))
+        return journal.record(campaign_key, take_snapshot(campaign))
+
+    def trends(self) -> dict[str, Any]:
+        """The journal's numbers up to this save, and its main events, for charts (D-045)."""
+        key = self._save_key()
+        view = PlayerContextStore(self.context_file).view(key)
+        if view.campaign is None:
+            return {"dates": [], "series": {}, "events": []}
+        snapshots = JournalStore(journal_path(self.context_file)).snapshots(view.campaign.key)
+        return trend_data(snapshots, key.date, self.campaign)
+
+    def _recorded_dates(self) -> list[str]:
+        """Dates of the journal's snapshots up to this save, oldest first (cheap)."""
+        key = self._save_key()
+        view = PlayerContextStore(self.context_file).view(key)
+        if view.campaign is None:
+            return []
+        snapshots = JournalStore(journal_path(self.context_file)).snapshots(view.campaign.key)
+        dates = [str(s.get("date", "")) for s in snapshots]
+        return [d for d in dates if _date_key(d) <= _date_key(key.date)]
+
     def journal(self, saves: int = JOURNAL_STEPS) -> list[tuple[str, str, list[str]]]:
         """The journal's steps up to this save, newest first (see :func:`journal_entries`)."""
         key = self._save_key()
@@ -591,6 +637,9 @@ class Toolbox:
             return []
         snapshots = JournalStore(journal_path(self.context_file)).snapshots(view.campaign.key)
         return journal_entries(snapshots, key.date, self.campaign, saves)
+
+    def _get_trends(self, args: dict[str, Any]) -> str:
+        return render_trends(self.trends(), self.campaign.label(self.campaign.player))
 
     def _get_campaign_journal(self, args: dict[str, Any]) -> str:
         saves = min(max(int(args.get("saves") or JOURNAL_STEPS), 1), 30)

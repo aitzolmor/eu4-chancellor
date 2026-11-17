@@ -125,6 +125,9 @@ def test_the_toolbox_records_saves_and_reports_the_journal(tmp_path: Path):
     assert journal_path(context).is_file()
     hint = second.run("get_country_briefing", {}).rstrip().splitlines()[-1]
     assert "Since the previous save (1507.11.1):" in hint and "(get_campaign_journal)" in hint
+    # Two saves recorded: the line points to the trends too (D-045).
+    assert "The journal holds 2 saves from 1507.11.1 to 1514.2.17" in hint
+    assert "use get_trends." in hint
     since = second.player_plan()["since"]
     assert since[0]["from"] == "1507.11.1" and "Gained Istrien" in since[0]["events"]
 

@@ -897,3 +897,48 @@ its account matched the game.
 The steps are as fine as the saves read: with monthly autosaves and the panel open, a
 month; otherwise from one chat to the next. Watches on events from the journal (an ally
 at war, a ruler dying) are left for later.
+
+## D-045 — Trend charts from the campaign journal, drawn as plain SVG
+
+**Date:** 2026-11-17 · **Status:** Accepted
+
+(D-044, the probe mod, is in the draft PR #50 and lands with it.)
+
+The vision's second secondary goal is charts in the workspace; what was missing was
+data over time, and the campaign journal (D-043) now keeps every read save's numbers.
+
+- **Charts tab.** The panel gains a tab beside *Campaign* (the *Chat* tab still only
+  appears in API mode): six small line charts, one measure each so no chart has two
+  y-scales: treasury; income and expenses together, since they share a unit; regiments;
+  manpower; development; countries at 50+ AE. The journal's main events (wars begun
+  and ended, new rulers, provinces gained or lost) are dots on each time axis, with
+  their text on hover. A crosshair and tooltip follow the pointer, the charts redraw
+  to the panel's width, and a table holds the same numbers. A new save read while the
+  tab is open redraws it.
+- **Plain SVG, no library** (`charts.js`), so the panel stays offline with nothing
+  vendored (D-021). The marks follow the data-viz guidance used for this project: 2px
+  lines, hairline solid grids, text in text colours, a legend for the one two-series
+  chart. The two series colours are the reference palette's dark blue and orange,
+  validated against the panel's surface (#162139): every check passes, CVD separation
+  26.8.
+- **Backfill.** The journal only starts with the first save read, so
+  `chancellor journal --backfill` lists the country's saves by `campaign_id` with
+  their date ranges, and `--ids` reads the groups picked, oldest first, into the
+  current campaign's journal (`Toolbox.remember_other`). The player picks because the
+  game cannot tell: one campaign carried five ids from 1455 to 1525, and an earlier
+  Austria game (1447–1449) sits just before them. About 7 seconds a save.
+- **For the model.** `get_trends` returns the same numbers as a table of up to 12
+  dates with the main events, for "how is my economy doing?".
+
+Checked in the browser with 21 real saves of the user's Austria (1455–1525) backfilled
+into a temporary journal: the conquests of 1492 and 1505, the jump in development from
+380 to 645 around 1523, and a month of 352 ducats in expenses in 1525, which flattens
+the income chart's scale; the tooltip gives the numbers. The income and expense
+breakdown by category and a world view (PDX Tools) are still open.
+
+First test in Claude Desktop: "how has my economy evolved, and how can I improve it?"
+did not call `get_trends`; the model compared 1519 with 1525 from an earlier chat it
+found, and searched the wiki for trade. As with D-036 and D-040, the planning tools'
+last line now says how many saves the journal holds and to use `get_trends` for how
+the economy, army or growth evolved. The answer also named a gap: the tools say nothing
+about trade (nodes, power shares, merchants), though the save holds it.

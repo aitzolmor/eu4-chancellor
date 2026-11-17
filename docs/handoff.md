@@ -2,11 +2,11 @@
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
 updated on **2026-11-16** after checking AE and coring against the game and the
-wiki's retrieval (PRs #1–#49 merged; 540 tests passing, CI green on Ubuntu and
+wiki's retrieval (PRs #1–#52 merged; 548 tests passing, CI green on Ubuntu and
 Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-046; D-044 is in the draft PR #50),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-047; D-044 is in the draft PR #50),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -75,7 +75,8 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
    - estate and parliament conditions in the checklists (about 37% `[?]` outside the
      formables, about 6% for the formables).
 4. **Usability:**
-   - run from any folder (today `.env` is read from the working directory);
+   - run from any folder: done (D-047, `chancellor setup` writes
+     `~/.eu4-chancellor/config.env`; run on the user's machine 2026-11-17);
    - the desktop app: designed on 2026-11-13 ([UI_DESIGN](UI_DESIGN.md), D-020,
      D-021); steps 1-4 are built: the panel window (`chancellor app`), the save
      watcher with live refresh, alerts, and docking: on two screens, or a floating icon

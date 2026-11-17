@@ -972,3 +972,35 @@ On the user's Austria in 1525: home node Venice, an end node, with 46% of its po
 six light ships at Venice; Vienna (19%), Pest (7%) and Alexandria (3%) feeding it; and
 embargoes from the Ottomans, Great Britain, France and Newfoundland. Asked again in
 Claude Desktop, the trade question was answered from `get_trade`.
+
+## D-047 — `chancellor setup` finds the paths and writes a user-level config
+
+**Date:** 2026-11-17 · **Status:** Accepted
+
+The commands read their paths from `.env` in the folder they ran from, so they only
+worked from the project's folder, and a new user had to find and type the game's
+installation and their save folder. For a project meant to be tried by others, that was
+the first obstacle.
+
+- **Discovery** (`discovery`): the game is looked for in Steam's libraries (the
+  registry gives Steam's folder; `steamapps/libraryfolders.vdf` lists the libraries),
+  among Windows' installed programs (an `InstallLocation` named like the game, which
+  covers GOG and other installers), and in usual folders on every drive (`Games`,
+  `GOG Games`, `SteamLibrary`, Steam under Program Files). A folder counts when it has
+  the executable and `common`; with several (old installs linger), the newest version
+  in `launcher-settings.json` wins and the rest are listed. The player's folder is
+  *Documents*/Paradox Interactive/Europa Universalis IV, with *Documents* asked of
+  Windows (`SHGetKnownFolderPath`), since it is often redirected to OneDrive. The
+  language comes from the game's `settings.txt`.
+- **User config:** `chancellor setup` checks what it found (the version, how many
+  saves, the current one, the language, whether the wiki is imported) and writes
+  `EU4_GAME_DIR`, `EU4_SAVE_DIR` and `EU4_LANGUAGE` to `~/.eu4-chancellor/config.env`,
+  keeping any other keys there. `load_settings` reads it last: environment variables,
+  then `./.env`, then the user's config, so development setups keep working. It lives
+  in the home folder, not `AppData`, which Claude Desktop's processes see a private copy
+  of. `--check` writes nothing; `--game-dir` and `--user-dir` override the search.
+  Tests point `CHANCELLOR_CONFIG` at a temporary file so a real config never leaks in.
+
+On the user's machine the game was found among installed programs in `C:\Games` (not in
+a Steam library), version 1.37, and the data folder under OneDrive, in 0.2 seconds;
+afterwards `chancellor summary` worked from a folder without `.env`.

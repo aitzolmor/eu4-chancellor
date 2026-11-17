@@ -25,7 +25,8 @@ flowchart LR
 
 | Module | Responsibility | Phase |
 | --- | --- | --- |
-| `config` | Load settings from environment / `.env` | 1 |
+| `config` | Load settings from the environment, `./.env` and the user's config (`~/.eu4-chancellor/config.env`, D-047) | 1 |
+| `discovery` | Find the game's installation (Steam libraries, installed programs, usual folders) and the player's data folder (D-047) | 4 |
 | `save.loader` | Locate the newest save; open zip or raw text; detect ironman | 1 |
 | `save.parser` | Turn Clausewitz text into nested Python data; `parse_lazy` defers nested blocks so only what is needed gets parsed | 1 |
 | `game.localisation` | Readable names from the game's localisation files; detects the player's language | 1 |

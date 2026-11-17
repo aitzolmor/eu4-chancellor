@@ -116,9 +116,11 @@ From top to bottom:
 3. **Your plan**: what the player told the Chancellor in chats (goals, wants and
    limits, decisions, D-039) and the watches still waiting, each with a × to remove it.
    With nothing recorded it says what to tell Claude.
-4. **Key numbers**: treasury and monthly balance, manpower, stability, monarch power,
+4. **Since your last save**: the campaign journal's latest step (D-043), what changed
+   between the previous save the Chancellor read and this one.
+5. **Key numbers**: treasury and monthly balance, manpower, stability, monarch power,
    army size against rivals.
-5. **Quick questions**: buttons such as "How is my campaign going?" or "Where should I
+6. **Quick questions**: buttons such as "How is my campaign going?" or "Where should I
    expand?". In Claude Desktop mode they copy the question to the clipboard and bring
    Claude Desktop to the front; in API mode they send it to the chat tab.
 

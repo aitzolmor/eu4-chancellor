@@ -17,6 +17,7 @@ from chancellor.config import Settings
 from chancellor.context.campaign import Campaign
 from chancellor.context.tools import TOOL_DEFINITIONS, Toolbox
 from chancellor.game.missions import MissionLibrary
+from chancellor.player.journal import journal_path
 from chancellor.save.loader import load_save
 
 FIXTURE = Path(__file__).parent / "fixtures" / "mini_save.txt"
@@ -70,6 +71,14 @@ def test_provider_follows_a_newer_save_file(provider, save_dir: Path):
     bump(newer)
     campaigns.toolbox()
     assert campaigns.save_path == newer
+
+
+def test_provider_records_each_new_save_in_the_journal(provider, save_dir: Path):
+    campaigns, _ = provider
+    toolbox = campaigns.toolbox()
+    # The context and journal live in the game's user folder, next to "save games".
+    assert toolbox.context_file.parent == save_dir.parent / "eu4-chancellor"
+    assert journal_path(toolbox.context_file).is_file()
 
 
 def test_provider_errors(tmp_path: Path):

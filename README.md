@@ -176,6 +176,11 @@ into concrete conditions and tells you the thresholds it chose; every save check
 and a watch that fires shows at the top of the panel and in the next answer. The
 panel's *Your plan* section lists your goals and the watches still waiting.
 
+The Chancellor also keeps a journal of your campaign: each time it reads a new save it
+notes what changed since the previous one (provinces gained or lost, wars, allies, a new
+ruler, ideas, technology and the key numbers). Ask "what has happened lately?" in a chat,
+look at *Since your last save* in the panel, or run `chancellor journal`.
+
 ## Use it from Claude Desktop (no API key needed)
 
 If you have a Claude subscription, Claude Desktop can use the Chancellor's tools directly

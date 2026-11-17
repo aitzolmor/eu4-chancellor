@@ -14,6 +14,7 @@ The server talks over stdio, so nothing in this process may print to stdout.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import sys
 from collections.abc import Callable
@@ -40,7 +41,8 @@ goals, wants and limits and decisions from earlier chats. Follow it. When the pl
 a goal, a preference or limit, or a decision, or one is reached, dropped or changed, record \
 it with update_player_context and tell them; record only what the player says, never your \
 own suggestions. When they ask to be told when something happens, set a watch with \
-create_watch and say which thresholds you chose.
+create_watch and say which thresholds you chose. For what happened recently in \
+the campaign, read get_campaign_journal.
 - Call them whenever a question depends on the campaign: the player's country, another \
 country, a possible war, the world, missions, formable nations or where to expand. \
 Several independent lookups can be made in parallel.
@@ -123,6 +125,10 @@ class CampaignProvider:
                 else Toolbox(campaign, self.settings.game_dir, context_path(self.settings.save_dir))
             )
             self._loaded = _Loaded(path, mtime, toolbox)
+            # Each new save read goes into the campaign journal (D-043); a failure there
+            # must never stop the tools.
+            with contextlib.suppress(OSError, ValueError, KeyError, TypeError):
+                toolbox.remember_save()
         return self._loaded.toolbox
 
     @property
@@ -186,6 +192,10 @@ def build_server(provider: CampaignProvider) -> Any:
     @server.tool(description=_DESCRIPTIONS["get_player_context"], annotations=read_only)
     def get_player_context() -> str:
         return call("get_player_context")
+
+    @server.tool(description=_DESCRIPTIONS["get_campaign_journal"], annotations=read_only)
+    def get_campaign_journal(saves: int | None = None) -> str:
+        return call("get_campaign_journal", saves=saves)
 
     @server.tool(
         description=_DESCRIPTIONS["update_player_context"],

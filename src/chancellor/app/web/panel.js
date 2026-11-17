@@ -23,6 +23,7 @@ function show(section) {
   for (const id of ["loading", "error", "numbers"]) $(id).hidden = id !== section;
   $("alerts-section").hidden = section !== "numbers";
   $("plan-section").hidden = section !== "numbers";
+  if (section !== "numbers") $("since-section").hidden = true; // renderSince shows it
 }
 
 // A fired watch or a plan entry the player can clear; Python removes it by id.
@@ -97,6 +98,23 @@ function renderPlan(plan) {
     list.append(item);
   }
   $("plan-empty").hidden = rows.length > 0;
+  renderSince(plan.since ?? []);
+}
+
+// The campaign journal's latest step (D-043): what changed since the previous save read.
+function renderSince(steps) {
+  const list = $("since");
+  list.replaceChildren();
+  const step = steps[0];
+  $("since-section").hidden = !step;
+  if (!step) return;
+  setText("since-title", `Since your last save (${step.from})`);
+  const events = step.events.length ? step.events : ["Nothing notable changed."];
+  for (const event of events) {
+    const item = document.createElement("li");
+    item.textContent = event;
+    list.append(item);
+  }
 }
 
 async function loadPlan() {

@@ -69,6 +69,7 @@ chancellor clear-cache      # drop cached game data (tests use a temp cache via 
 chancellor wiki-import FILE.xml...  # index pages exported from the wiki (Special:Export)
 chancellor wiki-search coalition   # search the imported wiki
 chancellor player-context   # goals and preferences recorded in chats (--remove ID)
+chancellor journal         # what changed between the saves read (--saves N)
 ```
 
 Exploring real saves: load with `chancellor.save.loader.load_save`, then `parse_lazy` and

@@ -164,6 +164,11 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
   - [x] Watches tried in Claude Desktop (2026-11-16): "France weak or me strong enough"
     became war odds >= 1.5 with no truce and showed in the panel; the first call
     guessed the condition format, so the MCP schema now types it (D-041)
+  - [x] Campaign journal (D-043): a snapshot of the player's country for each save
+    read, compared save to save (provinces, cores, wars, allies, subjects, rivals,
+    truces, coalition, ruler and heir, ideas, technology, Emperor, imperial reforms,
+    key numbers); `get_campaign_journal`, `chancellor journal`, and *Since your last
+    save* in the panel; verified in Claude Desktop (2026-11-17)
   - [x] A fired watch is noticed outside the page (D-042): a red dot on the floating
     icon (one screen) and a flashing taskbar button for the docked panel (two screens)
   - [ ] Watches (the dot and the flash were verified live on 2026-11-16): a Windows
@@ -244,7 +249,8 @@ Goal: visual analysis of the campaign inside the workspace.
 
 - [ ] Evaluate PDX Tools: link, embed in a tab, or reuse its open-source parsing libraries
 - [ ] Charts view: income/expense breakdown, army strength, development
-- [ ] Save history: index past saves and chart trends over time
+- [ ] Save history: index past saves and chart trends over time (the campaign
+  journal, D-043, keeps every read save's key numbers: the data is there)
 - [ ] Let the model reference charts in its answers
 
 ## Phase 6 — Claude plays (experimental)
@@ -277,8 +283,9 @@ Not scheduled. The tools should not require a Claude subscription or the Anthrop
 
 ### Idea: goal-based watches and a campaign journal (2026-11-13)
 
-(Built so far: the player's context, D-039, and the watches, D-041. Left: tracking a
-goal's progress with the checklists, and the campaign journal.)
+(Built so far: the player's context, D-039, the watches, D-041 and D-042, and the
+campaign journal, D-043. Left: tracking a goal's progress with the checklists, and
+watches on events from the journal, such as an ally declaring war or a ruler dying.)
 
 Not scheduled. Raised after using the panel: its key numbers and alerts repeat what the
 game already shows, and the game's own alerts are literal (a problem, or something you

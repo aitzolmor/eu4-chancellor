@@ -851,3 +851,49 @@ The panel works this out each time it reads a save (`PanelApi._announce`). A Win
 notification (toast) was left out: Windows can hold notifications back while a game is
 in front, and the dot and the flash are where the player already looks. It stays an
 option if the live test shows these are missed.
+
+## D-043 — The campaign journal: a snapshot per save, compared save to save
+
+**Date:** 2026-11-16 · **Status:** Accepted
+
+Every tool reads one save, a picture of one moment, so nothing knew that a war started
+two saves ago, a province was lost or an alliance ended, and a new chat could not
+answer "what has happened lately?". The Chancellor now keeps a journal
+(`player.journal`).
+
+- **A snapshot per save read.** Each time the MCP server or the panel reads a new save
+  (the shared `CampaignProvider`), and when `chancellor journal` runs, it records the
+  player's country: key numbers (treasury, income, expenses, loans, manpower,
+  regiments, development, provinces, stability, prestige, war exhaustion,
+  overextension, technology, great power rank, countries at 50+ AE), the provinces with
+  their names and which lack a core, wars, allies, subjects, rivals, truces, coalition
+  members, ruler and heir, idea groups, the Emperor and the passed imperial reforms.
+  One per in-game date; a read of the same date replaces it. Taking one costs about a
+  second (the AE scan), on a load that already takes about two.
+- **Changes save to save.** Comparing consecutive snapshots gives the journal's lines:
+  provinces gained, lost or cored; wars begun and ended; allies, subjects, rivals,
+  truces and coalition members gained or lost; a new ruler or heir; ideas and
+  technology taken; a new Emperor or imperial reform; and one line for the numbers that
+  moved. Snapshots dated after the save being read are ignored, so reloading an older
+  save shows the history up to it.
+- **Where it shows.** `get_campaign_journal` (MCP and API chat; the prompts point to it
+  for "what happened"), the planning tools' last line ("Since the previous save
+  (1519.1.1): 3 changes"), *Since your last save* in the panel, and
+  `chancellor journal`.
+- **Storage.** `journal.json` next to the player's context, outside `AppData` for the
+  same reason (D-039), keyed by a stable campaign key the context now keeps (the first
+  campaign id, or country and first date), so a campaign whose id changes keeps one
+  journal; reading a save is enough to start a campaign's record. Every snapshot keeps
+  its numbers, the base for trends across saves in Phase 5; only the latest 24 keep
+  the lists, so a long campaign of monthly autosaves stays small (seven saves: 10 KB).
+
+Checked on seven real saves of the user's Austria, from 1505 to 1519 under two campaign
+ids: one journal, with the conquest of Istria, Padua and Welsch-Bern cored, the alliance
+with Savoy ending, Maximilian I succeeding Ladislaus, an imperial reform, technology
+and ideas taken, and the war for Milan beginning and ending. In Claude Desktop, after the
+user played on and asked what had happened, the model called `get_campaign_journal` and
+its account matched the game.
+
+The steps are as fine as the saves read: with monthly autosaves and the panel open, a
+month; otherwise from one chat to the next. Watches on events from the journal (an ally
+at war, a ruler dying) are left for later.

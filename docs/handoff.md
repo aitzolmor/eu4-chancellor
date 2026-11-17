@@ -2,11 +2,11 @@
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
 updated on **2026-11-16** after checking AE and coring against the game and the
-wiki's retrieval (PRs #1–#52 merged; 548 tests passing, CI green on Ubuntu and
+wiki's retrieval (PRs #1–#53 merged; 555 tests passing, CI green on Ubuntu and
 Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-047; D-044 is in the draft PR #50),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-049; D-044 is in the draft PR #50),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -296,7 +296,8 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
    the user's "what has happened?" was answered from it, correctly. The panel has a
    **Charts** tab from the journal (D-045), and `chancellor journal --backfill` reads
    older saves of the campaign into it (done for the user's Austria, 1455–1525: 21
-   saves). The planning tools now point to `get_trends`. A trade question had to ask
+   saves). The charts and `get_trends` also compare with the rivals (D-048) or any countries
+   the player picks (D-049). The planning tools now point to `get_trends`. A trade question had to ask
    the player for their node shares and merchants, so `get_trade` now reads them
    (D-046), verified in Claude Desktop.
    The user is no expert, so validate numbers against

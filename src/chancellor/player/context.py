@@ -36,6 +36,7 @@ from chancellor.player.watches import Condition, Reading, Watch, check, describe
 FILE_NAME = "player_context.json"
 FOLDER = "eu4-chancellor"
 MAX_TEXT = 300
+MAX_COMPARED = 3  # countries the charts compare with at most (three colours pass, D-048)
 
 # Kind → heading, in the order shown. "player" entries belong to the player, not to a
 # campaign.
@@ -87,6 +88,8 @@ class CampaignRecord:
         watches: What the player asked to be told about (D-041).
         key: Stable name of the campaign, for its journal (D-043): its first campaign
             id, or the country and first date.
+        compare: Countries the player picked to compare with in the charts (D-049);
+            empty means their rivals.
     """
 
     tag: str
@@ -96,6 +99,7 @@ class CampaignRecord:
     entries: list[Entry] = field(default_factory=list)
     watches: list[Watch] = field(default_factory=list)
     key: str = ""
+    compare: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -193,6 +197,14 @@ class PlayerContextStore:
             if watch.id in ids and not watch.fired:
                 watch.fired = key.date
         self._save(data)
+
+    def set_compare(self, key: SaveKey, tags: list[str]) -> list[str]:
+        """Pick the countries the charts compare with (none: the rivals again)."""
+        chosen = list(dict.fromkeys(t for t in tags if t))[:MAX_COMPARED]
+        data = self._load()
+        self._campaign_for_write(data, key).compare = chosen
+        self._save(data)
+        return chosen
 
     def campaign_key(self, key: SaveKey) -> str:
         """The stable key of the save's campaign, recording the campaign if it is new.
@@ -295,6 +307,7 @@ class PlayerContextStore:
                 entries=[_entry(e) for e in c.get("entries", []) if isinstance(e, dict)],
                 watches=[from_dict(w) for w in c.get("watches", []) if isinstance(w, dict)],
                 key=str(c.get("key") or _default_key(c)),
+                compare=[str(t) for t in c.get("compare", []) if t],
             )
             for c in raw.get("campaigns", [])
             if isinstance(c, dict)

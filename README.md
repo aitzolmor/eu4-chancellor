@@ -192,7 +192,9 @@ look at *Since your last save* in the panel, or run `chancellor journal`.
 
 The panel's **Charts** tab draws the campaign's numbers over time from that
 journal: treasury, income and expenses, regiments, manpower, development and the
-countries that could join a coalition, with wars and new rulers marked. To start
+countries that could join a coalition, with wars and new rulers marked; below, your
+development, army and income against your rivals', or against up to three countries you
+pick. To start
 the charts from your older saves of the same campaign:
 
 ```bash

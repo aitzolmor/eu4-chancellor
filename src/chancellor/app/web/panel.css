@@ -124,7 +124,33 @@ main {
 
 /* Charts tab (D-045). Series colours: the dataviz reference palette's dark steps,
    validated on --surface (#162139): blue and orange pass every check. */
-:root { --series-1: #3987e5; --series-2: #d95926; --grid: #26365a; }
+:root {
+  --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-other: #9aa3b5;
+  --grid: #26365a;
+}
+.charts-heading { margin: 18px 0 8px; }
+.compare-picker {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px;
+  margin-bottom: 10px; font-size: 12px; color: var(--text-secondary);
+}
+.compare-picker .chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px;
+  border: 1px solid var(--border); border-radius: 999px; color: var(--text);
+}
+.compare-picker .chip button {
+  border: none; background: none; color: var(--text-muted); cursor: pointer; font-size: 14px;
+  line-height: 1; padding: 0 2px;
+}
+.compare-picker .chip button:hover { color: var(--text); }
+.compare-picker .link {
+  border: none; background: none; color: var(--accent); cursor: pointer; font-size: 12px; padding: 0;
+}
+.compare-picker select {
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 2px 6px; font: inherit;
+}
+.legend { flex-wrap: wrap; }
+.legend .swatch.dashed { height: 0; border-top: 2px dashed; background: none; }
 .charts { flex: 1; min-height: 0; overflow-y: auto; padding-top: 10px; }
 .chart { position: relative; margin: 0 0 14px; }
 .chart figcaption { font-size: 12px; color: var(--text-secondary); margin-bottom: 2px; }

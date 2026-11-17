@@ -199,8 +199,8 @@ def build_server(provider: CampaignProvider) -> Any:
         return call("get_campaign_journal", saves=saves)
 
     @server.tool(description=_DESCRIPTIONS["get_trends"], annotations=read_only)
-    def get_trends() -> str:
-        return call("get_trends")
+    def get_trends(countries: list[str] | None = None) -> str:
+        return call("get_trends", countries=countries)
 
     @server.tool(description=_DESCRIPTIONS["get_trade"], annotations=read_only)
     def get_trade(country: str | None = None) -> str:

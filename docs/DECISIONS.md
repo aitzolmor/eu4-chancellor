@@ -1004,3 +1004,64 @@ the first obstacle.
 On the user's machine the game was found among installed programs in `C:\Games` (not in
 a Steam library), version 1.37, and the data folder under OneDrive, in 0.2 seconds;
 afterwards `chancellor summary` worked from a folder without `.env`.
+
+## D-048 — Comparing the player with their rivals over time
+
+**Date:** 2026-11-17 · **Status:** Accepted (extends D-043 and D-045)
+
+The charts showed the player's own numbers; whether they are ahead of or behind their
+rivals was the question they could not answer.
+
+- **Snapshots** now keep, for the player's rivals and the great powers, six numbers each
+  (development, regiments, income, treasury, provinces, manpower; `country_numbers`),
+  plus who the rivals and great powers were; and, for the neighbours and the 30
+  largest countries, development, regiments and income. Rivals change during a game
+  (the user pointed out that replacing Poland would leave the new rival without a
+  history), so tracking a wide set means a new rival nearly always has one.
+- **Size:** 55 countries a save made the user's journal 109 KB for 21 saves. Trimmed
+  snapshots keep the other countries' numbers once an in-game year, so monthly
+  autosaves over a whole campaign stay around 2 MB; the comparison lines join the
+  yearly points.
+- **Charts:** below the player's charts, *You and the rivals* compares development,
+  regiments and monthly income with the current rivals (at most three in EU4); with no
+  rivals, with the three strongest great powers.
+- **Colours:** lines cross, so every pair of colours must stay apart, not only adjacent
+  ones. Checked with the data-viz validator on the panel's surface: only three hues pass
+  every pair (blue, orange, aqua; a fourth hue, yellow or violet, came within 5 CVD of
+  one of them). The player is always blue; a third rival is a dashed neutral grey line,
+  which differs from the three hues in both normal and colour-blind vision and does not
+  rely on colour alone.
+- **Colours follow the country.** Sorting the rivals by tag would have repainted France
+  when Poland was swapped for Bohemia. `rival_slots` walks the snapshots: a country
+  that stops being a rival frees its slot, and a new rival takes the first free one,
+  so the others keep their colours.
+- **For the model:** `get_trends` adds a table of each country's first and latest
+  value of the three numbers.
+
+The user's journal was backfilled again (20 saves, about 2.5 minutes) to carry the
+others' numbers: rivals France, Poland and the Ottomans; from 1455 to 1525 Austria's
+income went from 16 to 59 a month, France's from 26 to 94, the Ottomans' from 28 to 99.
+With the wider set, all three rivals have numbers on all 21 saves.
+
+## D-049 — Comparing with any country the player picks
+
+**Date:** 2026-11-17 · **Status:** Accepted (extends D-048)
+
+Rivals are one comparison; "how am I doing against Castile?" is another. The Charts tab
+now has a *Compare with* row above the comparison charts: the countries picked, each
+removable, or "your rivals" by default; a list to add one (up to three, the colours that
+pass every pair, D-048); and a way back to the rivals.
+
+- **Saved per campaign** in the player's context (`CampaignRecord.compare`, via
+  `PanelApi.set_compare`), so the choice survives sessions; the picked countries keep
+  their colours in the order picked.
+- **Tracked in full:** a picked country joins the countries every snapshot records with
+  all six numbers (`take_snapshot(extra=...)`). The list offers the countries that have
+  a recorded history: rivals, great powers, neighbours and the 30 largest (61 on the
+  user's journal).
+- **For the model:** `get_trends` takes up to three `countries` (names or tags) for a
+  one-off comparison, without changing what the panel shows.
+- **A country that forms another keeps its history.** In 1525 the user's journal had
+  Castile until it formed Spain; the save records `previous_country_tags = CAS` on
+  Spain, so a comparison looks a country's numbers up under each tag it has had. Spain
+  now has numbers on all 21 saves (318 development as Castile in 1455, 759 in 1525).

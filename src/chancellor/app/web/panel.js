@@ -428,6 +428,19 @@ function showTab(name) {
 }
 
 let trends = null;
+let compareOptions = null;
+
+// The picker's choice is saved with the player's context (D-049), then the charts reload.
+async function pickCountries(countries) {
+  const result = await window.pywebview.api.set_compare(countries);
+  if (!result.ok) status(result.error, "negative");
+  loadCharts();
+}
+
+function drawCharts() {
+  const picker = compareOptions ? { ...compareOptions, onChange: pickCountries } : null;
+  renderCharts($("charts-body"), trends, picker);
+}
 
 async function loadCharts() {
   $("charts-loading").hidden = false;
@@ -438,8 +451,9 @@ async function loadCharts() {
       return;
     }
     trends = result.trends;
+    compareOptions = result.compare;
     $("charts-loading").hidden = true;
-    renderCharts($("charts-body"), trends);
+    drawCharts();
   } catch (error) {
     setText("charts-loading", `Charts unavailable: ${error}`);
   }
@@ -450,7 +464,7 @@ let resizeTimer = null;
 window.addEventListener("resize", () => {
   if (currentTab !== "charts" || !trends) return;
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => renderCharts($("charts-body"), trends), 150);
+  resizeTimer = setTimeout(drawCharts, 150);
 });
 
 function askToTurnOn() {

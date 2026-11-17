@@ -129,7 +129,9 @@ menu, so the overlay panel (about 350 px high on one screen) keeps its room for 
 alerts and numbers.
 
 Tabs: **Campaign** (the sections above), **Charts** (D-045: the campaign's numbers
-over time, from the journal) and **Chat** (only while the API mode is on).
+over time, from the journal, and, below, development, regiments and income against the
+rivals, or up to three countries picked with *Compare with*, D-048 and D-049) and
+**Chat** (only while the API mode is on).
 
 ## Architecture
 

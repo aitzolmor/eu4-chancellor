@@ -349,10 +349,24 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "record of each save read: treasury, monthly income and expenses, manpower, "
             "regiments, development, provinces, prestige, overextension and countries at "
             "50+ AE, as a table of up to 12 dates from the first record to this save, with "
-            "the main events (wars, rulers) between them. Use it for 'how is my economy "
-            "doing', 'am I growing', or to judge a plan against the trend."
+            "the main events (wars, rulers) between them, and the player's development, "
+            "regiments and income against their rivals (or the countries the player picked "
+            "in the panel, or the up to three `countries` given). Use it for 'how is my "
+            "economy doing', 'am I growing', 'am I ahead of France', or to judge a plan "
+            "against the trend."
         ),
-        "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "countries": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "maxItems": 3,
+                    "description": "Countries to compare with (names or tags); default rivals.",
+                }
+            },
+            "additionalProperties": False,
+        },
     },
     {
         "name": "get_trade",
@@ -390,7 +404,7 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
     "search_wiki": {"query": _Field(str, required=True), "max_results": _Field(int)},
     "get_player_context": {},
     "get_campaign_journal": {"saves": _Field(int)},
-    "get_trends": {},
+    "get_trends": {"countries": _Field(list)},
     "get_trade": {"country": _Field(str)},
     "create_watch": {
         "description": _Field(str, required=True),
@@ -632,22 +646,56 @@ class Toolbox:
         key = self._save_key()
         campaign_key = PlayerContextStore(self.context_file).campaign_key(key)
         journal = JournalStore(journal_path(self.context_file))
-        return journal.record(campaign_key, take_snapshot(self.campaign))
+        # The countries picked to compare with are tracked in full (D-049).
+        return journal.record(campaign_key, take_snapshot(self.campaign, extra=self._picked()))
 
     def remember_other(self, campaign: Campaign) -> bool:
         """Record another save of this campaign in this campaign's journal (backfill)."""
         campaign_key = PlayerContextStore(self.context_file).campaign_key(self._save_key())
         journal = JournalStore(journal_path(self.context_file))
-        return journal.record(campaign_key, take_snapshot(campaign))
+        return journal.record(campaign_key, take_snapshot(campaign, extra=self._picked()))
 
-    def trends(self) -> dict[str, Any]:
-        """The journal's numbers up to this save, and its main events, for charts (D-045)."""
+    def trends(self, countries: list[str] | None = None) -> dict[str, Any]:
+        """The journal's numbers up to this save, and its main events, for charts (D-045).
+
+        Args:
+            countries: Tags to compare with; by default the ones the player picked
+                (D-049), else their rivals.
+        """
         key = self._save_key()
         view = PlayerContextStore(self.context_file).view(key)
         if view.campaign is None:
-            return {"dates": [], "series": {}, "events": []}
+            return {"dates": [], "series": {}, "events": [], "compare": []}
         snapshots = JournalStore(journal_path(self.context_file)).snapshots(view.campaign.key)
-        return trend_data(snapshots, key.date, self.campaign)
+        chosen = countries or view.campaign.compare or None
+        return trend_data(snapshots, key.date, self.campaign, chosen)
+
+    def compare_options(self) -> dict[str, Any]:
+        """What the charts can compare with: the countries with a recorded history."""
+        key = self._save_key()
+        view = PlayerContextStore(self.context_file).view(key)
+        tracked: set[str] = set()
+        if view.campaign is not None:
+            journal = JournalStore(journal_path(self.context_file))
+            for snapshot in journal.snapshots(view.campaign.key):
+                tracked.update(snapshot.get("others", {}))
+        options = sorted(
+            (t for t in tracked if t != key.tag and self.campaign.exists(t)),
+            key=lambda t: self.campaign.name(t),
+        )
+        return {
+            "picked": self._picked(),
+            "options": [{"tag": t, "name": self.campaign.name(t)} for t in options],
+        }
+
+    def set_compare(self, countries: list[str]) -> list[str]:
+        """Pick the countries the charts compare with (names or tags; none: rivals)."""
+        tags = [self._tag(c) for c in countries]
+        return PlayerContextStore(self.context_file).set_compare(self._save_key(), tags)
+
+    def _picked(self) -> list[str]:
+        view = PlayerContextStore(self.context_file).view(self._save_key())
+        return list(view.campaign.compare) if view.campaign else []
 
     def _recorded_dates(self) -> list[str]:
         """Dates of the journal's snapshots up to this save, oldest first (cheap)."""
@@ -669,7 +717,9 @@ class Toolbox:
         return journal_entries(snapshots, key.date, self.campaign, saves)
 
     def _get_trends(self, args: dict[str, Any]) -> str:
-        return render_trends(self.trends(), self.campaign.label(self.campaign.player))
+        countries = [self._tag(c) for c in args.get("countries") or []][:3]
+        data = self.trends(countries or None)
+        return render_trends(data, self.campaign.label(self.campaign.player))
 
     def _get_campaign_journal(self, args: dict[str, Any]) -> str:
         saves = min(max(int(args.get("saves") or JOURNAL_STEPS), 1), 30)

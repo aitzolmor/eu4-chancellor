@@ -256,6 +256,14 @@ Goal: visual analysis of the campaign inside the workspace.
 - [x] Save history: `chancellor journal --backfill` lists older saves by campaign id
   and reads the groups the player picks into the journal; `get_trends` gives the model
   the same numbers as a table
+- [x] You against your rivals (D-048): each snapshot keeps the rivals', great powers',
+  neighbours' and the 30 largest countries' numbers (once a year in old snapshots), and
+  colours follow the country when a rival changes; the Charts tab
+  compares development, regiments and income with the rivals (or the top great powers),
+  and `get_trends` adds the same comparison as a table
+- [x] Compare with any country the player picks (D-049): a picker in the Charts tab,
+  saved per campaign; `get_trends` takes countries too; a country that formed another
+  (Castile, then Spain) keeps its history
 - [ ] Income/expense breakdown by category (the ledger's indices are not mapped yet)
 - [x] Trade (D-046): `get_trade` gives the home node and the share there, merchants
   (collecting or steering), light ships, power and share in every node with whether it

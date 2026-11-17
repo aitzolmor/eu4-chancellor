@@ -30,6 +30,8 @@ from chancellor.game.missions import MissionLibrary
 from chancellor.game.modifiers import ModifierLibrary
 from chancellor.game.power_rules import PowerRules
 from chancellor.game.rules import GameRules
+from chancellor.live.gamelog import game_log_path, read_probe, render_probe
+from chancellor.live.probe import MOD_NAME, install
 from chancellor.player.context import context_path
 from chancellor.save.loader import SaveFormatError, find_current_save, load_save
 from chancellor.wiki.store import import_exports, render_hits, search, wiki_path
@@ -152,6 +154,16 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     player.add_argument("--remove", type=int, metavar="ID", help="Remove the entry with this id.")
+
+    probe = sub.add_parser(
+        "probe",
+        help="Prototype: a mod that reports war score to the game's log (D-044).",
+        description=(
+            "install: write the probe mod into the game's mod folder (enable it in the "
+            "launcher's playset). read: show what the mod wrote to logs/game.log."
+        ),
+    )
+    probe.add_argument("action", choices=["install", "read"])
 
     journal = sub.add_parser(
         "journal",
@@ -369,6 +381,26 @@ def main(argv: Sequence[str] | None = None) -> int:
             from chancellor.app.chat import run_chat  # deferred: the SDK is slow to import
 
             return run_chat(settings, load)
+        if args.command == "probe":
+            settings = load_settings()
+            if settings.save_dir is None:
+                raise CliError("Set EU4_SAVE_DIR: the mod and the log sit next to it.")
+            if args.action == "install":
+                written = install(settings.save_dir.parent / "mod")
+                for path in written:
+                    print(path, file=sys.stderr)
+                print(
+                    f"Installed '{MOD_NAME}'. Enable it in the launcher's playset, play a few "
+                    "months, then run: chancellor probe read",
+                    file=sys.stderr,
+                )
+                return 0
+            log = game_log_path(settings.save_dir)
+            try:
+                _write_stdout(render_probe(read_probe(log), log))
+            except FileNotFoundError as exc:
+                raise CliError(f"No game log at {log}: start the game first.") from exc
+            return 0
         if args.command == "journal":
             settings = load_settings()
             campaign, _ = _load_campaign(args, settings)

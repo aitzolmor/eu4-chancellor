@@ -897,3 +897,35 @@ its account matched the game.
 The steps are as fine as the saves read: with monthly autosaves and the panel open, a
 month; otherwise from one chat to the next. Watches on events from the journal (an ally
 at war, a ruler dying) are left for later.
+
+## D-044 — A probe mod for data the save lacks, read from game.log
+
+**Date:** 2026-11-17 · **Status:** Prototype, waiting for a game session
+
+"Real-time data" turned out to be two different needs. Freshness is mostly a setting:
+the user's autosave is yearly (`settings.txt`), and monthly autosaves would make the
+panel, watches and journal monthly without any code. What no setting gives is data the
+save does not hold: the war score of the player's wars and the casus belli available,
+gaps since Phase 2.
+
+Mods cannot make network requests, and reading the game's memory was ruled out on
+2026-11-14. The one channel out is the `log` effect, which writes to `logs/game.log`
+while the game runs. The game files show what a mod can build on: `on_monthly_pulse`
+exists and is empty in 1.37; `log` strings take localisation like `[Root.GetName]`;
+`[Root.<variable>.GetValue]` shows a variable in localisation; `export_to_variable`
+takes `value = treasury` or `value = trigger_value:<trigger>`; and the game's own events
+compare war score with `war_score_against = { who value }`.
+
+The probe (`live.probe`, written by `chancellor probe install` into the game's `mod`
+folder) hooks `on_monthly_pulse` with a hidden event for the player's country that only
+sets its own variables and logs `CHANCELLOR|...` lines, answering in one session:
+
+1. Does the monthly pulse run it? A heartbeat line with the year and month.
+2. Does a log line show a variable? The treasury, which the save has too, as a control.
+3. Can the war score be read? Directly (`trigger_value:war_score`, which may not exist)
+   and by a ladder of `war_score_against` checks every 5 points against each enemy.
+
+`chancellor probe read` (`live.gamelog`) answers each question from the log
+(Windows-1252, read whole: it restarts empty with each game start). Costs to weigh once
+it works: the player installs and enables a mod, which a patch can break; casus belli
+cannot be listed, only checked one type and one country at a time.

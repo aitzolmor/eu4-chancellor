@@ -6,7 +6,7 @@ wiki's retrieval (PRs #1–#48 merged; 530 tests passing, CI green on Ubuntu and
 Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-043),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-044),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -298,9 +298,14 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
    the user's go-ahead; mind the 5 EUR balance.
 4. Remaining data gaps (casus belli, income breakdown), or the watches idea, whichever
    the play-test shows matters more.
-5. **Real-time data** (discussed 2026-11-14, not started): monthly autosaves already
-   feed the panel; a small mod writing values to `game.log` with the `log` effect is
-   worth a prototype; reading the game's memory is ruled out.
+5. **Real-time data** (prototype built 2026-11-17, **waiting for a game session**,
+   D-044): the probe mod (`chancellor probe install`, already installed in the user's
+   `mod` folder) logs a monthly heartbeat, the treasury and the war score against each
+   enemy to `logs/game.log`; `chancellor probe read` answers the three questions.
+   Enable "Chancellor probe" in the launcher's playset, play a few months at war, then
+   read the log and `logs/error.log`. The user's autosave is yearly: monthly would
+   make the panel, watches and journal monthly at no cost. Reading the game's memory
+   is ruled out.
 
 **Tip:** a Claude Code session on this machine has the `eu4-chancellor` MCP tools too
 (`mcp__eu4-chancellor__*`), so play-tests can be run from here at no API cost. They read

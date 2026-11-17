@@ -261,6 +261,14 @@ Goal: explore how far the assistant can act, not just advise.
 - [ ] Guide: exact UI steps for each recommendation
 - [ ] Act: computer-use prototype that performs approved actions while the game is paused
 
+## Real-time data (prototype, D-044)
+
+- [x] Probe mod: monthly heartbeat, treasury as a control, war score against each enemy
+  (direct `trigger_value:war_score` and a `war_score_against` ladder) to `game.log`;
+  `chancellor probe install|read`
+- [ ] Run it in a game session at war and read the answers (waiting for the user)
+- [ ] If it works: war score in the war check and the briefing; then casus belli
+
 ## Ideas / later
 
 - Ironman support via a token file

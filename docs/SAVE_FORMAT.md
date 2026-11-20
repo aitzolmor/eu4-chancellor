@@ -133,8 +133,23 @@ at sea. Use `campaign.land_armies` / `count_regiments`.
     ended) and `last_warscore=41`. They are symmetric (both countries carry them). The
     truce end date is not stored; `estimate_truce_end` derives it from the defines
     (D-017), which matched all 295 truces with a war date in the 1475 save.
-- `ledger`: `lastmonthincome` / `lastmonthexpense` totals and per-category arrays
-  (`lastmonthincometable`, …). The index → category mapping is not documented yet.
+- `ledger`: `lastmonthincome` / `lastmonthexpense` totals and per-category arrays:
+  `lastmonthincometable` / `lastmonthexpensetable` (last month), `income` / `expense`
+  (this year so far), `lastyearincome` / `lastyearexpense` (the previous year),
+  `totalexpensetable` (since the campaign began), plus `last_months_recurring_income`
+  and `..._expenses`. Income has 19 slots: 0 taxation, 1 production, 2 trade, 3 gold,
+  4 tariffs, 5 vassals, 6 harbor fees, 7 subsidies, 8 war reparations, 9 interest,
+  10 gifts, 11 events, 12 spoils of war, 13 treasure fleet, 14 siphoning, 15 condottieri,
+  16 knowledge sharing, 17 blockading, 18 looting. Expenses have 38: 0 advisor
+  maintenance, 1 interest, 2 state maintenance, 4 subsidies, 5 war reparations, 6 army,
+  7 fleet and 8 fort maintenance, 9 colonists, 10 missionaries, 11 raising armies,
+  12 building fleets, 13 building fortresses, 14 buildings, 16 repaid loans, 17 gifts,
+  18 hiring advisors, 19 events, 20 peace, 21 vassal fee, 22 tariffs, 23 support
+  loyalists, 26 condottieri, 27 root out corruption, 28 embrace institution,
+  30 knowledge sharing, 31 trade company investments, 33 ports blockaded, 34 cities
+  looted, 35 monuments, 36 centre of trade upgrades, 37 colony changes; 3, 15, 24, 25,
+  29 and 32 are unnamed. From the `eu4save` crate (D-052); on the user's 1535 save the
+  categories sum to the month's totals.
 - `loan` (repeated): `amount`, `interest`, `expiry_date`, `lender`.
 
 #### Wars (`active_war`, repeated)

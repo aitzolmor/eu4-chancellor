@@ -15,7 +15,7 @@ Goal: know exactly where every piece of data we need lives in a `.eu4` file.
 - [x] Locate the player country block and list the fields needed for a summary
 - [x] Locate wars and diplomacy blocks
 - [x] Map war internals, armies, estates, relations and ruler references
-- [ ] Map advisors, ledger category indices and province internals
+- [ ] Map advisors and province internals (ledger category indices: done, D-052)
 - [x] Document findings in [SAVE_FORMAT.md](SAVE_FORMAT.md)
 - [x] Decide parsing strategy (own parser vs. existing library) — D-003, D-008
 - [ ] Trim small fixtures from a real save into `tests/fixtures/`
@@ -34,7 +34,7 @@ it to the clipboard, ready to paste into any chat.
 - [x] Map tags (`CAS`) and province ids to readable names (`game.localisation`)
 - [x] `app.cli`: `summary` command with `--save`, `--copy`, `--output`, `--language`
 - [x] Unit tests against fixtures; checked on all 23 local saves (≤2.6 s, ≤1.2k tokens)
-- [ ] Income/expense breakdown by category
+- [x] Income/expense breakdown by category (D-052)
 - [x] Advisors and generals in the briefing (with the monarch power section, D-029)
 
 ## Phase 2 — Query tools
@@ -264,7 +264,8 @@ Goal: visual analysis of the campaign inside the workspace.
 - [x] Compare with any country the player picks (D-049): a picker in the Charts tab,
   saved per campaign; `get_trends` takes countries too; a country that formed another
   (Castile, then Spain) keeps its history
-- [ ] Income/expense breakdown by category (the ledger's indices are not mapped yet)
+- [x] Income/expense breakdown by category (D-052): `get_budget` and a briefing line,
+  from the ledger's indices as the `eu4save` crate maps them
 - [x] Trade (D-046): `get_trade` gives the home node and the share there, merchants
   (collecting or steering), light ships, power and share in every node with whether it
   feeds home, the feeders where the country has no power, and embargoes; the briefing

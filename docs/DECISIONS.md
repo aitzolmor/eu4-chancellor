@@ -1065,3 +1065,30 @@ pass every pair, D-048); and a way back to the rivals.
   Castile until it formed Spain; the save records `previous_country_tags = CAS` on
   Spain, so a comparison looks a country's numbers up under each tag it has had. Spain
   now has numbers on all 21 saves (318 development as Castile in 1455, 759 in 1525).
+
+## D-050 — A war in progress, in detail
+
+**Date:** 2026-11-18 · **Status:** Accepted
+
+Asked about a war against Ragusa and the Ottomans, Claude Desktop said it began on
+1532.1.1, the day of the save, and that it could not see occupations or the war score.
+The briefing printed the war's `action` field as its start; on the user's save that
+field held the save's own date for a war declared in 1528.
+
+- **The start is the first `history` entry** (`war_start`), used by the briefing and by
+  the journal ("War began: … (declared 1528.9.17)"). SAVE_FORMAT now says `action` is
+  not the start.
+- **`get_wars`** (`context.wars`) reads each war: both sides, the war goal and who
+  controls it, every province one side owns and the other controls (by owner, with
+  development), each side's losses in battle, to attrition and in ships, participation,
+  and `last_warscore_quarter`, the war score the game records at its quarterly check.
+  The briefing adds one *State* line per war pointing to it.
+- **Losses come from the participants, not the battles.** Each participant has 21 loss
+  numbers (seven unit types × battle, attrition, captured) that are complete; the
+  battles in `history` are not (19 on the user's war, none of Austria's land battles),
+  so they are shown as examples, never as a tally.
+- **Controllers** are a regex scan like the owners (`Campaign.province_controllers`,
+  0.24 s on a 40 MB save).
+- **Not covered:** the live war score against each enemy is not in the save; the probe
+  mod (D-044) is the way to it. On the user's save: 68 provinces occupied (637
+  development), none lost, 100,447 men lost against 54,479, quarterly score 56.

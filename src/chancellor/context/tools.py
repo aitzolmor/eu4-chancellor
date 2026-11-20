@@ -14,12 +14,15 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any
 
+from chancellor.context.advice import Goal, goals_from, recommend, render_recommendations
 from chancellor.context.ae import render_ae_section
 from chancellor.context.alerts import ReadyNow, ready_now
 from chancellor.context.campaign import Campaign, CountryLookupError, _date_key
+from chancellor.context.coring import coring_costs
 from chancellor.context.decisions import check_decisions, render_decisions
 from chancellor.context.ledger import read_ledger, render_budget
 from chancellor.context.missions import mission_tree, render_missions
+from chancellor.context.power import power_report
 from chancellor.context.summarizer import summarize
 from chancellor.context.targets import find_targets, render_targets
 from chancellor.context.trade import render_trade, trade_line, trade_report
@@ -426,6 +429,25 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "get_recommendations",
+        "description": (
+            "What the player should do now: a ranked list of concrete actions, each with "
+            "the facts behind it and the tool with the details. Built from rules over the "
+            "save: missions and nations ready to claim, a deficit or loans, monarch power "
+            "near the cap or a technology to buy, overextension and the cheapest cores, "
+            "the best expansion targets (odds, coalition risk, casus belli when known), "
+            "aggressive expansion to let cool down, missions one requirement away. Marks "
+            "the ones that touch the player's recorded goals. Use it for 'what should I "
+            "do?', 'what next?' or at the start of a session; then weigh the options with "
+            "the player's goals and say which to take first. Omit `country` for the player."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"country": _COUNTRY},
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -442,6 +464,7 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
     "get_missions": {"country": _Field(str), "brief": _Field(bool)},
     "get_decisions": {"country": _Field(str), "formables_only": _Field(bool)},
     "get_expansion_targets": {"country": _Field(str)},
+    "get_recommendations": {"country": _Field(str)},
     "search_wiki": {"query": _Field(str, required=True), "max_results": _Field(int)},
     "get_player_context": {},
     "get_campaign_journal": {"saves": _Field(int)},
@@ -857,6 +880,40 @@ class Toolbox:
         tag = self._tag(args.get("country"))
         report = find_targets(self.campaign, self._rules, self._missions, self._decisions, tag)
         return render_targets(self.campaign, report)
+
+    def _get_recommendations(self, args: dict[str, Any]) -> str:
+        tag = self._tag(args.get("country"))
+        player = tag == self.campaign.player
+        goals: list[Goal] = []
+        if player:
+            view = PlayerContextStore(self.context_file).view(self._save_key())
+            goals = goals_from(view.campaign.entries if view.campaign else [])
+        missing = ["casus belli (the save does not hold them)"]
+        inputs: dict[str, Any] = {}
+        if self.game_dir is None:
+            missing.append("missions, nations, monarch power, coring and targets (no game files)")
+        else:
+            inputs = {
+                "ready": self.ready() if player else None,
+                "tree": mission_tree(self.campaign, self._missions, tag, self._rules),
+                "power": (
+                    power_report(self.campaign, self._power_rules, tag)
+                    if self._power_rules
+                    else None
+                ),
+                "coring": coring_costs(self.campaign, self._coring_rules, self._rules, tag),
+                "targets": find_targets(
+                    self.campaign, self._rules, self._missions, self._decisions, tag
+                ),
+            }
+        found = recommend(
+            self.campaign,
+            tag=tag,
+            ledger=read_ledger(self.campaign, tag),
+            goals=goals,
+            **inputs,
+        )
+        return render_recommendations(self.campaign, found, goals, tag, missing)
 
     # --- helpers ------------------------------------------------------------------------
 

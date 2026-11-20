@@ -287,7 +287,11 @@ Goal: visual analysis of the campaign inside the workspace.
 
 Goal: explore how far the assistant can act, not just advise.
 
-- [ ] Advise: structured action recommendations
+- [x] Advise: structured action recommendations (D-056): `get_recommendations`, a
+  ranked list of actions from rules over the save, each with its facts and goals
+- [x] Missions whose reward improves later (D-057): the reward's conditions, with the
+  current value against the threshold, and a timing recommendation
+- [ ] Advise: feed it the probe mod's casus belli once PR #50 merges
 - [ ] Guide: exact UI steps for each recommendation
 - [ ] Act: computer-use prototype that performs approved actions while the game is paused
 

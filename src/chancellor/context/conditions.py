@@ -133,6 +133,30 @@ class Evaluator:
         """Evaluate a province-scope block for one province."""
         return self._block(script, lambda k, v: self._province_entry(k, v, province_id))
 
+    def number(self, key: str, tag: str) -> float | None:
+        """A country's value for a numeric trigger, for showing it beside a threshold.
+
+        Supports the triggers in ``_COUNTRY_NUMBERS`` and
+        ``total_own_and_non_tributary_subject_development`` (the country's development
+        plus its subjects', tributaries left out; D-057).
+        """
+        country = self.campaign.country(tag)
+        if country is None:
+            return None
+        if key in _COUNTRY_NUMBERS:
+            value = _dig(country, _COUNTRY_NUMBERS[key])
+            return float(value) if isinstance(value, int | float) else None
+        if key == "total_own_and_non_tributary_subject_development":
+            total = float(country.get("raw_development") or 0.0)
+            for subject in as_list(country.get("subjects")):
+                if self.campaign.subject_type(tag, str(subject)) in _NON_SOVEREIGN:
+                    continue
+                total += float(
+                    (self.campaign.country(str(subject)) or {}).get("raw_development") or 0.0
+                )
+            return total
+        return None
+
     def explain(self, script: Any, tag: str | None = None) -> list[tuple[Truth, str, Any]]:
         """Evaluate each top-level entry of a country-scope block separately.
 
@@ -324,6 +348,8 @@ class Evaluator:
             return None if False in granted else False
         if key in _COUNTRY_NUMBERS:
             return _at_least(_dig(c, _COUNTRY_NUMBERS[key]), value)
+        if key == "total_own_and_non_tributary_subject_development":
+            return _at_least(self.number(key, this), value)
         if key == "is_subject":
             return _is(isinstance(c.get("overlord"), str), value)
         if key == "is_subject_of":

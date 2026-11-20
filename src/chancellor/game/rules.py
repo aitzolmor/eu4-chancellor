@@ -7,6 +7,8 @@ Conditions such as ``culture_group = germanic``, ``region = north_german_region`
 * ``map/area.txt``, ``map/region.txt``, ``map/superregion.txt``, ``map/continent.txt``
   and ``common/colonial_regions``: which provinces each geographic name covers;
 * ``common/scripted_triggers``: named, reusable conditions;
+* ``common/scripted_effects``: named, reusable effects (to read a mission reward's
+  conditions, D-057);
 * ``common/government_reforms``: the government attributes each reform grants
   (``has_government_attribute``).
 """
@@ -25,6 +27,7 @@ _RULE_FOLDERS = (
     "cultures",
     "religions",
     "scripted_triggers",
+    "scripted_effects",
     "colonial_regions",
     "government_reforms",
 )
@@ -41,6 +44,7 @@ class GameRules:
         religion_groups: Religion → religion group.
         geography: Area, region, superregion or continent name → province ids.
         scripted_triggers: Name → condition block.
+        scripted_effects: Name → effect block.
         government_attributes: Reform → attribute → whether the reform always grants it
             (``False`` when it only does so under a ``conditional`` block, such as one
             that depends on a DLC).
@@ -50,6 +54,7 @@ class GameRules:
     religion_groups: dict[str, str] = field(default_factory=dict)
     geography: dict[str, frozenset[int]] = field(default_factory=dict)
     scripted_triggers: dict[str, dict[str, Any]] = field(default_factory=dict)
+    scripted_effects: dict[str, dict[str, Any]] = field(default_factory=dict)
     government_attributes: dict[str, dict[str, bool]] = field(default_factory=dict)
 
     @classmethod
@@ -73,6 +78,10 @@ class GameRules:
             for name, block in parse(_read(path)).items():
                 if isinstance(block, dict):
                     rules.scripted_triggers[name] = block
+        for path in _files(game_dir / "common" / "scripted_effects"):
+            for name, block in parse(_read(path)).items():
+                if isinstance(block, dict):
+                    rules.scripted_effects[name] = block
         for path in _files(game_dir / "common" / "government_reforms"):
             rules.government_attributes.update(_reform_attributes(parse(_read(path))))
         rules.geography = _geography(game_dir / "map")

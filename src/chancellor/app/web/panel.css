@@ -121,6 +121,63 @@ main {
 .dismiss:hover, .dismiss:focus-visible { color: var(--text); background: var(--surface-raised); }
 .plan { margin-bottom: 16px; }
 .since { margin-bottom: 16px; }
+
+/* Charts tab (D-045). Series colours: the dataviz reference palette's dark steps,
+   validated on --surface (#162139): blue and orange pass every check. */
+:root {
+  --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-other: #9aa3b5;
+  --grid: #26365a;
+}
+.charts-heading { margin: 18px 0 8px; }
+.compare-picker {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px;
+  margin-bottom: 10px; font-size: 12px; color: var(--text-secondary);
+}
+.compare-picker .chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px;
+  border: 1px solid var(--border); border-radius: 999px; color: var(--text);
+}
+.compare-picker .chip button {
+  border: none; background: none; color: var(--text-muted); cursor: pointer; font-size: 14px;
+  line-height: 1; padding: 0 2px;
+}
+.compare-picker .chip button:hover { color: var(--text); }
+.compare-picker .link {
+  border: none; background: none; color: var(--accent); cursor: pointer; font-size: 12px; padding: 0;
+}
+.compare-picker select {
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 2px 6px; font: inherit;
+}
+.legend { flex-wrap: wrap; }
+.legend .swatch.dashed { height: 0; border-top: 2px dashed; background: none; }
+.charts { flex: 1; min-height: 0; overflow-y: auto; padding-top: 10px; }
+.chart { position: relative; margin: 0 0 14px; }
+.chart figcaption { font-size: 12px; color: var(--text-secondary); margin-bottom: 2px; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .grid { stroke: var(--grid); stroke-width: 1; }
+.chart .tick { fill: var(--text-muted); font-size: 10px; font-family: var(--font); }
+.chart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .event { fill: var(--accent); stroke: var(--bg); stroke-width: 2; cursor: help; }
+.chart .cross { stroke: var(--text-muted); stroke-width: 1; }
+.chart .dot { stroke: var(--bg); stroke-width: 2; }
+.chart .hit { fill: transparent; }
+.chart .tip {
+  position: absolute; top: 18px; transform: translateX(-50%);
+  padding: 3px 8px; border-radius: 6px; background: var(--surface-raised);
+  border: 1px solid var(--border); color: var(--text); font-size: 12px; white-space: nowrap;
+  pointer-events: none;
+}
+.legend { display: flex; gap: 14px; margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend .swatch { width: 14px; height: 2px; border-radius: 1px; }
+.chart-table summary { cursor: pointer; font-size: 12px; color: var(--text-secondary); }
+.chart-table table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 6px; }
+.chart-table th, .chart-table td {
+  padding: 3px 4px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap;
+}
+.chart-table th:first-child, .chart-table td:first-child { text-align: left; }
+.chart-table { overflow-x: auto; display: block; }
 .since-list { margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-secondary); }
 .since-list li { padding: 2px 0; }
 .since-list li::marker { color: var(--accent); }

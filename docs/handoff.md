@@ -2,11 +2,11 @@
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
 updated on **2026-11-16** after checking AE and coring against the game and the
-wiki's retrieval (PRs #1–#48 merged; 530 tests passing, CI green on Ubuntu and
+wiki's retrieval (PRs #1–#53 merged; 555 tests passing, CI green on Ubuntu and
 Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-044),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-049),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -75,7 +75,8 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
    - estate and parliament conditions in the checklists (about 37% `[?]` outside the
      formables, about 6% for the formables).
 4. **Usability:**
-   - run from any folder (today `.env` is read from the working directory);
+   - run from any folder: done (D-047, `chancellor setup` writes
+     `~/.eu4-chancellor/config.env`; run on the user's machine 2026-11-17);
    - the desktop app: designed on 2026-11-13 ([UI_DESIGN](UI_DESIGN.md), D-020,
      D-021); steps 1-4 are built: the panel window (`chancellor app`), the save
      watcher with live refresh, alerts, and docking: on two screens, or a floating icon
@@ -292,16 +293,23 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
    The campaign journal gives the chat memory of what happened (D-043: a snapshot per
    save read, compared save to save; `get_campaign_journal`, *Since your last save* in
    the panel); checked on seven real saves from 1505 to 1519, and in Claude Desktop
-   the user's "what has happened?" was answered from it, correctly.
+   the user's "what has happened?" was answered from it, correctly. The panel has a
+   **Charts** tab from the journal (D-045), and `chancellor journal --backfill` reads
+   older saves of the campaign into it (done for the user's Austria, 1455–1525: 21
+   saves). The charts and `get_trends` also compare with the rivals (D-048) or any countries
+   the player picks (D-049). The planning tools now point to `get_trends`. A trade question had to ask
+   the player for their node shares and merchants, so `get_trade` now reads them
+   (D-046), verified in Claude Desktop.
    The user is no expert, so validate numbers against
    the game's tooltips (they can read those), not strategy. Any live API check needs
    the user's go-ahead; mind the 5 EUR balance.
 4. Remaining data gaps (casus belli, income breakdown), or the watches idea, whichever
    the play-test shows matters more.
-5. **Real-time data** (prototype built 2026-11-17, **waiting for a game session**,
+5. **Real-time data** (prototype built 2026-11-17, two game sessions on 2026-11-20,
    D-044): the probe mod (`chancellor probe install`, already installed in the user's
-   `mod` folder) logs a monthly heartbeat, the treasury and the war score against each
-   enemy to `logs/game.log`; `chancellor probe read` answers its questions.
+   `mod` folder) logs a monthly heartbeat, the treasury, the war score against each
+   enemy and the casus belli of the player and its subjects to `logs/game.log`;
+   `chancellor probe read` answers its questions.
    The first session (2026-11-20, at peace, enabled by `dlc_load.json`) showed the
    channel works. The second (1535) matched the casus belli with the diplomacy screen;
    the subjects' casus belli (added after it) and the war score are still to check.

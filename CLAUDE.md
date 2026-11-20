@@ -37,7 +37,8 @@ Update those docs in the same change that makes them stale.
 
 ## Environment facts (developer machine)
 
-- OS: Windows 11. Paths are set in the local `.env` (git-ignored).
+- OS: Windows 11. Paths are in `~/.eu4-chancellor/config.env` (written by
+  `chancellor setup`) and the local `.env` (git-ignored), which wins.
 - **Game install (authoritative):** `C:\Games\Europa Universalis IV`. Other EU4 folders may
   exist on this machine from old installs — ignore them.
 - **User data / saves:** Documents is redirected to OneDrive, so the game writes to
@@ -52,6 +53,7 @@ Update those docs in the same change that makes them stale.
 ```bash
 python -m venv .venv && .venv\Scripts\activate
 pip install -e ".[dev]"
+chancellor setup            # find the game and saves; write ~/.eu4-chancellor/config.env
 ruff check . && ruff format --check .
 pytest
 chancellor summary          # briefing of the current campaign (uses .env paths)
@@ -71,6 +73,7 @@ chancellor wiki-search coalition   # search the imported wiki
 chancellor player-context   # goals and preferences recorded in chats (--remove ID)
 chancellor journal         # what changed between the saves read (--saves N)
 chancellor probe install|read  # prototype mod: war score, casus belli via game.log
+chancellor journal --backfill [--ids ID,...]  # add older saves of this campaign
 ```
 
 Exploring real saves: load with `chancellor.save.loader.load_save`, then `parse_lazy` and

@@ -16,11 +16,12 @@ the events are read from.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
 from chancellor.context.campaign import Campaign, as_list, count_regiments
-from chancellor.save.parser import get_all
+from chancellor.save.parser import LazyBlock, get_all
 
 FILE_NAME = "journal.json"
 DETAILED = 24  # snapshots that keep their lists; older ones keep only the numbers
@@ -46,6 +47,10 @@ NUMBERS: tuple[tuple[str, str, int], ...] = (
     ("great_power_rank", "great power rank", 0),
     ("at_coalition_ae", "countries at 50+ AE", 0),
 )
+# Numbers kept for the rivals and great powers too, to compare with them (D-048).
+OTHER_NUMBERS = ("development", "regiments", "income", "treasury", "provinces", "manpower")
+# Kept in every snapshot, even trimmed ones: the numbers, the player's and the others'.
+_ALWAYS_KEPT = ("date", "tag", "numbers", "others", "rivals", "great_powers")
 # Changes in these numbers are events of their own; the rest go in one summary line.
 _EVENT_NUMBERS = ("adm_tech", "dip_tech", "mil_tech", "great_power_rank")
 
@@ -55,8 +60,14 @@ def journal_path(context_file: Path) -> Path:
     return context_file.with_name(FILE_NAME)
 
 
-def take_snapshot(campaign: Campaign, tag: str | None = None) -> dict[str, Any]:
-    """A compact record of a country on this save, as plain JSON values."""
+def take_snapshot(
+    campaign: Campaign, tag: str | None = None, extra: Iterable[str] = ()
+) -> dict[str, Any]:
+    """A compact record of a country on this save, as plain JSON values.
+
+    ``extra`` are countries tracked in full besides the rivals and great powers: the
+    ones the player picked to compare with (D-049).
+    """
     from chancellor.context.summarizer import _find_person, _rivals  # one source for both
 
     tag = tag or campaign.player
@@ -92,6 +103,20 @@ def take_snapshot(campaign: Campaign, tag: str | None = None) -> dict[str, Any]:
         "at_coalition_ae": float(sum(1 for g in grievances if g.value >= COALITION_AE)),
     }
     groups = country.get("active_idea_groups")
+    rivals = sorted(_rivals(country))
+    great_powers = _great_powers(campaign)
+    others = {}
+    for other in dict.fromkeys([*rivals, *extra, *great_powers]):  # rivals first
+        if other != tag and campaign.exists(other):
+            others[other] = country_numbers(campaign, other)
+    # Neighbours and the largest countries too, with fewer numbers, so a country that
+    # becomes a rival later already has a history to compare with (D-048).
+    neighbours = [str(t) for t in as_list(country.get("neighbours"))]
+    largest = sorted(campaign.quick_stats, key=lambda t: -campaign.quick_stats[t][0])
+    for other in dict.fromkeys([*neighbours, *largest[:TRACKED_LARGEST]]):
+        if other != tag and other not in others and campaign.exists(other):
+            figures = country_numbers(campaign, other)
+            others[other] = {k: v for k, v in figures.items() if k in COMPARE_KEYS}
     return {
         "date": campaign.date,
         "tag": tag,
@@ -101,7 +126,9 @@ def take_snapshot(campaign: Campaign, tag: str | None = None) -> dict[str, Any]:
         "wars": sorted(str(w.get("name", "?")).strip() for w in campaign.wars_of(tag)),
         "allies": sorted(str(t) for t in as_list(country.get("allies"))),
         "subjects": sorted(str(t) for t in as_list(country.get("subjects"))),
-        "rivals": sorted(_rivals(country)),
+        "rivals": rivals,
+        "great_powers": [t for t in great_powers if t != tag],
+        "others": others,
         "truces": sorted(t.other for t in campaign.truces(tag)),
         "coalition": sorted(
             {str(t) for v in get_all(country, "coalition_against_us") for t in as_list(v)}
@@ -220,10 +247,18 @@ class JournalStore:
             return False
         snapshots.append(snapshot)
         snapshots.sort(key=lambda s: _date(str(s.get("date", ""))))
+        years_with_others: set[int] = set()
         for old in snapshots[:-DETAILED]:  # older ones keep their numbers only
             for key in list(old):
-                if key not in ("date", "tag", "numbers"):
+                if key not in _ALWAYS_KEPT:
                     del old[key]
+            # The other countries' numbers once an in-game year, so monthly autosaves over a
+            # whole campaign stay around 2 MB; the charts join the yearly points.
+            year = _date(str(old.get("date", "")))[0]
+            if year in years_with_others:
+                old.pop("others", None)
+            elif "others" in old:
+                years_with_others.add(year)
         data[campaign_key] = snapshots
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temporary = self.path.with_suffix(".tmp")
@@ -275,6 +310,223 @@ def render_journal(entries: list[tuple[str, str, list[str]]], country: str, reco
         "save), so steps can span several in-game months. Numbers are the player's country._",
     ]
     return "\n".join(lines) + "\n"
+
+
+# Numbers charted and tabled as trends (D-045), in display order.
+TREND_KEYS = (
+    "treasury",
+    "income",
+    "expenses",
+    "manpower",
+    "regiments",
+    "development",
+    "provinces",
+    "prestige",
+    "overextension",
+    "at_coalition_ae",
+)
+# The largest countries tracked on every save, besides rivals, great powers, neighbours.
+TRACKED_LARGEST = 30
+# Numbers charted against the rivals (D-048), and how many countries at most.
+COMPARE_KEYS = ("development", "regiments", "income")
+COMPARED = 3
+# Journal lines worth marking on a chart: the moments the numbers usually move around.
+_MARKED = ("War began", "War ended", "New ruler", "Gained", "Lost")
+TREND_ROWS = 12
+
+
+def trend_data(
+    snapshots: list[dict[str, Any]],
+    date: str,
+    campaign: Campaign,
+    chosen: list[str] | None = None,
+) -> dict[str, Any]:
+    """The journal's numbers up to ``date`` as series, and its main events, for charts.
+
+    Returns:
+        ``{"dates": [...], "years": [...], "series": {key: [value | None]},
+        "labels": {key: label}, "events": [{"date", "year", "text"}]}``.
+    """
+    known = [s for s in snapshots if _date(str(s.get("date", ""))) <= _date(date)]
+    labels = dict((k, label) for k, label, _ in NUMBERS)
+    events = []
+    for before, after in zip(known, known[1:], strict=False):
+        for line in changes(before, after, campaign):
+            if line.startswith(_MARKED):
+                text = line if len(line) <= 70 else line[:67] + "..."
+                events.append({"date": after["date"], "year": _year(after["date"]), "text": text})
+    latest = known[-1] if known else {}
+    compare: list[str | None] = rival_slots(known)
+    basis = "rivals"
+    if chosen:  # the countries the player picked (D-049), in the order picked
+        compare = list(chosen)[:COMPARED]
+        basis = "countries you picked"
+    elif not any(compare):  # no rivals: the strongest great powers instead
+        compare = list(latest.get("great_powers") or [])[:COMPARED]
+        basis = "great powers"
+    shown = [tag for tag in compare if tag]
+    others = {
+        tag: {
+            key: [_lineage_value(s, lineage(campaign, tag), key) for s in known]
+            for key in COMPARE_KEYS
+        }
+        for tag in shown
+    }
+    return {
+        "compare": compare,
+        "compare_basis": basis,
+        "names": {tag: campaign.name(tag) for tag in [campaign.player, *shown]},
+        "others": others,
+        "dates": [str(s["date"]) for s in known],
+        "years": [_year(str(s["date"])) for s in known],
+        "series": {key: [s.get("numbers", {}).get(key) for s in known] for key in TREND_KEYS},
+        "labels": {key: labels[key] for key in TREND_KEYS},
+        "events": events,
+    }
+
+
+def render_trends(data: dict[str, Any], country: str) -> str:
+    """Markdown for ``get_trends``: a table of up to :data:`TREND_ROWS` dates."""
+    dates = data["dates"]
+    lines = [f"# Trends: {country}", ""]
+    if len(dates) < 2:
+        lines.append(
+            "Not enough saves recorded yet for a trend: the journal records each save the "
+            "Chancellor reads (and `chancellor journal --backfill` can add older ones)."
+        )
+        return "\n".join(lines) + "\n"
+    rows = _sample(len(dates), TREND_ROWS)
+    keys = list(data["series"])
+    lines.append(f"{len(dates)} saves recorded, {dates[0]} to {dates[-1]}; {len(rows)} shown.")
+    lines += [
+        "",
+        "| Date | " + " | ".join(data["labels"][k] for k in keys) + " |",
+        "| --- |" + " --- |" * len(keys),
+    ]
+    digits = dict((k, d) for k, _, d in NUMBERS)
+    for i in rows:
+        cells = ["-" if (v := data["series"][k][i]) is None else _fmt(v, digits[k]) for k in keys]
+        lines.append(f"| {dates[i]} | " + " | ".join(cells) + " |")
+    if data.get("compare"):
+        player = next(iter(data["names"]))
+        series: dict[str | None, dict[str, list[float | None]]] = {
+            player: {k: data["series"][k] for k in COMPARE_KEYS},
+            **data["others"],
+        }
+        lines += [
+            "",
+            f"Compared with the {data['compare_basis']}, {dates[0]} → {dates[-1]}:",
+            "",
+            "| Country | " + " | ".join(data["labels"].get(k, k) for k in COMPARE_KEYS) + " |",
+            "| --- |" + " --- |" * len(COMPARE_KEYS),
+        ]
+        for tag, values in series.items():
+            if tag is None:
+                continue
+            cells = [_span(values[key]) for key in COMPARE_KEYS]
+            lines.append(f"| {data['names'].get(tag, tag)} | " + " | ".join(cells) + " |")
+    if data["events"]:
+        lines += ["", "Main events:", ""]
+        lines += [f"- {e['date']}: {e['text']}" for e in data["events"][-12:]]
+    lines += [
+        "",
+        "_From the campaign journal: one record per save the Chancellor read, so the "
+        "spacing between dates varies._",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def lineage(campaign: Campaign, tag: str) -> list[str]:
+    """A country's tag and the tags it had before forming it (Castile, then Spain).
+
+    The save records them in ``previous_country_tags``; the journal stored the numbers
+    under the tag of the day, so a comparison looks them up under each in turn (D-049).
+    """
+    country = campaign.country(tag) or {}
+    previous = [str(t) for t in as_list(country.get("previous_country_tags")) if t]
+    return [tag, *reversed(previous)]
+
+
+def _lineage_value(snapshot: dict[str, Any], tags: list[str], key: str) -> float | None:
+    others = snapshot.get("others", {})
+    for tag in tags:
+        value = others.get(tag, {}).get(key)
+        if value is not None:
+            return value
+    return None
+
+
+def rival_slots(snapshots: list[dict[str, Any]]) -> list[str | None]:
+    """Each rival's colour slot, kept for as long as it stays a rival (D-048).
+
+    Walking the snapshots oldest first, a country that stops being a rival frees its
+    slot and a new rival takes the first free one, so changing one rival never repaints
+    the others. Returns :data:`COMPARED` slots; an empty one is ``None``.
+    """
+    slots: list[str | None] = [None] * COMPARED
+    for snapshot in snapshots:
+        if "rivals" not in snapshot:
+            continue
+        rivals = list(snapshot["rivals"])
+        slots = [tag if tag in rivals else None for tag in slots]
+        for rival in rivals:
+            if rival not in slots and None in slots:
+                slots[slots.index(None)] = rival
+    return slots
+
+
+def _span(values: list[float | None]) -> str:
+    """The first and last known value of a series: ``120 → 340``."""
+    known = [v for v in values if v is not None]
+    if not known:
+        return "-"
+    return f"{_fmt(known[0], 0)} → {_fmt(known[-1], 0)}"
+
+
+def _sample(count: int, rows: int) -> list[int]:
+    """Up to ``rows`` indexes spread evenly over ``count``, first and last included."""
+    if count <= rows:
+        return list(range(count))
+    return sorted({round(i * (count - 1) / (rows - 1)) for i in range(rows)})
+
+
+def _year(date: str) -> float:
+    parts = _date(date)
+    if len(parts) < 3:
+        return float(parts[0])
+    year, month, day = parts[:3]
+    return year + (month - 1) / 12 + (day - 1) / 365
+
+
+def country_numbers(campaign: Campaign, tag: str) -> dict[str, float]:
+    """The few numbers kept for another country (:data:`OTHER_NUMBERS`)."""
+    country = campaign.country(tag) or {}
+    ledger = country.get("ledger") or {}
+    owned = [p for p in as_list(country.get("owned_provinces")) if isinstance(p, int)]
+    numbers = {
+        "development": _float(country.get("raw_development")),
+        "regiments": float(count_regiments(country)),
+        "income": _float(ledger.get("lastmonthincome")),
+        "treasury": _float(country.get("treasury")),
+        "provinces": float(len(owned)),
+        "manpower": _float(country.get("manpower")),
+    }
+    return {k: v for k, v in numbers.items() if v is not None}
+
+
+def _great_powers(campaign: Campaign) -> list[str]:
+    """The great powers by rank (the save's ``great_powers.original``)."""
+    block = campaign.gamestate.get("great_powers")
+    if isinstance(block, LazyBlock):
+        block = block.parse()
+    if not isinstance(block, dict):
+        return []
+    ranked = [
+        (int(e.get("rank", 99)), str(e["country"]))
+        for e in get_all(block, "original")
+        if isinstance(e, dict) and e.get("country")
+    ]
+    return [tag for _, tag in sorted(ranked)]
 
 
 def _person(person: dict[str, Any] | None) -> str:

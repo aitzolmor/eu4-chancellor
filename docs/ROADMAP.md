@@ -54,7 +54,8 @@ the chat agent as a tool (D-009).
 - [x] `chancellor world`: great powers, rankings, alliance networks, major wars, unions, HRE
 - [ ] Structured return types (dataclasses) shared by CLI rendering and agent tools
   (done for `war-check` and `world`; briefings still render directly to Markdown)
-- [ ] Run from any folder (user-level config instead of `./.env` only)
+- [x] Run from any folder: `chancellor setup` finds the game and the player's folder
+  and writes `~/.eu4-chancellor/config.env` (D-047)
 
 ## Phase 3 — Game knowledge
 
@@ -248,9 +249,29 @@ findings, most harmful first:
 Goal: visual analysis of the campaign inside the workspace.
 
 - [ ] Evaluate PDX Tools: link, embed in a tab, or reuse its open-source parsing libraries
-- [ ] Charts view: income/expense breakdown, army strength, development
-- [ ] Save history: index past saves and chart trends over time (the campaign
-  journal, D-043, keeps every read save's key numbers: the data is there)
+- [x] Charts tab (D-045): treasury, income and expenses, regiments, manpower,
+  development and countries at 50+ AE over the campaign, from the journal's records,
+  with its main events marked on the time axis; plain SVG, offline, hover tooltips and
+  a table view
+- [x] Save history: `chancellor journal --backfill` lists older saves by campaign id
+  and reads the groups the player picks into the journal; `get_trends` gives the model
+  the same numbers as a table
+- [x] You against your rivals (D-048): each snapshot keeps the rivals', great powers',
+  neighbours' and the 30 largest countries' numbers (once a year in old snapshots), and
+  colours follow the country when a rival changes; the Charts tab
+  compares development, regiments and income with the rivals (or the top great powers),
+  and `get_trends` adds the same comparison as a table
+- [x] Compare with any country the player picks (D-049): a picker in the Charts tab,
+  saved per campaign; `get_trends` takes countries too; a country that formed another
+  (Castile, then Spain) keeps its history
+- [ ] Income/expense breakdown by category (the ledger's indices are not mapped yet)
+- [x] Trade (D-046): `get_trade` gives the home node and the share there, merchants
+  (collecting or steering), light ships, power and share in every node with whether it
+  feeds home, the feeders where the country has no power, and embargoes; the briefing
+  points to it. A trade question in Claude Desktop (2026-11-17) had to ask the player;
+  asked again with `get_trade`, it answered from the save
+- [ ] Trade: which way a steering merchant pushes is not in the save; check whether a
+  later save field or the country block records it
 - [ ] Let the model reference charts in its answers
 
 ## Phase 6 — Claude plays (experimental)

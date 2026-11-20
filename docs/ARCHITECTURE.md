@@ -25,7 +25,8 @@ flowchart LR
 
 | Module | Responsibility | Phase |
 | --- | --- | --- |
-| `config` | Load settings from environment / `.env` | 1 |
+| `config` | Load settings from the environment, `./.env` and the user's config (`~/.eu4-chancellor/config.env`, D-047) | 1 |
+| `discovery` | Find the game's installation (Steam libraries, installed programs, usual folders) and the player's data folder (D-047) | 4 |
 | `save.loader` | Locate the newest save; open zip or raw text; detect ironman | 1 |
 | `save.parser` | Turn Clausewitz text into nested Python data; `parse_lazy` defers nested blocks so only what is needed gets parsed | 1 |
 | `game.localisation` | Readable names from the game's localisation files; detects the player's language | 1 |
@@ -65,6 +66,10 @@ flowchart LR
 | `player.watches` | Watches: the player's "tell me when ..." as conditions on metrics read from the save, checked on every save, firing once (D-041) | 4 |
 | `live.probe` / `live.gamelog` | Prototype: a mod that logs values the save lacks (war score, casus belli) to `logs/game.log`, and its reader (D-044) | 4 |
 | `player.journal` | Campaign journal: a snapshot of the player's country per save read, and the changes between consecutive ones (D-043) | 4 |
+| `player.backfill` | Older saves grouped by campaign id; the groups the player picks are read into the journal (D-045) | 4 |
+| `app/web/charts.js` | The panel's Charts tab: small-multiple SVG line charts of the journal's numbers, with events, hover and a table (D-045) | 5 |
+| `context.trade` | A country's trade: home node and share, merchants, power by node, what feeds home, embargoes (D-046) | 4 |
+| `game.trade_nodes` | The trade node map from `common/tradenodes`: links, end nodes, what is upstream (D-046) | 4 |
 | `wiki.store` | Import `Special:Export` XML into a local SQLite FTS5 index (redirects as aliases); search with BM25 | 4 |
 | `context.development` | What developing each province costs, cheapest first, with its parts (D-031) | 4 |
 | `game.development_rules` | Its rules: static modifiers, centres of trade, institutions, golden bulls, imperial reforms, event modifiers, climate | 4 |

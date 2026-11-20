@@ -1,4 +1,16 @@
-"""Application settings loaded from environment variables and an optional ``.env`` file."""
+"""Application settings: environment variables, a ``.env`` file and the user's config.
+
+Where a setting comes from, first match wins:
+
+1. a real environment variable;
+2. ``.env`` in the folder the command runs from (development);
+3. the user's config, ``~/.eu4-chancellor/config.env``, which ``chancellor setup`` writes
+   (D-047), so the commands work from any folder.
+
+The user's config sits in the home folder, not under ``AppData``: Claude Desktop is a
+Store app whose processes see a private copy of ``AppData``, and the MCP server it starts
+must read the same file as a terminal.
+"""
 
 from __future__ import annotations
 
@@ -12,6 +24,32 @@ DEFAULT_EFFORT = "medium"
 # the most one question may cost, in US dollars.
 DEFAULT_API_BUDGET_USD = 5.0
 DEFAULT_QUESTION_CAP_USD = 0.50
+
+
+CONFIG_ENV = "CHANCELLOR_CONFIG"  # overrides where the user's config is (tests)
+
+
+def user_config_path() -> Path:
+    """Where ``chancellor setup`` keeps the user's settings."""
+    override = os.environ.get(CONFIG_ENV)
+    if override:
+        return Path(override)
+    return Path.home() / ".eu4-chancellor" / "config.env"
+
+
+def write_user_config(values: dict[str, str]) -> Path:
+    """Write settings into the user's config, keeping the keys not given.
+
+    Returns:
+        The config file.
+    """
+    path = user_config_path()
+    merged = {**_read_dotenv(path), **values}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = ["# eu4-chancellor settings, written by `chancellor setup`; edit freely."]
+    lines += [f"{key}={value}" for key, value in merged.items()]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return path
 
 
 @dataclass(frozen=True)
@@ -60,9 +98,9 @@ def _read_dotenv(path: Path) -> dict[str, str]:
 
 
 def load_settings(dotenv_path: Path | None = None) -> Settings:
-    """Build :class:`Settings` from the process environment and a ``.env`` file.
+    """Build :class:`Settings` from the environment, ``.env`` and the user's config.
 
-    Real environment variables take precedence over values in the ``.env`` file.
+    Real environment variables win over ``.env``, which wins over the user's config.
 
     Args:
         dotenv_path: Path to the ``.env`` file. Defaults to ``./.env``.
@@ -70,7 +108,7 @@ def load_settings(dotenv_path: Path | None = None) -> Settings:
     Returns:
         The resolved settings.
     """
-    file_values = _read_dotenv(dotenv_path or Path(".env"))
+    file_values = {**_read_dotenv(user_config_path()), **_read_dotenv(dotenv_path or Path(".env"))}
 
     def get(key: str) -> str | None:
         return os.environ.get(key) or file_values.get(key) or None

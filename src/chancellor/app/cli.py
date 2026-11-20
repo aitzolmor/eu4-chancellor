@@ -9,7 +9,7 @@ from pathlib import Path
 
 from chancellor import __version__
 from chancellor.app.clipboard import ClipboardError, copy_to_clipboard
-from chancellor.config import Settings, load_settings
+from chancellor.config import Settings, load_settings, write_user_config
 from chancellor.context.ae import render_ae_section
 from chancellor.context.campaign import Campaign, CountryLookupError
 from chancellor.context.decisions import check_decisions, render_decisions
@@ -19,6 +19,7 @@ from chancellor.context.targets import find_targets, render_targets
 from chancellor.context.tools import Toolbox, ToolInputError
 from chancellor.context.war_check import check_war, render_war_check
 from chancellor.context.world import render_world, world_overview
+from chancellor.discovery import find_game_installs, find_user_dir, game_version, is_game_dir
 from chancellor.game.ae_rules import AeRules
 from chancellor.game.cache import cache_dir, clear_cache
 from chancellor.game.coring_rules import CoringRules
@@ -32,6 +33,7 @@ from chancellor.game.power_rules import PowerRules
 from chancellor.game.rules import GameRules
 from chancellor.live.gamelog import game_log_path, read_probe, render_probe
 from chancellor.live.probe import MOD_NAME, cb_types_from, install
+from chancellor.player.backfill import backfill, pick, render_groups, save_groups
 from chancellor.player.context import context_path
 from chancellor.save.loader import SaveFormatError, find_current_save, load_save
 from chancellor.wiki.store import import_exports, render_hits, search, wiki_path
@@ -164,6 +166,20 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     probe.add_argument("action", choices=["install", "read"])
+    setup = sub.add_parser(
+        "setup",
+        help="Find the game and your saves, and remember them (run this first).",
+        description=(
+            "Finds the game's installation and your EU4 data folder (saves, settings), "
+            "checks them, and writes them to your config (~/.eu4-chancellor/config.env) so "
+            "every command works from any folder. Pass a folder to override what it finds."
+        ),
+    )
+    setup.add_argument("--game-dir", type=Path, help="The game's installation folder.")
+    setup.add_argument("--user-dir", type=Path, help="Your EU4 data folder (holds 'save games').")
+    setup.add_argument(
+        "--check", action="store_true", help="Only show what it finds; write nothing."
+    )
 
     journal = sub.add_parser(
         "journal",
@@ -176,6 +192,16 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     journal.add_argument("--saves", type=int, default=6, help="Steps back to show (default 6).")
+    journal.add_argument(
+        "--backfill",
+        action="store_true",
+        help="Add older saves of this campaign: lists them by campaign id; with --ids, reads "
+        "the groups picked (about 3 s a save).",
+    )
+    journal.add_argument(
+        "--ids",
+        help="Campaign id prefixes to backfill, comma-separated (from --backfill's list).",
+    )
 
     sub.add_parser(
         "mcp",
@@ -272,6 +298,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 1
         return 0
     try:
+        if args.command == "setup":
+            return _setup(args)
         if args.command == "summary":
             settings = load_settings()
             campaign, save_path = _load_campaign(args, settings)
@@ -408,6 +436,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             campaign, _ = _load_campaign(args, settings)
             toolbox = Toolbox(campaign, settings.game_dir, context_path(settings.save_dir))
             toolbox.remember_save()
+            if args.backfill:
+                return _backfill(args, settings, campaign, toolbox)
             text = toolbox.run("get_campaign_journal", {"saves": args.saves})
             return _emit(args, text, "Campaign journal")
         if args.command == "player-context":
@@ -459,6 +489,95 @@ def _development(settings: Settings) -> tuple[DevelopmentRules, GameRules] | Non
 def _power_rules(settings: Settings) -> PowerRules | None:
     """Monarch power cost rules for briefings, or ``None`` without the game files."""
     return PowerRules.load(settings.game_dir) if settings.game_dir else None
+
+
+TESTED_VERSION = "1.37"  # the game version the tools were checked against
+
+
+def _setup(args: argparse.Namespace) -> int:
+    """Find the game and the player's data folder, check them and save them (D-047)."""
+    lines = []
+    installs = find_game_installs()
+    if args.game_dir:
+        game = args.game_dir.expanduser()
+        if not is_game_dir(game):
+            raise CliError(f"{game} does not look like the game: no eu4.exe and common folder.")
+        version = game_version(game)
+        lines.append(f"Game: {game} (version {version or 'unknown'}, given)")
+    elif installs:
+        best = installs[0]
+        game, version = best.path, best.version
+        lines.append(f"Game: {game} (version {version or 'unknown'}, found in {best.found_by})")
+        for other in installs[1:]:
+            lines.append(f"  also found: {other.path} ({other.version or 'unknown'}), not used")
+    else:
+        raise CliError("The game was not found. Run: chancellor setup --game-dir <folder>")
+    if version and TESTED_VERSION not in version:
+        lines.append(f"  note: the tools were checked on {TESTED_VERSION}; some numbers may differ")
+
+    user = args.user_dir.expanduser() if args.user_dir else find_user_dir()
+    if user is None or not (user / "save games").is_dir():
+        raise CliError(
+            "Your EU4 data folder (with 'save games') was not found. Start the game once, "
+            "or run: chancellor setup --user-dir <folder>"
+        )
+    saves = user / "save games"
+    count = len(list(saves.glob("*.eu4")))
+    try:
+        current = find_current_save(saves).name
+    except FileNotFoundError:
+        current = "none yet"
+    lines.append(f"Saves: {saves} ({count} saves; current: {current})")
+    language = detect_language(user)
+    lines.append(f"Language: {language} (from the game's settings.txt)")
+    lines.append(
+        "Wiki: "
+        + (
+            "imported"
+            if wiki_path().is_file()
+            else "not imported (optional: chancellor wiki-import)"
+        )
+    )
+    values = {"EU4_GAME_DIR": str(game), "EU4_SAVE_DIR": str(saves), "EU4_LANGUAGE": language}
+    if args.check:
+        lines.append("\nNothing written (--check).")
+    else:
+        path = write_user_config(values)
+        lines += [
+            f"\nSaved to {path}. Every command now works from any folder.",
+            "Next: chancellor summary (a briefing of your campaign), "
+            "chancellor mcp-config (to use it from Claude Desktop), chancellor app (the panel).",
+        ]
+    _write_stdout("\n".join(lines) + "\n")
+    return 0
+
+
+def _backfill(
+    args: argparse.Namespace, settings: Settings, campaign: Campaign, toolbox: Toolbox
+) -> int:
+    """List the country's older saves by campaign id, or read the groups picked (D-045)."""
+    if settings.save_dir is None:
+        raise CliError("Set EU4_SAVE_DIR to backfill from its saves.")
+    groups = save_groups(settings.save_dir, campaign.player)
+    if not args.ids:
+        _write_stdout(
+            f"Saves of {campaign.label(campaign.player)} by campaign id. The game changes the "
+            "id within one campaign, so pick the groups that belong to this one, e.g.\n"
+            "  chancellor journal --backfill --ids 1c4db895,11e70c34\n\n"
+            + render_groups(groups, campaign.campaign_id)
+        )
+        return 0
+    picked = pick(groups, args.ids.split(","))
+    if not picked:
+        raise CliError(f"No campaign id starts with: {args.ids}")
+    loc = campaign.loc
+
+    def record(path: Path) -> bool:
+        return toolbox.remember_other(Campaign.from_raw(load_save(path), loc))
+
+    count = backfill(picked, record, lambda text: print(text, file=sys.stderr))
+    _write_stdout(f"Recorded {count} saves in the journal.\n")
+    return 0
 
 
 def _load_campaign(args: argparse.Namespace, settings: Settings) -> tuple[Campaign, Path]:

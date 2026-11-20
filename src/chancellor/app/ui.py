@@ -44,7 +44,7 @@ from chancellor.app.state import (
 )
 from chancellor.config import Settings
 from chancellor.context.alerts import campaign_alerts
-from chancellor.context.campaign import Campaign
+from chancellor.context.campaign import Campaign, CountryLookupError
 from chancellor.context.status import campaign_status
 from chancellor.game.imperial_reforms import ImperialReformLibrary
 from chancellor.watcher import SaveWatcher
@@ -156,6 +156,35 @@ class PanelApi:
             # No panel window to flash when not on Windows.
             with contextlib.suppress(DockError, OSError):
                 self._get_docker().flash_panel()
+
+    def trends(self) -> dict[str, Any]:
+        """The journal's numbers over the campaign, for the Charts tab (D-045).
+
+        Returns:
+            ``{"ok": True, "trends": {"dates", "years", "series", "labels", "events"}}``
+            or ``{"ok": False, "error": "<message>"}``.
+        """
+        try:
+            toolbox = self._provider.toolbox()
+            return {
+                "ok": True,
+                "trends": toolbox.trends(),
+                "compare": toolbox.compare_options(),
+            }
+        except (RuntimeError, OSError, KeyError, ValueError) as exc:
+            return {"ok": False, "error": str(exc) or exc.__class__.__name__}
+
+    def set_compare(self, countries: list[str]) -> dict[str, Any]:
+        """Pick the countries the Charts tab compares with; an empty list means rivals.
+
+        Returns:
+            ``{"ok": True, "picked": [...]}`` or ``{"ok": False, "error": "<message>"}``.
+        """
+        try:
+            picked = self._provider.toolbox().set_compare(list(countries or []))
+        except (RuntimeError, OSError, KeyError, ValueError, CountryLookupError) as exc:
+            return {"ok": False, "error": str(exc) or exc.__class__.__name__}
+        return {"ok": True, "picked": picked}
 
     def plan(self) -> dict[str, Any]:
         """The player's goals, wants and limits, decisions and waiting watches (D-041).

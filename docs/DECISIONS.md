@@ -967,3 +967,169 @@ an overlord can declare with a subject's casus belli, and the screen lists them.
 mod now checks each subject too (`every_subject_country`, the subject kept as an event
 target, `subcb` lines), against neighbours of the player or of the subject, the
 player's rivals and holders of the player's claims or cores; still to confirm in game.
+
+## D-045 — Trend charts from the campaign journal, drawn as plain SVG
+
+**Date:** 2026-11-17 · **Status:** Accepted
+
+The vision's second secondary goal is charts in the workspace; what was missing was
+data over time, and the campaign journal (D-043) now keeps every read save's numbers.
+
+- **Charts tab.** The panel gains a tab beside *Campaign* (the *Chat* tab still only
+  appears in API mode): six small line charts, one measure each so no chart has two
+  y-scales: treasury; income and expenses together, since they share a unit; regiments;
+  manpower; development; countries at 50+ AE. The journal's main events (wars begun
+  and ended, new rulers, provinces gained or lost) are dots on each time axis, with
+  their text on hover. A crosshair and tooltip follow the pointer, the charts redraw
+  to the panel's width, and a table holds the same numbers. A new save read while the
+  tab is open redraws it.
+- **Plain SVG, no library** (`charts.js`), so the panel stays offline with nothing
+  vendored (D-021). The marks follow the data-viz guidance used for this project: 2px
+  lines, hairline solid grids, text in text colours, a legend for the one two-series
+  chart. The two series colours are the reference palette's dark blue and orange,
+  validated against the panel's surface (#162139): every check passes, CVD separation
+  26.8.
+- **Backfill.** The journal only starts with the first save read, so
+  `chancellor journal --backfill` lists the country's saves by `campaign_id` with
+  their date ranges, and `--ids` reads the groups picked, oldest first, into the
+  current campaign's journal (`Toolbox.remember_other`). The player picks because the
+  game cannot tell: one campaign carried five ids from 1455 to 1525, and an earlier
+  Austria game (1447–1449) sits just before them. About 7 seconds a save.
+- **For the model.** `get_trends` returns the same numbers as a table of up to 12
+  dates with the main events, for "how is my economy doing?".
+
+Checked in the browser with 21 real saves of the user's Austria (1455–1525) backfilled
+into a temporary journal: the conquests of 1492 and 1505, the jump in development from
+380 to 645 around 1523, and a month of 352 ducats in expenses in 1525, which flattens
+the income chart's scale; the tooltip gives the numbers. The income and expense
+breakdown by category and a world view (PDX Tools) are still open.
+
+First test in Claude Desktop: "how has my economy evolved, and how can I improve it?"
+did not call `get_trends`; the model compared 1519 with 1525 from an earlier chat it
+found, and searched the wiki for trade. As with D-036 and D-040, the planning tools'
+last line now says how many saves the journal holds and to use `get_trends` for how
+the economy, army or growth evolved. The answer also named a gap: the tools say nothing
+about trade (nodes, power shares, merchants), though the save holds it.
+
+## D-046 — Trade from the save's nodes and the game's node map
+
+**Date:** 2026-11-17 · **Status:** Accepted
+
+Asked how to earn more from trade at Venice, the model had to ask the player for their
+share of power in each node and where their merchants were; the tools said nothing about
+trade, though the save holds it.
+
+- **From the save** (`context.trade`): the `trade` block has a node per trade node with
+  its value (`current + outgoing`) and everyone's power (`total`), and an entry per
+  country with its power, the base from provinces and light ships, the ships
+  protecting trade, a merchant (`has_trader`; `type=1` steers, otherwise it collects),
+  the home node (`has_capital`) and what it collects there (`money`). Parsing it whole
+  takes about half a second.
+- **From the game files** (`game.trade_nodes`): which nodes feed which, from
+  `common/tradenodes`, so the report can say whether each node's trade can reach the
+  home node and how many steps away, and which feeders hold no power of the country.
+  The save does not record which way a steering merchant pushes; the report says so.
+- **Where it shows.** `get_trade` lists the home node (and whether it is an end node),
+  the share and income there, the merchants, the light ships, a table of the nodes
+  ordered home, feeders by distance, then the rest, the feeders without power and the
+  embargoes. The player's briefing ends with one line on it, and the prompts point to
+  it for trade.
+
+On the user's Austria in 1525: home node Venice, an end node, with 46% of its power and
+8.62 ducats a month collected; merchants collecting at Venice and steering at Vienna;
+six light ships at Venice; Vienna (19%), Pest (7%) and Alexandria (3%) feeding it; and
+embargoes from the Ottomans, Great Britain, France and Newfoundland. Asked again in
+Claude Desktop, the trade question was answered from `get_trade`.
+
+## D-047 — `chancellor setup` finds the paths and writes a user-level config
+
+**Date:** 2026-11-17 · **Status:** Accepted
+
+The commands read their paths from `.env` in the folder they ran from, so they only
+worked from the project's folder, and a new user had to find and type the game's
+installation and their save folder. For a project meant to be tried by others, that was
+the first obstacle.
+
+- **Discovery** (`discovery`): the game is looked for in Steam's libraries (the
+  registry gives Steam's folder; `steamapps/libraryfolders.vdf` lists the libraries),
+  among Windows' installed programs (an `InstallLocation` named like the game, which
+  covers GOG and other installers), and in usual folders on every drive (`Games`,
+  `GOG Games`, `SteamLibrary`, Steam under Program Files). A folder counts when it has
+  the executable and `common`; with several (old installs linger), the newest version
+  in `launcher-settings.json` wins and the rest are listed. The player's folder is
+  *Documents*/Paradox Interactive/Europa Universalis IV, with *Documents* asked of
+  Windows (`SHGetKnownFolderPath`), since it is often redirected to OneDrive. The
+  language comes from the game's `settings.txt`.
+- **User config:** `chancellor setup` checks what it found (the version, how many
+  saves, the current one, the language, whether the wiki is imported) and writes
+  `EU4_GAME_DIR`, `EU4_SAVE_DIR` and `EU4_LANGUAGE` to `~/.eu4-chancellor/config.env`,
+  keeping any other keys there. `load_settings` reads it last: environment variables,
+  then `./.env`, then the user's config, so development setups keep working. It lives
+  in the home folder, not `AppData`, which Claude Desktop's processes see a private copy
+  of. `--check` writes nothing; `--game-dir` and `--user-dir` override the search.
+  Tests point `CHANCELLOR_CONFIG` at a temporary file so a real config never leaks in.
+
+On the user's machine the game was found among installed programs in `C:\Games` (not in
+a Steam library), version 1.37, and the data folder under OneDrive, in 0.2 seconds;
+afterwards `chancellor summary` worked from a folder without `.env`.
+
+## D-048 — Comparing the player with their rivals over time
+
+**Date:** 2026-11-17 · **Status:** Accepted (extends D-043 and D-045)
+
+The charts showed the player's own numbers; whether they are ahead of or behind their
+rivals was the question they could not answer.
+
+- **Snapshots** now keep, for the player's rivals and the great powers, six numbers each
+  (development, regiments, income, treasury, provinces, manpower; `country_numbers`),
+  plus who the rivals and great powers were; and, for the neighbours and the 30
+  largest countries, development, regiments and income. Rivals change during a game
+  (the user pointed out that replacing Poland would leave the new rival without a
+  history), so tracking a wide set means a new rival nearly always has one.
+- **Size:** 55 countries a save made the user's journal 109 KB for 21 saves. Trimmed
+  snapshots keep the other countries' numbers once an in-game year, so monthly
+  autosaves over a whole campaign stay around 2 MB; the comparison lines join the
+  yearly points.
+- **Charts:** below the player's charts, *You and the rivals* compares development,
+  regiments and monthly income with the current rivals (at most three in EU4); with no
+  rivals, with the three strongest great powers.
+- **Colours:** lines cross, so every pair of colours must stay apart, not only adjacent
+  ones. Checked with the data-viz validator on the panel's surface: only three hues pass
+  every pair (blue, orange, aqua; a fourth hue, yellow or violet, came within 5 CVD of
+  one of them). The player is always blue; a third rival is a dashed neutral grey line,
+  which differs from the three hues in both normal and colour-blind vision and does not
+  rely on colour alone.
+- **Colours follow the country.** Sorting the rivals by tag would have repainted France
+  when Poland was swapped for Bohemia. `rival_slots` walks the snapshots: a country
+  that stops being a rival frees its slot, and a new rival takes the first free one,
+  so the others keep their colours.
+- **For the model:** `get_trends` adds a table of each country's first and latest
+  value of the three numbers.
+
+The user's journal was backfilled again (20 saves, about 2.5 minutes) to carry the
+others' numbers: rivals France, Poland and the Ottomans; from 1455 to 1525 Austria's
+income went from 16 to 59 a month, France's from 26 to 94, the Ottomans' from 28 to 99.
+With the wider set, all three rivals have numbers on all 21 saves.
+
+## D-049 — Comparing with any country the player picks
+
+**Date:** 2026-11-17 · **Status:** Accepted (extends D-048)
+
+Rivals are one comparison; "how am I doing against Castile?" is another. The Charts tab
+now has a *Compare with* row above the comparison charts: the countries picked, each
+removable, or "your rivals" by default; a list to add one (up to three, the colours that
+pass every pair, D-048); and a way back to the rivals.
+
+- **Saved per campaign** in the player's context (`CampaignRecord.compare`, via
+  `PanelApi.set_compare`), so the choice survives sessions; the picked countries keep
+  their colours in the order picked.
+- **Tracked in full:** a picked country joins the countries every snapshot records with
+  all six numbers (`take_snapshot(extra=...)`). The list offers the countries that have
+  a recorded history: rivals, great powers, neighbours and the 30 largest (61 on the
+  user's journal).
+- **For the model:** `get_trends` takes up to three `countries` (names or tags) for a
+  one-off comparison, without changing what the panel shows.
+- **A country that forms another keeps its history.** In 1525 the user's journal had
+  Castile until it formed Spain; the save records `previous_country_tags = CAS` on
+  Spain, so a comparison looks a country's numbers up under each tag it has had. Spain
+  now has numbers on all 21 saves (318 development as Castile in 1455, 759 in 1525).

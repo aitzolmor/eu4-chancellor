@@ -15,11 +15,12 @@ from pathlib import Path
 from typing import Any
 
 from chancellor.context.ae import render_ae_section
-from chancellor.context.campaign import Campaign, CountryLookupError
+from chancellor.context.campaign import Campaign, CountryLookupError, _date_key
 from chancellor.context.decisions import check_decisions, render_decisions
 from chancellor.context.missions import mission_tree, render_missions
 from chancellor.context.summarizer import summarize
 from chancellor.context.targets import find_targets, render_targets
+from chancellor.context.trade import render_trade, trade_line, trade_report
 from chancellor.context.war_check import check_war, render_war_check
 from chancellor.context.world import render_world, world_overview
 from chancellor.game.ae_rules import AeRules
@@ -31,6 +32,7 @@ from chancellor.game.missions import MissionLibrary
 from chancellor.game.modifiers import ModifierLibrary
 from chancellor.game.power_rules import PowerRules
 from chancellor.game.rules import GameRules
+from chancellor.game.trade_nodes import TradeGraph
 from chancellor.player.context import (
     KINDS,
     PlayerContextError,
@@ -46,7 +48,9 @@ from chancellor.player.journal import (
     journal_entries,
     journal_path,
     render_journal,
+    render_trends,
     take_snapshot,
+    trend_data,
 )
 from chancellor.player.watches import (
     Watch,
@@ -338,6 +342,49 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "get_trends",
+        "description": (
+            "How the player's key numbers moved over the campaign, from the journal's "
+            "record of each save read: treasury, monthly income and expenses, manpower, "
+            "regiments, development, provinces, prestige, overextension and countries at "
+            "50+ AE, as a table of up to 12 dates from the first record to this save, with "
+            "the main events (wars, rulers) between them, and the player's development, "
+            "regiments and income against their rivals (or the countries the player picked "
+            "in the panel, or the up to three `countries` given). Use it for 'how is my "
+            "economy doing', 'am I growing', 'am I ahead of France', or to judge a plan "
+            "against the trend."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "countries": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "maxItems": 3,
+                    "description": "Countries to compare with (names or tags); default rivals.",
+                }
+            },
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "get_trade",
+        "description": (
+            "A country's trade, read from the save: its home trade node and its share of "
+            "the trade power there, what it collects there each month, where its merchants "
+            "are and whether each collects or steers, its light ships protecting trade, its "
+            "trade power and share in every node (home first, then the nodes that feed it, "
+            "nearest first), the nodes feeding home where it has no power, and who embargoes "
+            "it. Use it for any question about trade income, merchants, trade steering or "
+            "where to put a trade capital or centre of trade. Omit `country` for the player."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"country": _COUNTRY},
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -357,6 +404,8 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
     "search_wiki": {"query": _Field(str, required=True), "max_results": _Field(int)},
     "get_player_context": {},
     "get_campaign_journal": {"saves": _Field(int)},
+    "get_trends": {"countries": _Field(list)},
+    "get_trade": {"country": _Field(str)},
     "create_watch": {
         "description": _Field(str, required=True),
         "conditions": _Field(list, required=True),
@@ -371,7 +420,7 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
 
 
 # Game data the toolbox loads lazily; shared when the save changes (see with_campaign).
-_GAME_DATA = ("_missions", "_decisions", "_rules", "_modifiers")
+_GAME_DATA = ("_missions", "_decisions", "_rules", "_modifiers", "_trade_graph")
 
 
 class Toolbox:
@@ -444,6 +493,12 @@ class Toolbox:
                 f" Since the previous save ({latest[0][0]}): {len(latest[0][2])} changes "
                 "(get_campaign_journal)."
             )
+        recorded = self._recorded_dates()
+        if len(recorded) >= 2:  # point to the trends for "how has it evolved?" (D-045)
+            since += (
+                f" The journal holds {len(recorded)} saves from {recorded[0]} to "
+                f"{recorded[-1]}: for how the economy, army or growth evolved, use get_trends."
+            )
         if not entries and not watches:
             return (
                 "_Player context: nothing recorded for this campaign yet. If the player "
@@ -470,7 +525,7 @@ class Toolbox:
     def _get_country_briefing(self, args: dict[str, Any]) -> str:
         tag = self._tag(args.get("country"))
         development = (self._development_rules, self._rules) if self.game_dir else None
-        return summarize(
+        text = summarize(
             self.campaign,
             tag,
             reforms=self._imperial_reforms,
@@ -478,6 +533,16 @@ class Toolbox:
             development=development,
             coring=self._coring_rules if self.game_dir else None,
         )
+        if self.game_dir is not None:  # a pointer to the trade tool (D-046)
+            line = trade_line(trade_report(self.campaign, self._trade_graph, tag))
+            if line:
+                text = f"{text.rstrip()}\n\n_{line}_\n"
+        return text
+
+    def _get_trade(self, args: dict[str, Any]) -> str:
+        tag = self._tag(args.get("country"))
+        report = trade_report(self.campaign, self._trade_graph, tag)
+        return render_trade(self.campaign, report)
 
     def _check_war(self, args: dict[str, Any]) -> str:
         target = self._tag(args["target"])
@@ -581,7 +646,66 @@ class Toolbox:
         key = self._save_key()
         campaign_key = PlayerContextStore(self.context_file).campaign_key(key)
         journal = JournalStore(journal_path(self.context_file))
-        return journal.record(campaign_key, take_snapshot(self.campaign))
+        # The countries picked to compare with are tracked in full (D-049).
+        return journal.record(campaign_key, take_snapshot(self.campaign, extra=self._picked()))
+
+    def remember_other(self, campaign: Campaign) -> bool:
+        """Record another save of this campaign in this campaign's journal (backfill)."""
+        campaign_key = PlayerContextStore(self.context_file).campaign_key(self._save_key())
+        journal = JournalStore(journal_path(self.context_file))
+        return journal.record(campaign_key, take_snapshot(campaign, extra=self._picked()))
+
+    def trends(self, countries: list[str] | None = None) -> dict[str, Any]:
+        """The journal's numbers up to this save, and its main events, for charts (D-045).
+
+        Args:
+            countries: Tags to compare with; by default the ones the player picked
+                (D-049), else their rivals.
+        """
+        key = self._save_key()
+        view = PlayerContextStore(self.context_file).view(key)
+        if view.campaign is None:
+            return {"dates": [], "series": {}, "events": [], "compare": []}
+        snapshots = JournalStore(journal_path(self.context_file)).snapshots(view.campaign.key)
+        chosen = countries or view.campaign.compare or None
+        return trend_data(snapshots, key.date, self.campaign, chosen)
+
+    def compare_options(self) -> dict[str, Any]:
+        """What the charts can compare with: the countries with a recorded history."""
+        key = self._save_key()
+        view = PlayerContextStore(self.context_file).view(key)
+        tracked: set[str] = set()
+        if view.campaign is not None:
+            journal = JournalStore(journal_path(self.context_file))
+            for snapshot in journal.snapshots(view.campaign.key):
+                tracked.update(snapshot.get("others", {}))
+        options = sorted(
+            (t for t in tracked if t != key.tag and self.campaign.exists(t)),
+            key=lambda t: self.campaign.name(t),
+        )
+        return {
+            "picked": self._picked(),
+            "options": [{"tag": t, "name": self.campaign.name(t)} for t in options],
+        }
+
+    def set_compare(self, countries: list[str]) -> list[str]:
+        """Pick the countries the charts compare with (names or tags; none: rivals)."""
+        tags = [self._tag(c) for c in countries]
+        return PlayerContextStore(self.context_file).set_compare(self._save_key(), tags)
+
+    def _picked(self) -> list[str]:
+        view = PlayerContextStore(self.context_file).view(self._save_key())
+        return list(view.campaign.compare) if view.campaign else []
+
+    def _recorded_dates(self) -> list[str]:
+        """Dates of the journal's snapshots up to this save, oldest first (cheap)."""
+        key = self._save_key()
+        view = PlayerContextStore(self.context_file).view(key)
+        if view.campaign is None:
+            return []
+        snapshots = JournalStore(journal_path(self.context_file)).snapshots(view.campaign.key)
+        dates = [str(s.get("date", "")) for s in snapshots]
+        return [d for d in dates if _date_key(d) <= _date_key(key.date)]
 
     def journal(self, saves: int = JOURNAL_STEPS) -> list[tuple[str, str, list[str]]]:
         """The journal's steps up to this save, newest first (see :func:`journal_entries`)."""
@@ -591,6 +715,11 @@ class Toolbox:
             return []
         snapshots = JournalStore(journal_path(self.context_file)).snapshots(view.campaign.key)
         return journal_entries(snapshots, key.date, self.campaign, saves)
+
+    def _get_trends(self, args: dict[str, Any]) -> str:
+        countries = [self._tag(c) for c in args.get("countries") or []][:3]
+        data = self.trends(countries or None)
+        return render_trends(data, self.campaign.label(self.campaign.player))
 
     def _get_campaign_journal(self, args: dict[str, Any]) -> str:
         saves = min(max(int(args.get("saves") or JOURNAL_STEPS), 1), 30)
@@ -696,6 +825,10 @@ class Toolbox:
     @cached_property
     def _ae_rules(self) -> AeRules:
         return AeRules.load(self._game_dir())
+
+    @cached_property
+    def _trade_graph(self) -> TradeGraph:
+        return TradeGraph.load(self._game_dir())
 
     @cached_property
     def _coring_rules(self) -> CoringRules:

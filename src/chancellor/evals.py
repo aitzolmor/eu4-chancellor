@@ -41,6 +41,8 @@ class Case:
         contains: Text the output must contain.
         absent: Text the output must not contain.
         matches: Regular expressions the output must match (multi-line).
+        answer: Facts a model's answer should mention (numbers, keys), for
+            :func:`run_model_eval` (D-062).
         why: Where the expected facts come from (the game screen, a past bug).
     """
 
@@ -51,6 +53,7 @@ class Case:
     contains: list[str] = field(default_factory=list)
     absent: list[str] = field(default_factory=list)
     matches: list[str] = field(default_factory=list)
+    answer: list[str] = field(default_factory=list)
     why: str = ""
 
 
@@ -108,6 +111,7 @@ def load_eval(path: Path) -> EvalSet:
                 contains=list(raw.get("contains", [])),
                 absent=list(raw.get("absent", [])),
                 matches=list(raw.get("matches", [])),
+                answer=list(raw.get("answer", [])),
                 why=raw.get("why", ""),
             )
         )
@@ -165,6 +169,92 @@ def render_results(evalset: EvalSet, results: list[Result]) -> str:
         mark = "PASS" if result.passed else "FAIL"
         lines.append(f"- {mark} {result.case.id} ({result.case.tool}): {result.case.question}")
         lines += [f"    - {failure}" for failure in result.failures]
+    return "\n".join(lines) + "\n"
+
+
+@dataclass
+class ModelResult:
+    """How a model answered one case (D-062).
+
+    Attributes:
+        case: The case.
+        tools: The tools the model called.
+        answer: Its answer.
+        seconds: How long it took.
+        cut: Whether a tool result was shortened to fit its context.
+        error: What failed, if anything.
+    """
+
+    case: Case
+    tools: list[str]
+    answer: str
+    seconds: float
+    cut: bool = False
+    error: str = ""
+
+    @property
+    def right_tool(self) -> bool:
+        """Whether it called the tool the case is about."""
+        return self.case.tool in self.tools
+
+    @property
+    def missing(self) -> list[str]:
+        """Facts the answer should mention but does not (decimal commas allowed)."""
+        text = self.answer.replace(",", ".")
+        return [fact for fact in self.case.answer if fact.replace(",", ".") not in text]
+
+
+def run_model_eval(
+    evalset: EvalSet,
+    ask: Any,
+    ids: list[str] | None = None,
+    progress: Any = None,
+) -> list[ModelResult]:
+    """Ask a model each case's question (or those in ``ids``) and record what it did.
+
+    Args:
+        evalset: The set.
+        ask: ``question -> chancellor.llm.local.Answer``.
+        ids: Case ids to ask; all by default.
+        progress: Called with each result as it comes, for a long run.
+    """
+    results = []
+    for case in evalset.cases:
+        if ids and case.id not in ids:
+            continue
+        reply = ask(case.question)
+        result = ModelResult(case, reply.tools, reply.text, reply.seconds, reply.cut, reply.error)
+        results.append(result)
+        if progress:
+            progress(result)
+    return results
+
+
+def render_model_results(evalset: EvalSet, model: str, results: list[ModelResult]) -> str:
+    """A report of a model's run: right tool, facts mentioned, time, per case."""
+    right = sum(1 for r in results if r.right_tool)
+    complete = sum(1 for r in results if r.right_tool and not r.missing and not r.error)
+    total = sum(r.seconds for r in results)
+    lines = [
+        f"# Eval {evalset.name} with {model}: right tool {right} of {len(results)}, "
+        f"full answer {complete} of {len(results)}, {total / 60:.1f} minutes",
+        "",
+    ]
+    for r in results:
+        mark = "PASS" if r.right_tool and not r.missing and not r.error else "FAIL"
+        tools = ", ".join(r.tools) or "no tool"
+        lines.append(f"- {mark} {r.case.id} ({r.seconds:.0f} s): called {tools}")
+        if not r.right_tool:
+            lines.append(f"    - expected {r.case.tool}")
+        if r.missing:
+            lines.append(f"    - answer lacks: {', '.join(r.missing)}")
+        if r.cut:
+            lines.append("    - a tool result was cut to fit the context")
+        if r.error:
+            lines.append(f"    - error: {r.error}")
+        preview = " ".join(r.answer.split())[:240]
+        if preview:
+            lines.append(f"    - answer: {preview}")
     return "\n".join(lines) + "\n"
 
 

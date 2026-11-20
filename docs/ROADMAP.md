@@ -304,7 +304,9 @@ Goal: explore how far the assistant can act, not just advise.
 
 ### Idea: other models, and no need for a paid Claude plan (2026-11-16)
 
-Not scheduled. The tools should not require a Claude subscription or the Anthropic API.
+Started (D-062): LM Studio is configured by `chancellor mcp-config --client lmstudio --write`, and `chancellor eval --model` asks a local model the evaluation questions. **Pending:** a full run with Qwen3 4B (about an hour on the user's laptop, with LM Studio otherwise idle) to measure it.
+
+Was not scheduled. The tools should not require a Claude subscription or the Anthropic API.
 
 - **Cheap step:** MCP is an open protocol, so the server already works with other MCP
   clients, some of them free or running local models (Ollama, LM Studio). Test one,

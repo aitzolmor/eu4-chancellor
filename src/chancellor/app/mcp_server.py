@@ -309,3 +309,43 @@ def desktop_config(settings: Settings, executable: str | None = None) -> dict[st
 def desktop_config_json(settings: Settings, executable: str | None = None) -> str:
     """:func:`desktop_config` as pretty-printed JSON."""
     return json.dumps(desktop_config(settings, executable), indent=2, ensure_ascii=False)
+
+
+# MCP clients whose configuration file this module can write (D-062). LM Studio reads the
+# same "mcpServers" shape as Claude Desktop, from its own folder.
+CLIENT_CONFIGS = {
+    "lmstudio": Path.home() / ".lmstudio" / "mcp.json",
+}
+
+
+def write_client_config(
+    path: Path, settings: Settings, executable: str | None = None
+) -> Path | None:
+    """Add (or update) the Chancellor in an MCP client's ``mcpServers`` file.
+
+    Other servers in the file are kept. The previous file is copied beside it with a
+    ``.bak`` suffix first.
+
+    Returns:
+        The backup, or ``None`` when there was no file before.
+
+    Raises:
+        ValueError: If the existing file is not a JSON object.
+    """
+    data: dict[str, Any] = {}
+    backup = None
+    if path.is_file():
+        text = path.read_text(encoding="utf-8")
+        data = json.loads(text) if text.strip() else {}
+        if not isinstance(data, dict):
+            raise ValueError(f"{path} is not a JSON object")
+        backup = path.with_suffix(path.suffix + ".bak")
+        backup.write_text(text, encoding="utf-8")
+    servers = data.get("mcpServers")
+    data["mcpServers"] = {
+        **(servers if isinstance(servers, dict) else {}),
+        **desktop_config(settings, executable)["mcpServers"],
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return backup

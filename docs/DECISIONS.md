@@ -1143,3 +1143,33 @@ pass every pair, D-048); and a way back to the rivals.
   Castile until it formed Spain; the save records `previous_country_tags = CAS` on
   Spain, so a comparison looks a country's numbers up under each tag it has had. Spain
   now has numbers on all 21 saves (318 development as Castile in 1455, 759 in 1525).
+
+## D-051 — Casus belli in the war check and the targets, from the probe mod
+
+**Date:** 2026-11-20 · **Status:** Accepted (builds on D-044; D-050 is in PR #55)
+
+The probe mod's casus belli matched the diplomacy screen in three game sessions (D-044),
+so the planning tools now use them instead of saying casus belli are unknown.
+
+- **Reading** (`live.casus_belli`): the latest month's check in `logs/game.log`, the
+  player's and each subject's (an overlord can declare with a subject's casus belli).
+  It is only trusted when the log's heartbeat names the save's country and its date is
+  within a year of the save's: the log restarts empty with each game start, and the
+  player may have loaded another campaign since. Otherwise the tools say why there is
+  none (no log, mod not enabled or no month passed yet, another country, too old).
+- **Where it shows.** `check_war`, when the player attacks: a *Casus belli* line under
+  the title, with each type's name in the game's language and whose it is ("Humillar a
+  su rival (yours); Conquista (Hungría)"). `get_expansion_targets`: a *Casus belli*
+  column and a detail line per owner; `?` when the mod did not check that country.
+  The CLI's `war-check` and `targets` do the same. `Toolbox` takes the log's path.
+- **Wider check.** On the user's 1535 save most targets showed `?`: missions and the
+  formable Germany point at German minors that are neither neighbours, rivals nor
+  holders of claims. The mod now also checks every country on the player's continent
+  (`same_continent = ROOT`, as the game's own events use it). Subjects keep the
+  narrower set (neighbours of the player or the subject, rivals, claims and cores) to
+  keep the monthly cost down.
+- **Prompts:** both now say casus belli are known when the probe mod runs, and that
+  `check_war` and `get_expansion_targets` say so when they are not.
+
+On the user's save (log of 1535.04.26): against Poland, "Humillar a su rival (yours);
+Conquista (Hungría)"; against Liège, "Conquista (yours)"; Savoy, checked, none.

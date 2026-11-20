@@ -19,6 +19,7 @@ from chancellor.app.budget import Budget, BudgetExhausted
 from chancellor.config import Settings
 from chancellor.context.campaign import Campaign
 from chancellor.context.tools import Toolbox
+from chancellor.live.gamelog import game_log_for
 from chancellor.llm.client import ChancellorAgent
 from chancellor.player.context import context_path
 
@@ -68,7 +69,12 @@ class ChatSession:
         self.loaded = self._load_current()
         self.agent = ChancellorAgent(
             client,
-            Toolbox(self.loaded.campaign, settings.game_dir, context_path(settings.save_dir)),
+            Toolbox(
+                self.loaded.campaign,
+                settings.game_dir,
+                context_path(settings.save_dir),
+                game_log_for(settings.save_dir),
+            ),
             model=settings.model,
             effort=settings.effort,
         )
@@ -85,7 +91,10 @@ class ChatSession:
         previous = self.loaded
         self.loaded = self._load_current()
         self.agent.toolbox = Toolbox(
-            self.loaded.campaign, self.settings.game_dir, context_path(self.settings.save_dir)
+            self.loaded.campaign,
+            self.settings.game_dir,
+            context_path(self.settings.save_dir),
+            game_log_for(self.settings.save_dir),
         )
         self.agent.note(
             f"The player saved again: the campaign is now at {self.loaded.campaign.date} "

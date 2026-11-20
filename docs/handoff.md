@@ -6,7 +6,7 @@ wiki's retrieval (PRs #1–#53 merged; 555 tests passing, CI green on Ubuntu and
 Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-049),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-051; D-050 is in PR #55),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -312,7 +312,8 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
    `chancellor probe read` answers its questions.
    The first session (2026-11-20, at peace, enabled by `dlc_load.json`) showed the
    channel works. The second (1535) matched the casus belli with the diplomacy screen;
-   the third found the subjects' casus belli too. The war score is still to check.
+   the third found the subjects' casus belli too, and `check_war` and
+   `get_expansion_targets` now list them (D-051). The war score is still to check.
    Play a few months at war, then
    read the log and `logs/error.log`. The user's autosave is yearly: monthly would
    make the panel, watches and journal monthly at no cost. Reading the game's memory

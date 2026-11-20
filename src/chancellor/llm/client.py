@@ -57,8 +57,9 @@ question depends on the current state of the game: your own country, another cou
 possible war, the world, missions, formable nations or where to expand. Several \
 independent lookups can be made in parallel.
 - Countries can be named by tag or by their name in the player's game language.
-- Say what the data cannot tell: war score, casus belli and some estate or parliament \
-conditions are not in the tools' output, and truce end dates are estimates; requirements \
+- Say what the data cannot tell: war score and some estate or parliament conditions \
+are not in the tools' output, casus belli only when the probe mod runs (check_war and \
+get_expansion_targets say so), and truce end dates are estimates; requirements \
 marked [?] could not be checked automatically.
 - Use the computed mechanics instead of rules of thumb: the briefing states what monarch \
 power buys (technology, ideas, stability, generals, development, with costs and waits) and \

@@ -33,6 +33,7 @@ from chancellor.game.modifiers import ModifierLibrary
 from chancellor.game.power_rules import PowerRules
 from chancellor.game.rules import GameRules
 from chancellor.game.trade_nodes import TradeGraph
+from chancellor.live.casus_belli import load_casus_belli
 from chancellor.player.context import (
     KINDS,
     PlayerContextError,
@@ -138,7 +139,9 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "target and its neighbours already hold against the attacker (50 is the "
             "coalition threshold), and an estimate of the AE that taking the provinces the "
             "attacker has claims or cores on would add to each country nearby (who would "
-            "cross 50). Ignores casus belli."
+            "cross 50). For the player, the casus belli against the target (their own and their "
+            "subjects', which they can use) when the Chancellor probe mod is running in the "
+            "game; otherwise it says they are unknown."
         ),
         "input_schema": {
             "type": "object",
@@ -197,7 +200,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "war check and a coalition risk against each owner (favourable, even and hard "
             "targets; owners under a truce or defended by your own allies last, high "
             "coalition risk after the rest; provinces held by subjects or allies listed "
-            "apart). Omit `country` for the player."
+            "apart). For the player, the casus belli against each owner when the Chancellor "
+            "probe mod is running. Omit `country` for the player."
         ),
         "input_schema": {
             "type": "object",
@@ -427,7 +431,11 @@ class Toolbox:
     """Runs tools against one loaded save; game data is loaded on first use."""
 
     def __init__(
-        self, campaign: Campaign, game_dir: Path | None, context_file: Path | None = None
+        self,
+        campaign: Campaign,
+        game_dir: Path | None,
+        context_file: Path | None = None,
+        game_log: Path | None = None,
     ) -> None:
         """Bind the tools to a campaign and, optionally, the game installation.
 
@@ -436,10 +444,13 @@ class Toolbox:
             game_dir: The game installation, for the tools that read game files.
             context_file: Where the player's context is kept (:func:`context_path`);
                 the app's state folder by default.
+            game_log: The game's ``logs/game.log``, where the probe mod writes the casus
+                belli (D-051); ``None`` leaves them out.
         """
         self.campaign = campaign
         self.game_dir = game_dir
         self.context_file = context_file or context_path(None)
+        self.game_log = game_log
 
     @property
     def definitions(self) -> list[dict[str, Any]]:
@@ -448,7 +459,7 @@ class Toolbox:
 
     def with_campaign(self, campaign: Campaign) -> Toolbox:
         """A toolbox for another save that reuses the game data already loaded here."""
-        other = Toolbox(campaign, self.game_dir, self.context_file)
+        other = Toolbox(campaign, self.game_dir, self.context_file, self.game_log)
         for name in _GAME_DATA:
             if name in self.__dict__:  # cached_property values live in the instance dict
                 other.__dict__[name] = self.__dict__[name]
@@ -547,7 +558,11 @@ class Toolbox:
     def _check_war(self, args: dict[str, Any]) -> str:
         target = self._tag(args["target"])
         attacker = self._tag(args.get("attacker"))
-        text = render_war_check(self.campaign, check_war(self.campaign, target, attacker))
+        text = render_war_check(
+            self.campaign,
+            check_war(self.campaign, target, attacker),
+            load_casus_belli(self.campaign, self.game_log),
+        )
         if self.game_dir is None:
             return text
         section = render_ae_section(self.campaign, self._ae_rules, self._rules, target, attacker)
@@ -790,7 +805,9 @@ class Toolbox:
     def _get_expansion_targets(self, args: dict[str, Any]) -> str:
         tag = self._tag(args.get("country"))
         report = find_targets(self.campaign, self._rules, self._missions, self._decisions, tag)
-        return render_targets(self.campaign, report)
+        return render_targets(
+            self.campaign, report, casus_belli=load_casus_belli(self.campaign, self.game_log)
+        )
 
     # --- helpers ------------------------------------------------------------------------
 

@@ -13,7 +13,9 @@ that channel is worth building on:
    narrows the score down with ``war_score_against`` checks every 5 points, a trigger
    the game's own events use.
 4. Which casus belli does the player have, and against whom? For each country worth
-   attacking (neighbours, rivals both ways, and holders of the player's claims or cores)
+   attacking (every country on the player's continent, so mission and formable targets
+   are covered, plus neighbours, rivals both ways and holders of the player's claims or
+   cores elsewhere)
    the mod logs a ``cbtarget`` line, then a ``cb`` line for each casus belli type that
    ``has_casus_belli`` finds against it. The types come from the game's
    ``common/cb_types``. Whether that trigger also sees the casus belli the game derives
@@ -192,6 +194,7 @@ country_event = {{
 \t\t\tlimit = {{
 \t\t\t\tNOT = {{ tag = ROOT }}
 \t\t\t\tOR = {{
+\t\t\t\t\tsame_continent = ROOT
 \t\t\t\t\tis_neighbor_of = ROOT
 \t\t\t\t\tis_rival = ROOT
 \t\t\t\t\tROOT = {{ is_rival = PREV }}

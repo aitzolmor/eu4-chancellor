@@ -77,7 +77,7 @@ def test_the_casus_belli_check_covers_the_types_and_the_targets(tmp_path: Path):
     assert "has_casus_belli = { type = cb_conquest target = PREV }" in events
     assert 'log = "CHANCELLOR|cb|[This.GetTag]|cb_conquest"' in events
     assert 'log = "CHANCELLOR|cbtarget|[This.GetTag]|[This.GetName]"' in events
-    for target in ("is_neighbor_of = ROOT", "is_rival = ROOT", "is_claim = ROOT"):
+    for target in ("same_continent = ROOT", "is_neighbor_of = ROOT", "is_rival = ROOT"):
         assert target in events
     assert len(probe_files()["events/chancellor_probe.txt"].split("has_casus_belli")) == 33
 

@@ -52,6 +52,11 @@ def game_log_path(save_dir: Path) -> Path:
     return save_dir.parent / "logs" / "game.log"
 
 
+def game_log_for(save_dir: Path | None) -> Path | None:
+    """:func:`game_log_path`, or ``None`` when the save folder is unknown."""
+    return game_log_path(save_dir) if save_dir is not None else None
+
+
 def read_probe(path: Path) -> ProbeReport:
     """Collect the probe mod's lines from a game log.
 

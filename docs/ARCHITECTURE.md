@@ -64,6 +64,7 @@ flowchart LR
 | `wiki.wikitext` | Wiki pages to plain sections: headings, the game version each was checked for, no markup (D-032) | 4 |
 | `player.context` | The player's context per campaign: goals, wants and limits, decisions, notes; matched by campaign id or by country and date; a JSON file in the game's user folder (D-039) | 4 |
 | `player.watches` | Watches: the player's "tell me when ..." as conditions on metrics read from the save, checked on every save, firing once (D-041) | 4 |
+| `live.casus_belli` | The probe mod's latest casus belli check, trusted only for the save's country and date; words for the war check and targets (D-051) | 4 |
 | `live.probe` / `live.gamelog` | Prototype: a mod that logs values the save lacks (war score, casus belli) to `logs/game.log`, and its reader (D-044) | 4 |
 | `player.journal` | Campaign journal: a snapshot of the player's country per save read, and the changes between consecutive ones (D-043) | 4 |
 | `player.backfill` | Older saves grouped by campaign id; the groups the player picks are read into the journal (D-045) | 4 |

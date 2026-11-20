@@ -31,7 +31,8 @@ from chancellor.game.missions import MissionLibrary
 from chancellor.game.modifiers import ModifierLibrary
 from chancellor.game.power_rules import PowerRules
 from chancellor.game.rules import GameRules
-from chancellor.live.gamelog import game_log_path, read_probe, render_probe
+from chancellor.live.casus_belli import load_casus_belli
+from chancellor.live.gamelog import game_log_for, game_log_path, read_probe, render_probe
 from chancellor.live.probe import MOD_NAME, cb_types_from, install
 from chancellor.player.backfill import backfill, pick, render_groups, save_groups
 from chancellor.player.context import context_path
@@ -329,7 +330,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             campaign, _ = _load_campaign(args, settings)
             target = campaign.resolve_country(" ".join(args.target))
             attacker = campaign.resolve_country(args.attacker) if args.attacker else None
-            text = render_war_check(campaign, check_war(campaign, target, attacker))
+            text = render_war_check(
+                campaign,
+                check_war(campaign, target, attacker),
+                load_casus_belli(campaign, game_log_for(settings.save_dir)),
+            )
             if settings.game_dir is not None:
                 ae_rules = AeRules.load(settings.game_dir)
                 rules = GameRules.load(settings.game_dir)
@@ -464,7 +469,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 DecisionLibrary.load(settings.game_dir),
                 tag,
             )
-            text = render_targets(campaign, report, top=max(1, args.top))
+            text = render_targets(
+                campaign,
+                report,
+                top=max(1, args.top),
+                casus_belli=load_casus_belli(campaign, game_log_for(settings.save_dir)),
+            )
             return _emit(args, text, f"Expansion targets of {campaign.label(tag)}")
     except ValueError as exc:  # e.g. a country attacking itself
         return _fail(str(exc))

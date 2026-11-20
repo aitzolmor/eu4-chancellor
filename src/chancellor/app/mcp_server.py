@@ -27,6 +27,7 @@ from typing_extensions import TypedDict
 from chancellor.config import Settings
 from chancellor.context.campaign import Campaign, CountryLookupError
 from chancellor.context.tools import TOOL_DEFINITIONS, Toolbox, ToolInputError
+from chancellor.live.gamelog import game_log_for
 from chancellor.player.context import context_path
 from chancellor.save.loader import find_current_save
 
@@ -49,7 +50,9 @@ country, a possible war, the world, missions, formable nations or where to expan
 Several independent lookups can be made in parallel.
 - Countries can be named by tag (BUR) or by name in the player's game language (Borgoña).
 - Every call reads the newest save, so after the player saves, look things up again.
-- The tools do not know war score or casus belli. Truces are known, but their end dates \
+- The tools do not know war score. Casus belli are known only when the Chancellor \
+probe mod runs in the game (check_war and get_expansion_targets then list them, the \
+subjects' included); otherwise those tools say so. Truces are known, but their end dates \
 are estimates. Requirements marked [?] could not be checked automatically.
 - Use the computed mechanics instead of rules of thumb: the country briefing says what \
 monarch power buys (technology, ideas, stability, generals, development) and the war check \
@@ -123,7 +126,12 @@ class CampaignProvider:
             toolbox = (
                 current.toolbox.with_campaign(campaign)
                 if current
-                else Toolbox(campaign, self.settings.game_dir, context_path(self.settings.save_dir))
+                else Toolbox(
+                    campaign,
+                    self.settings.game_dir,
+                    context_path(self.settings.save_dir),
+                    game_log_for(self.settings.save_dir),
+                )
             )
             self._loaded = _Loaded(path, mtime, toolbox)
             # Each new save read goes into the campaign journal (D-043); a failure there

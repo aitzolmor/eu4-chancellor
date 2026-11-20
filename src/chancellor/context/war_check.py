@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from chancellor.context.campaign import Campaign, Grievance, Truce, as_list, count_regiments
+from chancellor.live.casus_belli import CasusBelliLookup, describe_against
 from chancellor.save.parser import get_all
 
 Likelihood = Literal["certain", "likely", "possible"]
@@ -388,8 +389,17 @@ def _grievance_list(campaign: Campaign, grievances: list[Grievance], limit: int 
     return shown + (f" and {len(grievances) - limit} more" if len(grievances) > limit else "")
 
 
-def render_war_check(campaign: Campaign, check: WarCheck) -> str:
-    """Render a :class:`WarCheck` as Markdown."""
+def render_war_check(
+    campaign: Campaign, check: WarCheck, casus_belli: CasusBelliLookup | None = None
+) -> str:
+    """Render a :class:`WarCheck` as Markdown.
+
+    Args:
+        campaign: The loaded save.
+        check: The war check.
+        casus_belli: The probe mod's casus belli check (D-051); shown when the player is
+            the attacker. ``None`` leaves casus belli out, as before the mod.
+    """
     lines = [
         f"# War check: {campaign.label(check.attacker)} vs {campaign.label(check.target)}, "
         f"{check.date}",
@@ -400,6 +410,17 @@ def render_war_check(campaign: Campaign, check: WarCheck) -> str:
     ]
     if check.truce:
         lines += [f"**{_truce_warning(campaign, check)}**", ""]
+    lookup = casus_belli if check.attacker == campaign.player else None
+    player_attacks = lookup is not None
+    if lookup is not None and lookup.data is not None:
+        lines += [
+            f"**Casus belli:** {describe_against(campaign, lookup.data, check.target)} "
+            f"(the probe mod's check on {lookup.data.date}; a subject's casus belli can be "
+            "used by its overlord).",
+            "",
+        ]
+    elif lookup is not None:
+        lines += [f"**Casus belli:** unknown. {lookup.reason}", ""]
     lines += [
         "## Balance of forces",
         "",
@@ -452,8 +473,9 @@ def render_war_check(campaign: Campaign, check: WarCheck) -> str:
     lines += [
         "",
         "_Likelihoods are estimates. Allies can refuse a call to arms, and guarantors and the "
-        "Emperor decide case by case. War score and the casus belli are not checked; truce "
-        "end dates are estimates._",
+        "Emperor decide case by case. War score is not checked"
+        + ("" if player_attacks else ", nor the casus belli")
+        + "; truce end dates are estimates._",
     ]
     return "\n".join(lines) + "\n"
 

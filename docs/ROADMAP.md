@@ -295,7 +295,8 @@ Goal: explore how far the assistant can act, not just advise.
   exactly; the subjects' were missing, now checked too
 - [x] The subjects' casus belli in game (2026-11-20): Hungary's conquest of Poland found
 - [ ] A session at war (war score)
-- [ ] If they work: war score and casus belli in the war check and the briefing
+- [x] Casus belli in the war check and the targets (D-051), from the probe mod's log
+- [ ] War score in the war check and the briefing, once a session at war confirms it
 
 ## Ideas / later
 

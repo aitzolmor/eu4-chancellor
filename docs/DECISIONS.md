@@ -1172,4 +1172,7 @@ so the planning tools now use them instead of saying casus belli are unknown.
   `check_war` and `get_expansion_targets` say so when they are not.
 
 On the user's save (log of 1535.04.26): against Poland, "Humillar a su rival (yours);
-Conquista (Hungría)"; against Liège, "Conquista (yours)"; Savoy, checked, none.
+Conquista (Hungría)"; against Liège, "Conquista (yours)"; Savoy, checked, none. With the
+wider check in game (1535.05 to 1535.07): 88 countries checked, 21 with casus belli,
+and none of the 15 war targets listed is unchecked any more (the Teutonic Order and
+Lübeck: none, as on the diplomacy screen; Denmark: Imperial ban and Imperial campaign).

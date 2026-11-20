@@ -1065,3 +1065,32 @@ pass every pair, D-048); and a way back to the rivals.
   Castile until it formed Spain; the save records `previous_country_tags = CAS` on
   Spain, so a comparison looks a country's numbers up under each tag it has had. Spain
   now has numbers on all 21 saves (318 development as Castile in 1455, 759 in 1525).
+
+## D-052 — Income and expenses by category, from the ledger
+
+**Date:** 2026-11-20 · **Status:** Accepted (D-050 is in PR #55, D-051 in PR #50)
+
+The briefing gave last month's income and expenses as two totals, so "why am I losing
+money?" or "what can I cut?" had no answer from the save. The ledger in the save has
+per-category arrays (19 income slots, 38 expense slots) without names.
+
+- **The mapping** comes from the open-source `eu4save` crate (rakaly/jomini, MIT, the
+  parser behind PDX Tools), where `income_ledger_breakdown` and
+  `expense_ledger_breakdown` name each index; SAVE_FORMAT lists it. It was checked on
+  the user's 1535.8.2 save: the categories sum to `lastmonthincome` (81.98) and
+  `lastmonthexpense` (63.69), and the large ones sit where the game should put them
+  (army maintenance 35.1, fort maintenance 11.4, advisors 10.5; 10.4 of war reparations
+  from the peace with Ragusa and the Ottomans). Unnamed slots are summed as "Other".
+- **`get_budget`** (`context.ledger`): income and expenses by category for last month,
+  this year so far and the previous year, the recurring balance (the game's own
+  `last_months_recurring_*`), one-off spending marked, and the largest spending since
+  the campaign began (`totalexpensetable`: 45,318 ducats, 43% on the army). War
+  reparations come with a note that they stop (10 years, the wiki's Economy page).
+- **Briefing:** the economy section adds a *By category* line with the four largest
+  sources and costs, pointing to `get_budget`; both prompts point to it for income
+  and expenses.
+
+Checked in game (2026-11-20): last month's twelve categories matched the game's own
+ledger for July 1535. The campaign's 1,724 ducats on support loyalists also fit: the user
+paid them to Bohemia, a junior partner in a personal union, to lower its liberty desire
+before integrating it.

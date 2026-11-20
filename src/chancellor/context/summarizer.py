@@ -16,6 +16,7 @@ from typing import Any
 from chancellor.context.campaign import Campaign, as_list, count_regiments, land_armies
 from chancellor.context.coring import coring_costs, render_coring
 from chancellor.context.development import development_costs, render_development
+from chancellor.context.ledger import budget_line, read_ledger
 from chancellor.context.power import power_report, render_power
 from chancellor.game.coring_rules import CoringRules
 from chancellor.game.development_rules import DevelopmentRules
@@ -216,6 +217,7 @@ def _economy(ctx: _Context) -> str:
             ("Last month income", _ducats(income)),
             ("Last month expenses", _ducats(expense)),
             ("Last month balance", _ducats(balance, signed=True)),
+            ("By category", budget_line(read_ledger(ctx.campaign, ctx.tag))),
             ("Loans", f"{len(loans)} totalling {_ducats(debt)}" if loans else "none"),
             ("Inflation", _num(c.get("inflation"), 2)),
             ("Mercantilism", _num(c.get("mercantilism"))),

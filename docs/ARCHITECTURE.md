@@ -67,6 +67,7 @@ flowchart LR
 | `player.journal` | Campaign journal: a snapshot of the player's country per save read, and the changes between consecutive ones (D-043) | 4 |
 | `player.backfill` | Older saves grouped by campaign id; the groups the player picks are read into the journal (D-045) | 4 |
 | `app/web/charts.js` | The panel's Charts tab: small-multiple SVG line charts of the journal's numbers, with events, hover and a table (D-045) | 5 |
+| `context.ledger` | Income and expenses by category from the ledger: last month, this year, last year, since the start (D-052) | 4 |
 | `context.trade` | A country's trade: home node and share, merchants, power by node, what feeds home, embargoes (D-046) | 4 |
 | `game.trade_nodes` | The trade node map from `common/tradenodes`: links, end nodes, what is upstream (D-046) | 4 |
 | `wiki.store` | Import `Special:Export` XML into a local SQLite FTS5 index (redirects as aliases); search with BM25 | 4 |

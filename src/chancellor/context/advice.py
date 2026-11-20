@@ -151,7 +151,9 @@ def render_recommendations(
         for item in group:
             number += 1
             touched = f" (goal {', '.join(f'#{g}' for g in item.goals)})" if item.goals else ""
-            lines.append(f"{number}. **{item.action}**{touched} `[{item.kind}]`")
+            # The kind and target as keys: stable for checks and for "Guide" (D-058).
+            key = f"{item.kind} {item.target}" if item.target else item.kind
+            lines.append(f"{number}. **{item.action}**{touched} `[{key}]`")
             lines += [f"   - {reason}" for reason in item.reasons]
             if item.source:
                 lines.append(f"   - Details: {item.source}")

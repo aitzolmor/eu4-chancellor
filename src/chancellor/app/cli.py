@@ -170,6 +170,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--check", action="store_true", help="Only show what it finds; write nothing."
     )
 
+    evaluate = sub.add_parser(
+        "eval",
+        help="Run the evaluation set: real questions and what each tool must answer (D-058).",
+        description=(
+            "Runs each set in evals/ (or the files given) against the save it names in your "
+            "save folder, and reports which checks fail. Saves are not in the repository: "
+            "a set whose save is missing is skipped."
+        ),
+    )
+    evaluate.add_argument("files", nargs="*", type=Path, help="Sets to run (default: evals/).")
+
     journal = sub.add_parser(
         "journal",
         parents=[common],
@@ -262,6 +273,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     """
     args = build_parser().parse_args(argv)
     _use_utf8()
+    if args.command == "eval":
+        return _run_evals(args.files)
     if args.command == "clear-cache":
         removed = clear_cache()
         print(f"Removed {removed} cached file(s) from {cache_dir()}.", file=sys.stderr)
@@ -577,6 +590,33 @@ def _load_campaign(args: argparse.Namespace, settings: Settings) -> tuple[Campai
         loc = Localisation.load(settings.game_dir, language)
 
     return Campaign.from_raw(raw, loc), save_path
+
+
+def _run_evals(files: list[Path]) -> int:
+    """Run the evaluation sets; exit code 1 if any check fails (D-058)."""
+    import tempfile
+
+    from chancellor.evals import eval_files, load_eval, open_save, render_results, run_eval
+
+    settings = load_settings()
+    language = settings.language or (
+        detect_language(settings.save_dir.parent) if settings.save_dir else "english"
+    )
+    failed = 0
+    for path in files or eval_files():
+        evalset = load_eval(path)
+        with tempfile.TemporaryDirectory() as work:
+            runner = open_save(evalset, settings.save_dir, settings.game_dir, language, Path(work))
+            if runner is None:
+                print(
+                    f"Skipped {evalset.name}: {evalset.save} is not in the save folder.",
+                    file=sys.stderr,
+                )
+                continue
+            results = run_eval(evalset, runner)
+        _write_stdout(render_results(evalset, results))
+        failed += sum(1 for r in results if not r.passed)
+    return 1 if failed else 0
 
 
 def _emit(args: argparse.Namespace, text: str, what: str) -> int:

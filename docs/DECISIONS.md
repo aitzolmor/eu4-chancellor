@@ -1144,9 +1144,36 @@ pass every pair, D-048); and a way back to the rivals.
   Spain, so a comparison looks a country's numbers up under each tag it has had. Spain
   now has numbers on all 21 saves (318 development as Castile in 1455, 759 in 1525).
 
+## D-050 — A war in progress, in detail
+
+**Date:** 2026-11-18 · **Status:** Accepted
+
+Asked about a war against Ragusa and the Ottomans, Claude Desktop said it began on
+1532.1.1, the day of the save, and that it could not see occupations or the war score.
+The briefing printed the war's `action` field as its start; on the user's save that
+field held the save's own date for a war declared in 1528.
+
+- **The start is the first `history` entry** (`war_start`), used by the briefing and by
+  the journal ("War began: … (declared 1528.9.17)"). SAVE_FORMAT now says `action` is
+  not the start.
+- **`get_wars`** (`context.wars`) reads each war: both sides, the war goal and who
+  controls it, every province one side owns and the other controls (by owner, with
+  development), each side's losses in battle, to attrition and in ships, participation,
+  and `last_warscore_quarter`, the war score the game records at its quarterly check.
+  The briefing adds one *State* line per war pointing to it.
+- **Losses come from the participants, not the battles.** Each participant has 21 loss
+  numbers (seven unit types × battle, attrition, captured) that are complete; the
+  battles in `history` are not (19 on the user's war, none of Austria's land battles),
+  so they are shown as examples, never as a tally.
+- **Controllers** are a regex scan like the owners (`Campaign.province_controllers`,
+  0.24 s on a 40 MB save).
+- **Not covered:** the live war score against each enemy is not in the save; the probe
+  mod (D-044) is the way to it. On the user's save: 68 provinces occupied (637
+  development), none lost, 100,447 men lost against 54,479, quarterly score 56.
+
 ## D-051 — Casus belli in the war check and the targets, from the probe mod
 
-**Date:** 2026-11-20 · **Status:** Accepted (builds on D-044; D-050 is in PR #55)
+**Date:** 2026-11-20 · **Status:** Accepted (builds on D-044)
 
 The probe mod's casus belli matched the diplomacy screen in three game sessions (D-044),
 so the planning tools now use them instead of saying casus belli are unknown.
@@ -1176,3 +1203,94 @@ Conquista (Hungría)"; against Liège, "Conquista (yours)"; Savoy, checked, none
 wider check in game (1535.05 to 1535.07): 88 countries checked, 21 with casus belli,
 and none of the 15 war targets listed is unchecked any more (the Teutonic Order and
 Lübeck: none, as on the diplomacy screen; Denmark: Imperial ban and Imperial campaign).
+
+## D-052 — Income and expenses by category, from the ledger
+
+**Date:** 2026-11-20 · **Status:** Accepted (D-051 is in PR #50)
+
+The briefing gave last month's income and expenses as two totals, so "why am I losing
+money?" or "what can I cut?" had no answer from the save. The ledger in the save has
+per-category arrays (19 income slots, 38 expense slots) without names.
+
+- **The mapping** comes from the open-source `eu4save` crate (rakaly/jomini, MIT, the
+  parser behind PDX Tools), where `income_ledger_breakdown` and
+  `expense_ledger_breakdown` name each index; SAVE_FORMAT lists it. It was checked on
+  the user's 1535.8.2 save: the categories sum to `lastmonthincome` (81.98) and
+  `lastmonthexpense` (63.69), and the large ones sit where the game should put them
+  (army maintenance 35.1, fort maintenance 11.4, advisors 10.5; 10.4 of war reparations
+  from the peace with Ragusa and the Ottomans). Unnamed slots are summed as "Other".
+- **`get_budget`** (`context.ledger`): income and expenses by category for last month,
+  this year so far and the previous year, the recurring balance (the game's own
+  `last_months_recurring_*`), one-off spending marked, and the largest spending since
+  the campaign began (`totalexpensetable`: 45,318 ducats, 43% on the army). War
+  reparations come with a note that they stop (10 years, the wiki's Economy page).
+- **Briefing:** the economy section adds a *By category* line with the four largest
+  sources and costs, pointing to `get_budget`; both prompts point to it for income
+  and expenses.
+
+Checked in game (2026-11-20): last month's twelve categories matched the game's own
+ledger for July 1535. The campaign's 1,724 ducats on support loyalists also fit: the user
+paid them to Bohemia, a junior partner in a personal union, to lower its liberty desire
+before integrating it.
+
+## D-053 — The budget over time in the charts
+
+**Date:** 2026-11-20 · **Status:** Accepted (builds on D-052, D-045)
+
+With the ledger mapped (D-052), "why did my balance fall since 1530?" needs the
+categories over time, not just this month's.
+
+- **Journal:** each snapshot keeps last month's income and expenses by category
+  (`budget`, a few dozen numbers) and, like the numbers, keeps it when old snapshots
+  are trimmed. Saves recorded before this have no budget: `chancellor journal
+  --backfill` reads them again and replaces their snapshots. On the user's journal it
+  filled 31 of 35; the other four came from autosaves the game has since overwritten,
+  so the budget lines join their points across those gaps.
+- **Charts tab:** a *Where the money comes from and goes* section with three charts:
+  income by source, recurring expenses, and one-off spending (buildings, raising
+  armies, institutions...). Each budget chart names its three largest categories over
+  the whole span in the three validated hues and folds the rest into a dashed grey
+  "Other" (D-048's palette: no fourth hue passes every pair), so a category keeps its
+  colour on every date. One measure per chart, all in ducats a month; the table view
+  gains the same columns.
+- **`get_trends`** adds a table of each category's first and latest value.
+
+Checked with the user's 31 saves (1455–1535) backfilled into a temporary journal:
+taxation grew from 8.4 to 25.0 a month, production from 2.9 to 16.4 and gold from 2.7
+to 12.9; army maintenance from 9.0 to 35.1, peaking near 50 during the war of
+1528–1532; the one-off chart shows the two institutions embraced (301 and 476 ducats).
+In 1535 "Other" is the largest income line (trade 13.8, war reparations 10.4,
+vassals 3.5 together), a cost of the three-hue limit; `get_budget` names them.
+
+## D-054 — Which missions can be completed now
+
+**Date:** 2026-11-20 · **Status:** Accepted (D-051 is in PR #50)
+
+The mission tree said which missions were available (prerequisites done) and listed
+their requirements, but not whether the country already meets them: "what can I claim
+now?" needed the player to open each mission in the game.
+
+- **Checked against the save:** with the game rules, each available mission's trigger
+  goes through the decisions' three-valued evaluator, one requirement at a time:
+  `[x]` met, `[ ]` not met, `[?]` could not be checked. The tree opens with a summary:
+  which missions can be completed now, which are one requirement away, and which are
+  possible but have unchecked parts. `get_missions` and `chancellor missions` both do
+  it; the targets report, which only needs the provinces, does not.
+- **Two evaluator bugs found on the way**, which also affected the decisions and
+  formable nations:
+  - A geography scope without `type` (`europe = { owned_by = TUR }`) was read as "all
+    its provinces"; the game reads it as "any" (its own files write `type = all` 2,727
+    times and `type = any` 18). "El azote de Europa", which asks that the Ottomans own
+    nothing in Europe, looked complete because the Ottomans do not own *all* of it.
+  - Inside an `OR`, each `if`, `else_if` and `else` was evaluated on its own, and an
+    `else_if` whose `if` had applied counted as true, so any `OR` holding one was true.
+    "Relaciones ibéricas" (`OR = { if = { limit = { exists = SPA } ... } else_if =
+    { limit = { exists = CAS } ... } ... }`) looked complete. An `if` chain is now one
+    alternative, as `explain` already treated it at the top level.
+
+On the user's 1535.8.2 save: 18 available missions; can be completed now: Ducado de
+Milán, Conseguir Croacia, Sobrepasar a los polacos; one requirement away: nine (among
+them Imperio multicultural, adm tech 10 with 9 now, and El azote de Europa); possible
+with unchecked parts: five (Relaciones ibéricas needs development double Spain's, a
+variable comparison the evaluator does not do). In game, the three it called
+completable could be completed.

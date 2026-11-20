@@ -247,3 +247,57 @@ def test_the_picked_countries_are_saved_tracked_and_charted(tmp_path: Path):
     assert api.set_compare(["Castilla"]) == {"ok": True, "picked": ["CAS"]}
     assert api.trends()["compare"]["picked"] == ["CAS"]
     assert api.set_compare(["Narnia"])["ok"] is False
+
+
+def test_the_budget_is_recorded_and_charted_by_category(tmp_path: Path):
+    from chancellor.player.journal import JournalStore, take_snapshot
+
+    world = """
+    countries={ HAB={ ledger={
+        lastmonthincometable={ 24.97 16.35 13.84 12.93 0 3.47 0 0 10.42 }
+        lastmonthexpensetable={ 10.5 0 4.6 0 0 0 35.1 1.7 11.4 0 0 0 0 20.0 }
+    } } }
+    """
+    campaign = Campaign({"player": "HAB", "date": "1535.8.2"}, parse(world), Localisation())
+    snapshot = take_snapshot(campaign)
+    assert snapshot["budget"]["income"]["War reparations"] == 10.42
+    assert snapshot["budget"]["expenses"]["Building fortresses"] == 20.0
+    older = {"date": "1530.1.1", "tag": "HAB", "numbers": {}}  # recorded before D-053
+    middle = {
+        "date": "1533.1.1",
+        "tag": "HAB",
+        "numbers": {},
+        "budget": {
+            "income": {"Taxation": 20.0, "Gifts": 2.0},
+            "expenses": {"Army maintenance": 30.0},
+        },
+    }
+    data = trend_data([older, middle, snapshot], "1535.8.2", campaign)
+    income = data["budget"]["income"]
+    assert list(income) == ["Taxation", "Production", "Trade", "Other"]
+    assert income["Taxation"] == [None, 20.0, 24.97]
+    assert income["Other"] == [None, 2.0, round(12.93 + 3.47 + 10.42, 2)]
+    expenses = data["budget"]["expenses"]  # recurring only; building is one-off
+    assert list(expenses) == [
+        "Army maintenance",
+        "Fort maintenance",
+        "Advisor maintenance",
+        "Other",
+    ]
+    assert data["budget"]["one_off"] == [None, 0.0, 20.0]
+    text = render_trends(data, "Austria")
+    assert "Income by source a month, first and latest save that recorded it:" in text
+    assert "| Taxation | 20 → 25 |" in text
+    journal = JournalStore(tmp_path / "journal.json")
+    for i in range(30):  # trimmed old snapshots (past DETAILED) keep the budget
+        journal.record("c", {**snapshot, "date": f"{1500 + i}.1.1", "wars": ["x"]})
+    oldest = journal.snapshots("c")[0]
+    assert "budget" in oldest and "wars" not in oldest
+
+
+def test_the_budget_charts_are_drawn():
+    charts = (WEB_DIR / "charts.js").read_text(encoding="utf-8")
+    assert '"Income by source (a month)", budgetSeries(budget.income)' in charts
+    assert '"Recurring expenses (a month)", budgetSeries(budget.expenses)' in charts
+    assert "const index = name === OTHER ? DASHED : i;" in charts  # "Other" is the dashed line
+    assert "budgetColumns(data)" in charts  # and in the table

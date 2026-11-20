@@ -42,7 +42,7 @@ flowchart LR
 | `game.modifiers` | Named modifiers and the stats they change (`ModifierLibrary`, `format_effect`) | 3 |
 | `game.imperial_reforms` | HRE imperial reforms: order, branches, DLC set, modifiers; the next reform (`ImperialReformLibrary`) | 4 |
 | `context.script` | Readable, localised descriptions of trigger and effect script | 3 |
-| `context.missions` | A country's mission tree with completed / available / locked status | 3 |
+| `context.missions` | A country's mission tree with completed / available / locked status, and each available mission's requirements checked against the save (D-054) | 3 |
 | `game.cache` | On-disk cache of parsed game data, invalidated by file size/mtime and package version | 3 |
 | `game.rules` | Culture/religion groups, geography (areas, regions, colonial regions…), scripted triggers | 3 |
 | `game.decisions` | Decisions and formable nations from `decisions/` (`DecisionLibrary`) | 3 |
@@ -66,9 +66,11 @@ flowchart LR
 | `player.watches` | Watches: the player's "tell me when ..." as conditions on metrics read from the save, checked on every save, firing once (D-041) | 4 |
 | `live.casus_belli` | The probe mod's latest casus belli check, trusted only for the save's country and date; words for the war check and targets (D-051) | 4 |
 | `live.probe` / `live.gamelog` | Prototype: a mod that logs values the save lacks (war score, casus belli) to `logs/game.log`, and its reader (D-044) | 4 |
-| `player.journal` | Campaign journal: a snapshot of the player's country per save read, and the changes between consecutive ones (D-043) | 4 |
+| `player.journal` | Campaign journal: a snapshot of the player's country per save read, and the changes between consecutive ones (D-043); last month's budget by category (D-053) | 4 |
 | `player.backfill` | Older saves grouped by campaign id; the groups the player picks are read into the journal (D-045) | 4 |
-| `app/web/charts.js` | The panel's Charts tab: small-multiple SVG line charts of the journal's numbers, with events, hover and a table (D-045) | 5 |
+| `app/web/charts.js` | The panel's Charts tab: small-multiple SVG line charts of the journal's numbers, with events, hover and a table (D-045); the budget by category (D-053) | 5 |
+| `context.wars` | A country's wars: real start, goal, occupations both ways, losses, recorded battles, quarterly war score (D-050) | 4 |
+| `context.ledger` | Income and expenses by category from the ledger: last month, this year, last year, since the start (D-052) | 4 |
 | `context.trade` | A country's trade: home node and share, merchants, power by node, what feeds home, embargoes (D-046) | 4 |
 | `game.trade_nodes` | The trade node map from `common/tradenodes`: links, end nodes, what is upstream (D-046) | 4 |
 | `wiki.store` | Import `Special:Export` XML into a local SQLite FTS5 index (redirects as aliases); search with BM25 | 4 |

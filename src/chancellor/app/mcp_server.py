@@ -44,16 +44,18 @@ it with update_player_context and tell them; record only what the player says, n
 own suggestions. When they ask to be told when something happens, set a watch with \
 create_watch and say which thresholds you chose. For what happened recently in \
 the campaign, read get_campaign_journal; for how the numbers moved over time, \
-get_trends. For trade, get_trade.
+get_trends. For trade, get_trade; for a war in progress, get_wars; for income and \
+expenses, get_budget.
 - Call them whenever a question depends on the campaign: the player's country, another \
 country, a possible war, the world, missions, formable nations or where to expand. \
 Several independent lookups can be made in parallel.
 - Countries can be named by tag (BUR) or by name in the player's game language (Borgoña).
 - Every call reads the newest save, so after the player saves, look things up again.
-- The tools do not know war score. Casus belli are known only when the Chancellor \
-probe mod runs in the game (check_war and get_expansion_targets then list them, the \
-subjects' included); otherwise those tools say so. Truces are known, but their end dates \
-are estimates. Requirements marked [?] could not be checked automatically.
+- The tools do not know the live war score (get_wars gives the score at the game's last \
+quarterly check). Casus belli are known only when the Chancellor probe mod runs in the \
+game (check_war and get_expansion_targets then list them, the subjects' included); \
+otherwise those tools say so. Truces are known, but their end dates are estimates. \
+Requirements marked [?] could not be checked automatically.
 - Use the computed mechanics instead of rules of thumb: the country briefing says what \
 monarch power buys (technology, ideas, stability, generals, development) and the war check \
 estimates the aggressive expansion of a conquest. Never recommend buying what the country \
@@ -209,6 +211,14 @@ def build_server(provider: CampaignProvider) -> Any:
     @server.tool(description=_DESCRIPTIONS["get_trends"], annotations=read_only)
     def get_trends(countries: list[str] | None = None) -> str:
         return call("get_trends", countries=countries)
+
+    @server.tool(description=_DESCRIPTIONS["get_wars"], annotations=read_only)
+    def get_wars(country: str | None = None) -> str:
+        return call("get_wars", country=country)
+
+    @server.tool(description=_DESCRIPTIONS["get_budget"], annotations=read_only)
+    def get_budget(country: str | None = None) -> str:
+        return call("get_budget", country=country)
 
     @server.tool(description=_DESCRIPTIONS["get_trade"], annotations=read_only)
     def get_trade(country: str | None = None) -> str:

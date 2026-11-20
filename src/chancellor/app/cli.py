@@ -350,7 +350,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 raise CliError("Missions are read from the game files; set EU4_GAME_DIR.")
             campaign, _ = _load_campaign(args, settings)
             tag = campaign.resolve_country(" ".join(args.name)) if args.name else campaign.player
-            tree = mission_tree(campaign, MissionLibrary.load(settings.game_dir), tag)
+            tree = mission_tree(
+                campaign,
+                MissionLibrary.load(settings.game_dir),
+                tag,
+                GameRules.load(settings.game_dir),
+            )
             modifiers = ModifierLibrary.load(settings.game_dir)
             text = render_missions(campaign, tree, brief=args.brief, modifiers=modifiers)
             return _emit(args, text, f"Missions of {campaign.label(tag)}")

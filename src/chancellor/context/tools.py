@@ -17,11 +17,13 @@ from typing import Any
 from chancellor.context.ae import render_ae_section
 from chancellor.context.campaign import Campaign, CountryLookupError, _date_key
 from chancellor.context.decisions import check_decisions, render_decisions
+from chancellor.context.ledger import read_ledger, render_budget
 from chancellor.context.missions import mission_tree, render_missions
 from chancellor.context.summarizer import summarize
 from chancellor.context.targets import find_targets, render_targets
 from chancellor.context.trade import render_trade, trade_line, trade_report
 from chancellor.context.war_check import check_war, render_war_check
+from chancellor.context.wars import render_wars, war_reports
 from chancellor.context.world import render_world, world_overview
 from chancellor.game.ae_rules import AeRules
 from chancellor.game.coring_rules import CoringRules
@@ -164,8 +166,11 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "description": (
             "A country's mission tree from the game files with progress from the save: "
             "completed, available now (prerequisites done) or locked, with requirements and "
-            "rewards (including the bonuses of granted modifiers). Set `brief` for titles "
-            "and status only. Omit `country` for the player."
+            "rewards (including the bonuses of granted modifiers). Each available mission's "
+            "requirements are checked against the save ([x] met, [ ] not met, [?] could not "
+            "be checked), with a summary of which can be completed now and which are one "
+            "requirement away. Set `brief` for titles and status only. Omit `country` for "
+            "the player."
         ),
         "input_schema": {
             "type": "object",
@@ -389,6 +394,41 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "get_wars",
+        "description": (
+            "A country's wars in detail, from the save: when each began (the declaration), "
+            "the war goal and who controls it, both sides, every province one side occupies "
+            "of the other (with development, by owner), the losses of each side in battle, "
+            "to attrition and in ships, some recorded battles, participation, and the war "
+            "score the game recorded at its last quarterly check. Use it for anything about a "
+            "war in progress: how it is going, what to demand at the peace, whether to make "
+            "a separate peace. The live war score against each enemy is not in the save. "
+            "Omit `country` for the player."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"country": _COUNTRY},
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "get_budget",
+        "description": (
+            "Where a country's money comes from and where it goes, from the ledger in the "
+            "save: income by source (taxation, production, trade, gold, vassals, war "
+            "reparations...) and expenses by category (army, fleet and fort maintenance, "
+            "advisors, state maintenance, interest, buildings...), for last month, this year "
+            "so far and last year, the recurring balance, and the largest spending since the "
+            "campaign began. Use it for any question about a deficit, debt, what to cut or "
+            "how to earn more. Omit `country` for the player."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"country": _COUNTRY},
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -410,6 +450,8 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
     "get_campaign_journal": {"saves": _Field(int)},
     "get_trends": {"countries": _Field(list)},
     "get_trade": {"country": _Field(str)},
+    "get_wars": {"country": _Field(str)},
+    "get_budget": {"country": _Field(str)},
     "create_watch": {
         "description": _Field(str, required=True),
         "conditions": _Field(list, required=True),
@@ -550,6 +592,14 @@ class Toolbox:
                 text = f"{text.rstrip()}\n\n_{line}_\n"
         return text
 
+    def _get_wars(self, args: dict[str, Any]) -> str:
+        tag = self._tag(args.get("country"))
+        return render_wars(self.campaign, war_reports(self.campaign, tag))
+
+    def _get_budget(self, args: dict[str, Any]) -> str:
+        tag = self._tag(args.get("country"))
+        return render_budget(self.campaign, read_ledger(self.campaign, tag))
+
     def _get_trade(self, args: dict[str, Any]) -> str:
         tag = self._tag(args.get("country"))
         report = trade_report(self.campaign, self._trade_graph, tag)
@@ -572,7 +622,8 @@ class Toolbox:
         return render_world(self.campaign, world_overview(self.campaign))
 
     def _get_missions(self, args: dict[str, Any]) -> str:
-        tree = mission_tree(self.campaign, self._missions, self._tag(args.get("country")))
+        tag = self._tag(args.get("country"))
+        tree = mission_tree(self.campaign, self._missions, tag, self._rules)
         brief = bool(args.get("brief"))
         return render_missions(self.campaign, tree, brief=brief, modifiers=self._modifiers)
 

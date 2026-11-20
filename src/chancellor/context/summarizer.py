@@ -16,7 +16,9 @@ from typing import Any
 from chancellor.context.campaign import Campaign, as_list, count_regiments, land_armies
 from chancellor.context.coring import coring_costs, render_coring
 from chancellor.context.development import development_costs, render_development
+from chancellor.context.ledger import budget_line, read_ledger
 from chancellor.context.power import power_report, render_power
+from chancellor.context.wars import war_line, war_reports, war_start
 from chancellor.game.coring_rules import CoringRules
 from chancellor.game.development_rules import DevelopmentRules
 from chancellor.game.imperial_reforms import IMPERIAL_REFORM_COST, ImperialReformLibrary
@@ -216,6 +218,7 @@ def _economy(ctx: _Context) -> str:
             ("Last month income", _ducats(income)),
             ("Last month expenses", _ducats(expense)),
             ("Last month balance", _ducats(balance, signed=True)),
+            ("By category", budget_line(read_ledger(ctx.campaign, ctx.tag))),
             ("Loans", f"{len(loans)} totalling {_ducats(debt)}" if loans else "none"),
             ("Inflation", _num(c.get("inflation"), 2)),
             ("Mercantilism", _num(c.get("mercantilism"))),
@@ -481,6 +484,7 @@ def _elector_preferences(ctx: _Context, electors: list[str]) -> str | None:
 
 def _wars(ctx: _Context) -> str:
     lines = []
+    states = {report.name: report for report in war_reports(ctx.campaign, ctx.tag)}
     for war in ctx.campaign.wars_of(ctx.tag):
         attackers = as_list(war.get("attackers"))
         defenders = as_list(war.get("defenders"))
@@ -491,12 +495,16 @@ def _wars(ctx: _Context) -> str:
             cb = ctx.text(goal.get("casus_belli", goal.get("type", "")))
             target = ctx.loc.province(goal["province"]) if "province" in goal else ""
             goal_text = f"; war goal: {cb} {target}".rstrip()
+        name = str(war.get("name", "?")).strip()
+        # The first history entry is the declaration; ``action`` is not the start (D-050).
+        started = war_start(war) or "?"
         lines.append(
-            f"- **{str(war.get('name', '?')).strip()}** ({ctx.tag} is {side}; started "
-            f"{war.get('action', '?')}{goal_text})\n"
+            f"- **{name}** ({ctx.tag} is {side}; started {started}{goal_text})\n"
             f"  - Attackers: {_tags(ctx, attackers)}\n"
             f"  - Defenders: {_tags(ctx, defenders)}"
         )
+        if name in states:
+            lines.append(f"  - State: {war_line(ctx.campaign, states[name])}")
     body = "\n".join(lines) if lines else "At peace."
     return f"## Wars\n\n{body}"
 

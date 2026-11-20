@@ -22,6 +22,7 @@ from typing import Any
 
 from chancellor.context.campaign import Campaign, as_list, count_regiments
 from chancellor.context.ledger import OTHER, RECURRING_EXPENSES, read_ledger
+from chancellor.context.wars import war_start
 from chancellor.save.parser import LazyBlock, get_all
 
 FILE_NAME = "journal.json"
@@ -131,6 +132,9 @@ def take_snapshot(
         "provinces": provinces,
         "uncored": sorted(str(p) for p in owned if p not in cores),
         "wars": sorted(str(w.get("name", "?")).strip() for w in campaign.wars_of(tag)),
+        "war_starts": {
+            str(w.get("name", "?")).strip(): war_start(w) or "" for w in campaign.wars_of(tag)
+        },
         "allies": sorted(str(t) for t in as_list(country.get("allies"))),
         "subjects": sorted(str(t) for t in as_list(country.get("subjects"))),
         "rivals": rivals,
@@ -183,7 +187,11 @@ def changes(before: dict[str, Any], after: dict[str, Any], campaign: Campaign) -
         added = [x for x in after[key] if x not in before[key]]
         removed = [x for x in before[key] if x not in after[key]]
         show = label or (lambda x: x)
-        if added:
+        if added and key == "wars":  # with the declaration's date, not the save's (D-050)
+            starts = after.get("war_starts", {})
+            dated = [f"{x} (declared {starts[x]})" if starts.get(x) else x for x in added]
+            events.append(f"{began}: {_listed(dated)}")
+        elif added:
             events.append(f"{began}: {_listed([show(x) for x in added])}")
         if removed:
             events.append(f"{ended}: {_listed([show(x) for x in removed])}")

@@ -308,3 +308,67 @@ def test_available_missions_are_checked_against_the_save(library: MissionLibrary
     assert "Can be completed now" not in render_missions(
         campaign, mission_tree(campaign, library, "HAB")
     )
+
+
+def test_a_reward_that_depends_on_a_number_is_shown_with_its_value():
+    from chancellor.game.rules import GameRules
+
+    missions = MissionLibrary(
+        parse_mission_file(
+            """
+            hab_column_1 = {
+                slot = 1
+                hab_poland = {
+                    position = 1
+                    trigger = { is_emperor = yes }
+                    effect = {
+                        add_prestige = 10
+                        complex_dynamic_effect = {
+                            first_custom_tooltip = SHOWN_AS_400
+                            first_limit = "
+                    POL = { NOT = { total_own_and_non_tributary_subject_development = 400 } }
+                            "
+                            first_effect = "
+                                give_union_effect = yes
+                            "
+                        }
+                    }
+                }
+            }
+            """
+        )
+    )
+    # The scripted effect holds the condition that decides: below 300, not 400.
+    rules = GameRules(
+        scripted_effects={
+            "give_union_effect": parse(
+                "hidden_effect = { if = { limit = { exists = POL "
+                "POL = { NOT = { total_own_and_non_tributary_subject_development = 300 } } } "
+                "add_casus_belli = { type = cb_restore_personal_union target = POL } } "
+                "if = { limit = { exists = PLC } add_prestige = 5 } }"
+            )
+        }
+    )
+    world = parse(
+        """
+        countries={
+            HAB={ country_missions={ mission_slot={ hab_column_1 } } }
+            POL={ raw_development=303.0 subjects={ LIT } owned_provinces={ 262 } }
+            LIT={ raw_development=392.0 overlord=POL owned_provinces={ 272 } }
+        }
+        diplomacy={ dependency={ first="POL" second="LIT" subject_type="personal_union" } }
+        empire={ emperor=HAB }
+        """
+    )
+    campaign = Campaign(
+        {"player": "HAB", "date": "1535.1.1"}, world, Localisation({"POL": "Polonia"})
+    )
+    tree = mission_tree(campaign, missions, "HAB", rules)
+    (state,) = tree.available()
+    assert state.completable is True
+    (condition,) = state.reward_conditions  # PLC does not exist: left out
+    assert condition.met is False
+    assert condition.now == ["Polonia: development with its subjects 695, needs less than 300"]
+    text = render_missions(campaign, tree)
+    assert "The reward depends on conditions (it may pay to claim it later):" in text
+    assert "      - Then: add_casus_belli: type: cb_restore_personal_union" in text

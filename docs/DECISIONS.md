@@ -1208,3 +1208,75 @@ On the user's 1535.8.2 save the panel gains "3 missions can be completed: Ducado
 Milán, Conseguir Croacia, Sobrepasar a los polacos", next to the coalition and
 overextension alerts. The journal's lines start from the next save read, the first
 with `ready` recorded.
+
+## D-056 — Advise: structured recommendations from rules over the save
+
+**Date:** 2026-11-20 · **Status:** Accepted (first rung of "Claude plays", VISION)
+
+The vision's last ladder is Advise, Guide, Act. Each tool so far describes one side of
+the campaign, and the model put them together itself, unevenly. `get_recommendations`
+turns what the code already computes into a ranked list of actions.
+
+- **Structured, not prose** (`context.advice.Recommendation`): a `kind`
+  (`complete_mission`, `form_nation`, `fix_deficit`, `repay_loan`, `plan_income`,
+  `buy_technology`, `spend_power`, `save_power`, `buy_idea`, `raise_stability`,
+  `core_province`, `declare_war`, `get_casus_belli`, `hold_expansion`,
+  `work_towards_mission`), a target, a priority (`now`, `soon`, `consider`), the facts
+  behind it and the tool with the details. A stable kind and target are what "Guide"
+  will map to the game's screens and "Act" will carry out.
+- **Rules, not guesses:** each comes from numbers the player can check: missions and
+  nations ready to claim (D-055); a recurring deficit, a loan the treasury can repay,
+  war reparations that will stop; monarch power near the cap or a technology that is
+  affordable and not ahead of its time; overextension with the cheapest cores; the best
+  expansion targets (odds 2x or more, no truce or allied defender, coalition risk not
+  high), dropping the ones whose only reason is a mission already claimable; 3+
+  countries at 50+ AE; missions one requirement away, with the requirement.
+- **Goals:** the player's recorded goals head the list, and a recommendation whose
+  target country, or a proper name in its mission title, appears in a goal is marked
+  with it and comes first within its priority.
+- **Choosing is left to the model and the player:** the output says these are options
+  to weigh with the goals, not a plan. The prompts point to the tool for "what next?".
+- **Casus belli:** the advice takes them as an optional input with the probe mod's
+  shape (D-051), so it does not depend on the draft PR #50; until that merges, targets
+  say the casus belli were not checked.
+
+On the user's 1535.8.2 save (about 5 seconds): now, the three missions ready; soon,
+coring Widin (6% overextension, 35 adm) and letting AE cool down (34 countries at 50+,
+Switzerland 101); to consider, the Austrian Netherlands mission (16 provinces in the
+region, matching goal #1), the war reparations (13% of income), wars on the Teutonic
+Order (5.2x, low risk) and Liège (2.5x, medium risk). Two fixes came from
+reading it: a title's first word no longer matches goals ("Liberar los Balcanes" was
+tied to "liberar un vasallo"), and a missing requirement is shown whole.
+
+## D-057 — When to claim a mission: rewards that depend on a condition
+
+**Date:** 2026-11-20 · **Status:** Accepted (refines D-054 and D-056)
+
+The first recommendations said "complete «Sobrepasar a los polacos» now" and dropped the
+war on Poland. The user pointed out that players often wait: that mission's reward is
+a casus belli to restore the union with Poland only if Poland is small enough, and
+plain conquest claims otherwise, so they were taking land from Poland first.
+
+- **Reward conditions** (`missions.reward_conditions`): the `if`/`else_if` blocks and
+  `complex_dynamic_effect` branches of a mission's effect, following hidden effects and
+  the scripted effects it calls (`GameRules.scripted_effects`, now loaded; cache format
+  5). A branch that only wraps further branches is not listed: the inner ones decide.
+  That matters here: the game's text says "less than 400 development", but the scripted
+  effect grants the casus belli only below 300.
+- **Only what waiting can change:** conditions without a number the player can move (a
+  DLC, the age, the religion) are left out; each one kept shows the current value
+  against the threshold. The evaluator gained
+  `total_own_and_non_tributary_subject_development` (the country plus its subjects,
+  tributaries left out) and `Evaluator.number` for showing values.
+- **Missions:** an available mission lists them under "The reward depends on
+  conditions (it may pay to claim it later)".
+- **Advice:** a mission that can be completed but whose reward improves under an unmet
+  condition becomes `time_mission` ("complete now, or wait for the better reward", soon),
+  with the value and what would be lost; and the war targets keep a reason a waiting
+  mission names, adding that taking land brings that reward closer.
+
+On the user's 1535.8.2 save it is the only such mission: Poland has 303 development and
+its junior partner Lithuania 392, so 695 against the 300 needed; the war on Poland
+(2.7x, low coalition risk) is back with that reason. The user's plan of shrinking
+Poland holds, though it is further off than the game's "400" suggests, and Lithuania
+counts too.

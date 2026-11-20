@@ -44,7 +44,8 @@ own suggestions. When they ask to be told when something happens, set a watch wi
 create_watch and say which thresholds you chose. For what happened recently in \
 the campaign, read get_campaign_journal; for how the numbers moved over time, \
 get_trends. For trade, get_trade; for a war in progress, get_wars; for income and \
-expenses, get_budget.
+expenses, get_budget. For what to do next, get_recommendations, then weigh its options \
+with the player's goals.
 - Call them whenever a question depends on the campaign: the player's country, another \
 country, a possible war, the world, missions, formable nations or where to expand. \
 Several independent lookups can be made in parallel.
@@ -183,6 +184,10 @@ def build_server(provider: CampaignProvider) -> Any:
     @server.tool(description=_DESCRIPTIONS["get_decisions"], annotations=read_only)
     def get_decisions(country: str | None = None, formables_only: bool = False) -> str:
         return call("get_decisions", country=country, formables_only=formables_only)
+
+    @server.tool(description=_DESCRIPTIONS["get_recommendations"], annotations=read_only)
+    def get_recommendations(country: str | None = None) -> str:
+        return call("get_recommendations", country=country)
 
     @server.tool(description=_DESCRIPTIONS["get_expansion_targets"], annotations=read_only)
     def get_expansion_targets(country: str | None = None) -> str:

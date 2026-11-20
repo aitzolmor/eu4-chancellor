@@ -33,6 +33,7 @@ flowchart LR
 | `context.campaign` | Shared, cached view of one loaded save: countries, wars, names, country lookup by name | 2 |
 | `context.summarizer` | Build a compact, LLM-friendly Markdown briefing from any country's perspective | 1–2 |
 | `context.status` | The campaign at a glance as plain values (`CampaignStatus`) for the desktop panel | 4 |
+| `context.advice` | Structured recommendations: rules over the other modules' numbers turned into ranked actions with their facts (D-056) | 6 |
 | `context.alerts` | Ranked alerts (wars, coalitions, truces, economy, stability, imperial reform, missions and nations ready to claim) for the panel | 4 |
 | `app.cli` | Command-line entry point (`chancellor`) | 1 |
 | `app.clipboard` | Dependency-free clipboard copy (Win32 API, `pbcopy`, `wl-copy`/`xclip`) | 1 |

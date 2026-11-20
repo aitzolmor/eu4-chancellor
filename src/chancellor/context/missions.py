@@ -9,6 +9,11 @@ With the game rules, each available mission's ``trigger`` is also evaluated agai
 save (D-054), with the same three-valued evaluator as the decisions: every requirement
 is met, not met or could not be checked, so the tree tells which missions can be
 completed now and what the others still lack.
+
+A reward can depend on a condition too ("if Poland has less than 300 development, a
+casus belli to restore the union"), so a mission is sometimes better claimed later. The
+conditions inside a reward, including those inside the scripted effects it calls, are
+evaluated the same way and shown with the current value against the threshold (D-057).
 """
 
 from __future__ import annotations
@@ -17,16 +22,43 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from chancellor.context.campaign import Campaign, as_list
-from chancellor.context.conditions import Evaluator, Truth
+from chancellor.context.conditions import Evaluator, Truth, all_of
 from chancellor.context.decisions import Requirement
 from chancellor.context.script import clean_text, describe
 from chancellor.game.missions import Mission, MissionLibrary
 from chancellor.game.modifiers import ModifierLibrary
 from chancellor.game.rules import GameRules
+from chancellor.save.parser import parse
 
 # Lines per requirement: met ones short, the ones still to do whole (as for decisions).
 _MET_LINES = 4
 _UNMET_LINES = 30
+_ORDINALS = ("first", "second", "third", "fourth", "fifth")
+# Numeric triggers whose current value is shown beside a reward condition's threshold.
+_SHOWN_NUMBERS = {
+    "total_own_and_non_tributary_subject_development": "development with its subjects",
+    "total_development": "development",
+    "num_of_cities": "provinces",
+}
+
+
+@dataclass
+class RewardCondition:
+    """A part of a mission's reward that only applies under a condition (D-057).
+
+    Attributes:
+        met: Whether the condition holds now (``None``: could not be checked).
+        condition: The condition, described.
+        reward: What it gives when it holds, described.
+        now: Current values against the condition's thresholds ("Polonia: development
+            with its subjects 695, needs less than 300").
+    """
+
+    met: Truth
+    condition: list[str]
+    reward: list[str]
+    now: list[str] = field(default_factory=list)
+
 
 Status = Literal["completed", "available", "locked"]
 
@@ -49,6 +81,7 @@ class MissionState:
     status: Status
     missing: list[str]
     requirements: list[Requirement] = field(default_factory=list)
+    reward_conditions: list[RewardCondition] = field(default_factory=list)
 
     def count(self, met: Truth) -> int:
         """Number of requirements with the given state."""
@@ -130,6 +163,7 @@ def mission_tree(
     slots = (country.get("country_missions") or {}).get("mission_slot", [])
 
     evaluator = Evaluator(campaign, rules, tag, library) if rules is not None else None
+    effects = rules.scripted_effects if rules is not None else {}
     columns = []
     unknown: list[str] = []
     for index, slot in enumerate(_slot_lists(slots), start=1):
@@ -141,7 +175,7 @@ def mission_tree(
                 continue
             missions.extend(series.missions)
         missions.sort(key=lambda m: (m.position is None, m.position or 0))
-        states = [_state(campaign, m, completed, evaluator, tag) for m in missions]
+        states = [_state(campaign, m, completed, evaluator, tag, effects) for m in missions]
         columns.append(MissionColumn(slot=index, series=list(slot), missions=states))
     return MissionTree(tag=tag, columns=columns, unknown_series=unknown)
 
@@ -230,6 +264,7 @@ def _state(
     completed: set[str],
     evaluator: Evaluator | None = None,
     tag: str | None = None,
+    effects: dict[str, dict] | None = None,
 ) -> MissionState:
     title = clean_text(campaign.loc.get(f"{mission.name}_title", ""), campaign)
     if mission.name in completed:
@@ -252,13 +287,136 @@ def _state(
             )
             for met, key, value in evaluator.explain(mission.trigger)
         ]
+    conditions = []
+    if status == "available" and evaluator is not None and tag is not None:
+        conditions = reward_conditions(campaign, mission.effect, evaluator, tag, effects or {})
     return MissionState(
         mission=mission,
         title=title or mission.name.replace("_", " "),
         status=status,
         missing=missing,
         requirements=requirements,
+        reward_conditions=conditions,
     )
+
+
+def reward_conditions(
+    campaign: Campaign,
+    effect: dict,
+    evaluator: Evaluator,
+    tag: str,
+    effects: dict[str, dict],
+) -> list[RewardCondition]:
+    """The conditional parts of a reward, innermost condition first.
+
+    Walks ``if``/``else_if`` blocks, ``complex_dynamic_effect`` branches, hidden effects
+    and the scripted effects the reward calls. A branch that only wraps further branches
+    is not listed itself: the inner ones hold the conditions that decide (the Austrian
+    Poland mission shows "less than 400" but grants the casus belli below 300). Branches
+    about a country that does not exist are left out, and so are conditions without a
+    number the player can move (a DLC, the age, the religion): only a threshold with its
+    current value says whether waiting could change the reward.
+    """
+    found: list[RewardCondition] = []
+
+    def walk(block: object, outer: list[dict], depth: int) -> bool:
+        """Collect branches in ``block``; returns whether it held any."""
+        if not isinstance(block, dict) or depth > 6:
+            return False
+        held = False
+        for key, value in block.items():
+            items = value if isinstance(value, list) else [value]
+            for item in items:
+                if key in ("if", "else_if") and isinstance(item, dict):
+                    limit = item.get("limit")
+                    body = {k: v for k, v in item.items() if k != "limit"}
+                    if isinstance(limit, dict):
+                        held = True
+                        if not walk(body, [*outer, limit], depth + 1):
+                            add([*outer, limit], body)
+                elif key == "complex_dynamic_effect" and isinstance(item, dict):
+                    for ordinal in _ORDINALS:
+                        limit = _script(item.get(f"{ordinal}_limit"))
+                        body = _script(item.get(f"{ordinal}_effect"))
+                        if limit:
+                            held = True
+                            if not walk(body, [*outer, limit], depth + 1):
+                                add([*outer, limit], body)
+                elif key == "hidden_effect":
+                    held = walk(item, outer, depth + 1) or held
+                elif item is True and key in effects:
+                    held = walk(effects[key], outer, depth + 1) or held
+        return held
+
+    def add(limits: list[dict], body: dict) -> None:
+        inner = limits[-1]
+        gone = [t for t in _items(inner.get("exists")) if isinstance(t, str)]
+        if any(not campaign.exists(t) for t in gone):
+            return
+        now = _now(campaign, inner, evaluator, tag)
+        if not now:
+            return
+        found.append(
+            RewardCondition(
+                met=all_of(evaluator.country(limit, tag) for limit in limits),
+                condition=describe(inner, campaign, 6, country=tag),
+                reward=describe(body, campaign, 6, country=tag),
+                now=now,
+            )
+        )
+
+    walk(effect, [], 0)
+    return found
+
+
+def one_line(lines: list[str], limit: int = 160) -> str:
+    """Described script on one line: "add_casus_belli: type: X; target: Y"."""
+    parts = [line.strip().removeprefix("- ").rstrip(":") for line in lines if line.strip()]
+    if not parts:
+        return ""
+    text = parts[0] + (": " + "; ".join(parts[1:]) if len(parts) > 1 else "")
+    return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def _script(value: object) -> dict:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str) and "=" in value:
+        parsed = parse(value)
+        return parsed if isinstance(parsed, dict) else {}
+    return {}
+
+
+def _items(value: object) -> list[object]:
+    return value if isinstance(value, list) else [value]
+
+
+def _now(campaign: Campaign, limit: dict, evaluator: Evaluator, tag: str) -> list[str]:
+    """Current values of the numeric triggers in a condition, with their thresholds."""
+    lines: list[str] = []
+
+    def walk(block: object, scope: str, negated: bool) -> None:
+        if not isinstance(block, dict):
+            return
+        for key, value in block.items():
+            for item in _items(value):
+                if key in _SHOWN_NUMBERS and isinstance(item, int | float):
+                    current = evaluator.number(key, scope)
+                    if current is not None:
+                        need = f"less than {item:g}" if negated else f"{item:g} or more"
+                        lines.append(
+                            f"{campaign.name(scope)}: {_SHOWN_NUMBERS[key]} {current:.0f}, "
+                            f"needs {need}"
+                        )
+                elif key == "NOT":
+                    walk(item, scope, not negated)
+                elif len(key) == 3 and key.isupper() and isinstance(item, dict):
+                    walk(item, key, negated)
+                elif isinstance(item, dict):
+                    walk(item, scope, negated)
+
+    walk(limit, tag, False)
+    return lines
 
 
 def _render_state(
@@ -303,6 +461,15 @@ def _render_state(
         lines += [
             "    " + line for line in describe(state.mission.trigger, campaign, 12, modifiers)
         ]
+    if state.reward_conditions:
+        lines.append("  - The reward depends on conditions (it may pay to claim it later):")
+        mark = {True: "[x]", False: "[ ]", None: "[?]"}
+        for condition in state.reward_conditions:
+            first, *rest = condition.condition or ["- (condition)"]
+            lines.append(f"    - {mark[condition.met]} If {first[2:]}")
+            lines += ["      " + line for line in rest]
+            lines += [f"      - Now: {value}" for value in condition.now]
+            lines.append("      - Then: " + one_line(condition.reward))
     if state.mission.effect:
         lines.append("  - Rewards:")
         limit = 12 if state.status == "available" else 6

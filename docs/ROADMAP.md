@@ -277,6 +277,9 @@ Goal: visual analysis of the campaign inside the workspace.
   entry, not `action`), occupations both ways, losses from the participants, some
   recorded battles and the quarterly war score; the briefing has a line per war
 - [ ] Live war score per enemy (needs the probe mod, D-044)
+- [x] The budget over time (D-053): each snapshot keeps last month's categories; the
+  Charts tab draws income by source, recurring expenses and one-off spending, and
+  `get_trends` adds how each category moved
 - [ ] Let the model reference charts in its answers
 
 ## Phase 6 — Claude plays (experimental)

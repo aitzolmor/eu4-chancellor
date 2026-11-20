@@ -160,7 +160,7 @@ def test_rendering():
     assert text.startswith("# What to do now: Austria (HAB), 1535.8.2")
     assert "Recorded goals: #2 Ir a por Nápoles" in text
     assert "## Now" in text and "## Soon" in text and "## To consider" in text
-    assert "**War on Lieja** (goal #2) `[declare_war]`" in text
+    assert "**War on Lieja** (goal #2) `[declare_war LIE]`" in text
     assert "   - Details: check_war" in text
 
 

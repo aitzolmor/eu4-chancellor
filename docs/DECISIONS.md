@@ -1280,3 +1280,56 @@ its junior partner Lithuania 392, so 695 against the 300 needed; the war on Pola
 (2.7x, low coalition risk) is back with that reason. The user's plan of shrinking
 Poland holds, though it is further off than the game's "400" suggests, and Lithuania
 counts too.
+
+## D-058 — An evaluation set of real questions, run against a real save
+
+**Date:** 2026-11-20 · **Status:** Accepted
+
+Several bugs this week were found by hand on the user's save: a region scope read as
+"all provinces", an `else_if` that made every `OR` true, the Poland reward's real
+threshold (300, not the 400 the game shows). The unit tests use small fixtures, which
+had not caught them. Before building "Guide" on the recommendations, the answers to
+real questions get a safety net.
+
+- **Cases** (`evals/*.toml`, read with the standard library's `tomllib`): a question,
+  the tool the model should call for it, its input, and checks on the output: text it
+  must contain, text it must not, regular expressions it must match; `why` says where
+  the expected facts come from (the game screen, a fixed bug). Checks use keys, tags and
+  numbers (`hab_milan`, `(POL)`, `695`), not localised names, so they hold in any
+  language and the committed files stay in English; recommendations now show their
+  target key beside their kind (`[time_mission hab_surpass_poland]`).
+- **Tied to one save:** saves are never committed, so a set names a save in the
+  player's folder (`Austria1535_08_02.eu4`, 1535.8.2) and runs where it exists:
+  `chancellor eval` reports each case and exits 1 on a failure, and `pytest` runs each
+  set as one test (about 8 seconds, with the real game-data cache) and skips it
+  elsewhere, as in CI. The tools get an empty player context, so the answers depend on
+  the save alone.
+- **The first set** has 15 cases: the three missions the user confirmed can be
+  completed; the Ottoman and Iberian missions (the two evaluator bugs); the
+  multicultural mission (administrative technology 9 of 10); the Poland reward (695
+  against less than 300); the budget the user matched with the ledger; the war
+  reparations ending; Austria-Hungary one requirement short; at peace; who defends
+  Poland (Lithuania); the targets and the Ottoman truce; the briefing's basics; trade at
+  Venice; and the recommendations (missions to complete, Poland's to time, the war on
+  Poland bringing it closer).
+- **It catches what it should:** with the region bug put back, exactly the Ottoman case
+  failed.
+
+A set is a baseline for a save that does not change: when a tool's wording changes on
+purpose, the set is updated with it.
+
+**Any country, not just the one played.** The user asked that every tool work whatever
+the country, Austria or Japan. On the same save, every tool was run as if each of 26
+countries were the player (France, the Ottomans, the Papal States, Ming, Ashikaga,
+Spain, Portugal, Great Britain, Russia, Crimea, the Nogai, Vijayanagar, Ethiopia,
+Hungary, the Iroquois, the Aztecs, Korea, Delhi, the Mamluks, Switzerland, three
+colonial nations, Ulm, Kilwa): none failed, each got its own mission tree, budget,
+targets and recommendations. Two fixes came of it: a colonial nation's empty mission
+slot was listed as a missing series named "{}"; and `get_recommendations` for a
+country other than the player's did not compute the missions it can claim. The source
+names Austria only in comments recording where numbers were checked against the game.
+Tests keep it so: the tools answer as Turkey, Bohemia and Hungary on the small fixture
+save (everywhere), and every tool answers as Ashikaga, the Iroquois, a colonial nation
+and Ming on the real save (where it exists). A gap remains, not an error: the briefing
+has a section for the Holy Roman Empire but none for China's Mandate of Heaven or
+Japan's shogunate.

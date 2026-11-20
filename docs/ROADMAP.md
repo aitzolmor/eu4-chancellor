@@ -120,7 +120,8 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
   that tab
 - [x] API chat tab behind the player's chat-mode switch (D-020), on a budget (D-028):
   priced responses, a cap per question, a running total across sessions, Sonnet 5.5
-- [ ] Evaluation set of real questions with expected reasoning
+- [x] Evaluation set of real questions with expected answers (D-058): `evals/*.toml`,
+  run by `chancellor eval` and by `pytest` where the set's save exists
 - [ ] Answer quality of the chat. First live question (2026-11-14, Sonnet 5.5 at
   `medium`, $0.031): "how is my campaign going?" used only the briefing and the world
   overview; the facts were right and the diagnosis pointed the right way (AE near a

@@ -252,6 +252,14 @@ way; see [docs/UI_DESIGN.md](docs/UI_DESIGN.md).
 - EU4 mods cannot make network requests, so the chat lives in a separate window rather
   than inside the game UI.
 
+## Evaluation set
+
+`evals/` holds real questions, the tool that should answer each, and what the answer
+must say, checked against the game on one save of the author's campaign. Saves are not
+in the repository, so `chancellor eval` (and `pytest`) run a set only where its save
+exists, and skip it elsewhere. A failing check means a tool now says something different
+about a save that did not change.
+
 ## Documentation
 
 - [Vision](docs/VISION.md)

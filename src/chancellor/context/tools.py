@@ -894,7 +894,11 @@ class Toolbox:
             missing.append("missions, nations, monarch power, coring and targets (no game files)")
         else:
             inputs = {
-                "ready": self.ready() if player else None,
+                "ready": (
+                    self.ready()
+                    if player
+                    else ready_now(self.campaign, self._rules, self._missions, self._decisions, tag)
+                ),
                 "tree": mission_tree(self.campaign, self._missions, tag, self._rules),
                 "power": (
                     power_report(self.campaign, self._power_rules, tag)

@@ -254,7 +254,9 @@ def _slot_lists(slots: object) -> list[list[str]]:
     """``mission_slot`` is repeated once per column; each holds one or more series."""
     result = []
     for slot in as_list(slots):
-        result.append([str(s) for s in as_list(slot)])
+        # An empty slot is written `mission_slot={ }` (colonial nations have them): it
+        # holds no series, not a series named "{}".
+        result.append([str(s) for s in as_list(slot) if isinstance(s, str) and s])
     return result
 
 

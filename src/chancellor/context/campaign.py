@@ -24,6 +24,7 @@ _OWNS_LAND = re.compile(r"\bowned_provinces=\{\s*\d")
 _RAW_DEVELOPMENT = re.compile(r"\braw_development=(-?[\d.]+)")
 _REGIMENT = re.compile(r"\bregiment=\{")
 _OWNER = re.compile(r'\bowner="?([A-Z0-9]{3})"?')
+_CONTROLLER = re.compile(r'\bcontroller="?([A-Z0-9]{3})"?')
 _AE_MODIFIER = '"aggressive_expansion"'
 
 
@@ -409,6 +410,27 @@ class Campaign:
             if isinstance(owner, str):
                 owners[int(number)] = owner
         return owners
+
+    @cached_property
+    def province_controllers(self) -> dict[int, str]:
+        """Who controls every owned province (an occupier in war), without full parsing.
+
+        Like :attr:`province_owners`: the province's own ``controller`` comes before its
+        history (``previous_controller`` does not match, being one word).
+        """
+        controllers: dict[int, str] = {}
+        for key, block in self._provinces.items():
+            number = str(key).lstrip("-")
+            if not number.isdigit():
+                continue
+            if isinstance(block, LazyBlock):
+                match = _CONTROLLER.search(block.text, block.start, block.end)
+                controller = match.group(1) if match else None
+            else:
+                controller = block.get("controller") if isinstance(block, dict) else None
+            if isinstance(controller, str):
+                controllers[int(number)] = controller
+        return controllers
 
     def province(self, province_id: int | str) -> dict[str, Any] | None:
         """Fully parsed province (ids are stored negated, e.g. ``-219``), cached."""

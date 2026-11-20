@@ -22,6 +22,7 @@ from chancellor.context.summarizer import summarize
 from chancellor.context.targets import find_targets, render_targets
 from chancellor.context.trade import render_trade, trade_line, trade_report
 from chancellor.context.war_check import check_war, render_war_check
+from chancellor.context.wars import render_wars, war_reports
 from chancellor.context.world import render_world, world_overview
 from chancellor.game.ae_rules import AeRules
 from chancellor.game.coring_rules import CoringRules
@@ -385,6 +386,24 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "get_wars",
+        "description": (
+            "A country's wars in detail, from the save: when each began (the declaration), "
+            "the war goal and who controls it, both sides, every province one side occupies "
+            "of the other (with development, by owner), the losses of each side in battle, "
+            "to attrition and in ships, some recorded battles, participation, and the war "
+            "score the game recorded at its last quarterly check. Use it for anything about a "
+            "war in progress: how it is going, what to demand at the peace, whether to make "
+            "a separate peace. The live war score against each enemy is not in the save. "
+            "Omit `country` for the player."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"country": _COUNTRY},
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -406,6 +425,7 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
     "get_campaign_journal": {"saves": _Field(int)},
     "get_trends": {"countries": _Field(list)},
     "get_trade": {"country": _Field(str)},
+    "get_wars": {"country": _Field(str)},
     "create_watch": {
         "description": _Field(str, required=True),
         "conditions": _Field(list, required=True),
@@ -538,6 +558,10 @@ class Toolbox:
             if line:
                 text = f"{text.rstrip()}\n\n_{line}_\n"
         return text
+
+    def _get_wars(self, args: dict[str, Any]) -> str:
+        tag = self._tag(args.get("country"))
+        return render_wars(self.campaign, war_reports(self.campaign, tag))
 
     def _get_trade(self, args: dict[str, Any]) -> str:
         tag = self._tag(args.get("country"))

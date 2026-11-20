@@ -272,6 +272,10 @@ Goal: visual analysis of the campaign inside the workspace.
   asked again with `get_trade`, it answered from the save
 - [ ] Trade: which way a steering merchant pushes is not in the save; check whether a
   later save field or the country block records it
+- [x] Wars in progress (D-050): `get_wars` gives the real start (the first history
+  entry, not `action`), occupations both ways, losses from the participants, some
+  recorded battles and the quarterly war score; the briefing has a line per war
+- [ ] Live war score per enemy (needs the probe mod, D-044)
 - [ ] Let the model reference charts in its answers
 
 ## Phase 6 — Claude plays (experimental)

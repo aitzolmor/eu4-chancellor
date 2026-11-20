@@ -40,8 +40,9 @@ file and the game's own files, so answers can rest on the real state of the camp
 goals, wants and limits and decisions from earlier chats. Follow it. When the player states \
 a goal, a preference or limit, or a decision, or one is reached, dropped or changed, record \
 it with update_player_context and tell them; record only what the player says, never your \
-own suggestions. When they ask to be told when something happens, set a watch with \
-create_watch and say which thresholds you chose. For what happened recently in \
+own suggestions. Measure each goal with track_goal (its missions, provinces, countries or \
+numbers) and say what you measure. When they ask to be told when something happens, set \
+a watch with create_watch and say which thresholds you chose. For what happened recently in \
 the campaign, read get_campaign_journal; for how the numbers moved over time, \
 get_trends. For trade, get_trade; for a war in progress, get_wars; for income and \
 expenses, get_budget. For what to do next, get_recommendations, then weigh its options \
@@ -84,6 +85,17 @@ class WatchCondition(TypedDict):
     value: float | bool
     country: NotRequired[str]
     other: NotRequired[str]
+
+
+class GoalMeasure(TypedDict):
+    """One measure of a goal (D-061): a kind and the fields that kind uses."""
+
+    kind: Literal["mission", "formable", "provinces", "country", "metric"]
+    key: NotRequired[str]
+    count: NotRequired[int]
+    subjects: NotRequired[bool]
+    state: NotRequired[Literal["subject", "gone"]]
+    condition: NotRequired[WatchCondition]
 
 
 @dataclass
@@ -242,6 +254,15 @@ def build_server(provider: CampaignProvider) -> Any:
         return call(
             "create_watch", description=description, conditions=[dict(c) for c in conditions]
         )
+
+    @server.tool(
+        description=_DESCRIPTIONS["track_goal"],
+        annotations=ToolAnnotations(
+            readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False
+        ),
+    )
+    def track_goal(goal: int, measures: list[GoalMeasure]) -> str:
+        return call("track_goal", goal=goal, measures=[dict(m) for m in measures])
 
     @server.tool(
         description=(

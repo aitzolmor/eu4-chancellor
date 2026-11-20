@@ -320,7 +320,8 @@ Not scheduled. The tools should not require a Claude subscription or the Anthrop
 ### Idea: goal-based watches and a campaign journal (2026-11-13)
 
 (Built so far: the player's context, D-039, the watches, D-041 and D-042, and the
-campaign journal, D-043. Left: tracking a goal's progress with the checklists, and
+campaign journal, D-043, and goal progress, D-061. Left: watches on events from the
+journal (set aside: the game already notifies them), and
 watches on events from the journal, such as an ally declaring war or a ruler dying.)
 
 Not scheduled. Raised after using the panel: its key numbers and alerts repeat what the

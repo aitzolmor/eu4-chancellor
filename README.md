@@ -185,6 +185,11 @@ into concrete conditions and tells you the thresholds it chose; every save check
 and a watch that fires shows at the top of the panel and in the next answer. The
 panel's *Your plan* section lists your goals and the watches still waiting.
 
+Goals show their progress too: when you set one, Claude ties it to what can be measured
+in the save (the missions it needs, the provinces of a region, a country becoming your
+subject or disappearing, a number such as your war odds), and every save updates it:
+"2 of 3 reached: Low Countries 8 of 16 provinces; ...".
+
 The Chancellor also keeps a journal of your campaign: each time it reads a new save it
 notes what changed since the previous one (provinces gained or lost, wars, allies, a new
 ruler, ideas, technology and the key numbers). Ask "what has happened lately?" in a chat,

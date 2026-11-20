@@ -157,7 +157,9 @@ at sea. Use `campaign.land_armies` / `count_regiments`.
 `name` (often with a leading space), `attackers` / `defenders` (current tags),
 `original_attacker` / `original_defender`, `participants` (each with `tag`, participation
 `value` and `losses.members`, a 21-slot array), `take_province` (war goal: `type`,
-`province`, `casus_belli`), `action` (start date), and `history` (dated join/leave
+`province`, `casus_belli`), `action` (**not** the start date: it held the save's own
+date in a war declared three years earlier; the start is the first `history` entry,
+D-050), and `history` (dated join/leave
 events). **War score is not stored** in the save; it must be estimated or left to the
 player.
 

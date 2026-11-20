@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from chancellor.context.ae import render_ae_section
+from chancellor.context.alerts import ReadyNow, ready_now
 from chancellor.context.campaign import Campaign, CountryLookupError, _date_key
 from chancellor.context.decisions import check_decisions, render_decisions
 from chancellor.context.ledger import read_ledger, render_budget
@@ -698,7 +699,21 @@ class Toolbox:
         campaign_key = PlayerContextStore(self.context_file).campaign_key(key)
         journal = JournalStore(journal_path(self.context_file))
         # The countries picked to compare with are tracked in full (D-049).
-        return journal.record(campaign_key, take_snapshot(self.campaign, extra=self._picked()))
+        snapshot = take_snapshot(self.campaign, extra=self._picked(), ready=self.ready())
+        return journal.record(campaign_key, snapshot)
+
+    def ready(self) -> ReadyNow | None:
+        """What the player can claim on this save (D-055).
+
+        ``None`` without the game files. Computed once per save (about 3 seconds).
+        """
+        if self.game_dir is None:
+            return None
+        if "_ready_now" not in self.__dict__:
+            self.__dict__["_ready_now"] = ready_now(
+                self.campaign, self._rules, self._missions, self._decisions
+            )
+        return self.__dict__["_ready_now"]
 
     def remember_other(self, campaign: Campaign) -> bool:
         """Record another save of this campaign in this campaign's journal (backfill)."""

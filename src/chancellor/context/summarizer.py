@@ -147,6 +147,8 @@ def summarize(
         _diplomacy(ctx),
         _aggressive_expansion(ctx),
         _empire(ctx),
+        _celestial(ctx),
+        _japan(ctx),
         _wars(ctx),
         _key_countries(ctx),
     ]
@@ -454,6 +456,88 @@ def _next_reforms(ctx: _Context, passed: list[str]) -> str | None:
         " or ".join(parts)
         + f". Needs {IMPERIAL_REFORM_COST} imperial authority{have}, and the electors' votes"
     )
+
+
+def _celestial(ctx: _Context) -> str:
+    """The country's place in the Empire of China (D-060); empty if it has none."""
+    campaign = ctx.campaign
+    emperor = campaign.celestial_emperor
+    if emperor is None:
+        return ""
+    is_emperor = ctx.tag == emperor
+    tributary = (
+        ctx.country.get("overlord") == emperor
+        and campaign.subject_type(emperor, ctx.tag) == "tributary_state"
+    )
+    if not (is_emperor or tributary):
+        return ""
+    empire = campaign.celestial_empire
+    reforms = [_reform_title(ctx, str(r)) for r in as_list(empire.get("passed_reform"))]
+    decree = empire.get("decree") if isinstance(empire.get("decree"), dict) else None
+    tributaries = [
+        t
+        for t in as_list((campaign.country(emperor) or {}).get("subjects"))
+        if campaign.subject_type(emperor, str(t)) == "tributary_state"
+    ]
+    mandate = empire.get("imperial_influence")
+    return _section(
+        "Empire of China",
+        [
+            ("Role", "Emperor of China" if is_emperor else "tributary of the Emperor"),
+            ("Emperor", None if is_emperor else f"{ctx.name(emperor)} ({emperor})"),
+            ("Mandate", f"{_num(mandate)} of 100" if isinstance(mandate, int | float) else None),
+            (
+                "Celestial reforms passed",
+                f"{len(reforms)}: {', '.join(reforms)}" if reforms else "none",
+            ),
+            (
+                "Decree in force",
+                f"{ctx.text(str(decree.get('decree_name')))} (issued {decree.get('decree_date')})"
+                if decree and decree.get("decree_name")
+                else None,
+            ),
+            ("Tributaries", str(len(tributaries)) if is_emperor else None),
+        ],
+    )
+
+
+def _japan(ctx: _Context) -> str:
+    """The shogunate: the shogun or one of its daimyos (D-060); empty otherwise."""
+    campaign = ctx.campaign
+    reforms = _reforms(ctx.country)
+    overlord = ctx.country.get("overlord")
+    daimyo = isinstance(overlord, str) and (
+        campaign.subject_type(overlord, ctx.tag) == "daimyo_vassal"
+    )
+    if "shogunate" not in reforms and not daimyo:
+        return ""
+    daimyos = [
+        str(t)
+        for t in as_list(ctx.country.get("subjects"))
+        if campaign.subject_type(ctx.tag, str(t)) == "daimyo_vassal"
+    ]
+    isolation = ctx.country.get("isolationism")
+    return _section(
+        "Japan",
+        [
+            (
+                "Role",
+                "Shogun" if not daimyo else f"daimyo of the Shogun, {ctx.campaign.label(overlord)}",
+            ),
+            (
+                "Daimyos",
+                f"{len(daimyos)}: {', '.join(ctx.campaign.label(t) for t in daimyos)}"
+                if daimyos
+                else ("none" if not daimyo else None),
+            ),
+            ("Isolationism", _num(isolation) if isinstance(isolation, int | float) else None),
+        ],
+    )
+
+
+def _reforms(country: dict) -> list[str]:
+    stack = ((country.get("government") or {}).get("reform_stack") or {}).get("reforms")
+    return [str(r) for r in as_list(stack)]
 
 
 def _reform_title(ctx: _Context, reform: str) -> str:

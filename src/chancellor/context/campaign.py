@@ -450,6 +450,19 @@ class Campaign:
         return result if isinstance(result, dict) else {}
 
     @property
+    def celestial_empire(self) -> dict[str, Any]:
+        """The Empire of China block: emperor, mandate, reforms, decree (D-060)."""
+        block = self.gamestate.get("celestial_empire", {})
+        result = block.parse() if isinstance(block, LazyBlock) else block
+        return result if isinstance(result, dict) else {}
+
+    @property
+    def celestial_emperor(self) -> str | None:
+        """Tag of the Emperor of China, if there is one."""
+        emperor = self.celestial_empire.get("emperor")
+        return str(emperor) if emperor and emperor != "---" else None
+
+    @property
     def emperor(self) -> str | None:
         """Tag of the Holy Roman Emperor, if there is one."""
         emperor = self.empire.get("emperor")

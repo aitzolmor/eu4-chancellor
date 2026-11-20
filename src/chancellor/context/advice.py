@@ -22,6 +22,7 @@ from typing import Literal, Protocol
 from chancellor.context.alerts import ReadyNow, title
 from chancellor.context.campaign import Campaign
 from chancellor.context.coring import CoringCost
+from chancellor.context.guide import steps
 from chancellor.context.ledger import Ledger
 from chancellor.context.missions import MissionTree, one_line
 from chancellor.context.power import PowerReport, months_until_affordable
@@ -155,6 +156,9 @@ def render_recommendations(
             key = f"{item.kind} {item.target}" if item.target else item.kind
             lines.append(f"{number}. **{item.action}**{touched} `[{key}]`")
             lines += [f"   - {reason}" for reason in item.reasons]
+            how = steps(campaign, item.kind, item.target)
+            if how:  # Guide (D-059): the game's screens and buttons, in its language
+                lines.append("   - How: " + " → ".join(how))
             if item.source:
                 lines.append(f"   - Details: {item.source}")
         lines.append("")

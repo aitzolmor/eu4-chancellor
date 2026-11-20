@@ -35,6 +35,7 @@ flowchart LR
 | `context.status` | The campaign at a glance as plain values (`CampaignStatus`) for the desktop panel | 4 |
 | `context.advice` | Structured recommendations: rules over the other modules' numbers turned into ranked actions with their facts (D-056) | 6 |
 | `evals` | The evaluation set: questions, the tool for each, checks on its output; runs where the set's save exists (D-058) | 4 |
+| `context.guide` | Guide: each recommendation kind as steps in the game's interface, named from its localisation (D-059) | 6 |
 | `context.alerts` | Ranked alerts (wars, coalitions, truces, economy, stability, imperial reform, missions and nations ready to claim) for the panel | 4 |
 | `app.cli` | Command-line entry point (`chancellor`) | 1 |
 | `app.clipboard` | Dependency-free clipboard copy (Win32 API, `pbcopy`, `wl-copy`/`xclip`) | 1 |

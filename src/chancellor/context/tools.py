@@ -438,7 +438,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "near the cap or a technology to buy, overextension and the cheapest cores, "
             "the best expansion targets (odds, coalition risk, casus belli when known), "
             "aggressive expansion to let cool down, missions one requirement away. Marks "
-            "the ones that touch the player's recorded goals. Use it for 'what should I "
+            "the ones that touch the player's recorded goals, and gives each one's steps in "
+            "the game (screens and buttons, in the game's language). Use it for 'what should I "
             "do?', 'what next?' or at the start of a session; then weigh the options with "
             "the player's goals and say which to take first. Omit `country` for the player."
         ),

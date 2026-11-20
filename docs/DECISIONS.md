@@ -1332,4 +1332,56 @@ Tests keep it so: the tools answer as Turkey, Bohemia and Hungary on the small f
 save (everywhere), and every tool answers as Ashikaga, the Iroquois, a colonial nation
 and Ming on the real save (where it exists). A gap remains, not an error: the briefing
 has a section for the Holy Roman Empire but none for China's Mandate of Heaven or
-Japan's shogunate.
+Japan's shogunate (closed by D-060).
+
+## D-059 — Guide: each recommendation as steps in the game's interface
+
+**Date:** 2026-11-20 · **Status:** Accepted (second rung of "Claude plays", VISION)
+
+Recommendations carry a stable kind and target (D-056, D-058); Guide turns them into
+the clicks that carry them out, so the player (and later "Act") knows where each action
+lives.
+
+- **Names from the game, in its language** (`context.guide`): every screen and button is
+  named with its localisation key, read from the game's files, so the steps say
+  «Misiones», «Crear un núcleo», «Declarar la guerra» in the user's Spanish game and the
+  English names in an English one; an English fallback covers a missing key. The tabs'
+  keys are the `HEADER_*` ones the country screen uses (Decisions is
+  `HEADER_MISSION_REMOVE`); the buttons' keys are those of the province and diplomacy
+  windows (`CV_BUILD_CORE`, `WARTITLE`, `FABRICATE_CLAIM`, `CV_REPAY_LOAN`,
+  `CV_BOOST_STABILITY`, ...).
+- **Only what the files settle:** F1 opens the country screen (`interface/topbar.gui`);
+  the other tabs' function keys are in the game's code, not its files, so steps go
+  through F1 and the tab rather than guess a key.
+- **Per kind:** missions (the Missions tab; for a mission worth timing, "or leave it"),
+  formable decisions, a technology (the button under its column), an idea, stability,
+  coring (the province by the name the map shows: the save's, so Widin, not the
+  localisation's Vidin), a loan, a deficit (maintenance sliders, an advisor to
+  dismiss), a war (a province of the target, its flag, its diplomacy, Declare War), a
+  claim to fabricate, relations to improve. Kinds that are not one action (planning for
+  the end of the war reparations) get no steps.
+- **Where it shows:** a *How* line under each recommendation in `get_recommendations`;
+  the evaluation set checks it.
+
+## D-060 — The Empire of China and the shogunate in the briefing
+
+**Date:** 2026-11-20 · **Status:** Accepted (closes the gap noted in D-058)
+
+Running the tools as other players (D-058) showed the briefing had a section for the
+Holy Roman Empire and nothing equivalent for East Asia's two systems.
+
+- **Empire of China** (`Campaign.celestial_empire`, from the save's `celestial_empire`
+  block): shown to the emperor and to its tributaries (subject type `tributary_state`;
+  a vassal of the emperor is not one). Role, emperor, the Mandate
+  (`imperial_influence`, of 100), the celestial reforms passed (their `_title`
+  localisation), the decree in force with the date issued (the decree's own key names
+  it), and, for the emperor, how many tributaries.
+- **Japan:** shown to the shogun (the country with the `shogunate` government reform)
+  and its daimyos (subject type `daimyo_vassal`): role, the daimyos, and the Shinto
+  isolationism level when the save has one.
+
+On the user's 1535 save: Ming as emperor with Mandate 84.2, three reforms (Gaituguiliu,
+the sea ban, administrative divisions), the decree "Proclamado nombre dinástico" of
+1532.7.3 and seven tributaries; the Khalkha as a tributary; Ashikaga as shogun with
+Uesugi as its daimyo. Japanese countries outside the shogunate (Oda here) get no section
+yet: the save does not mark them as such.

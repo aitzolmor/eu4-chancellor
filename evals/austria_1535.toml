@@ -153,3 +153,14 @@ id = "war_on_poland_helps_the_mission"
 question = "Should I keep taking land from Poland?"
 tool = "get_recommendations"
 contains = ["[declare_war POL]", "brings a mission's better reward closer"]
+
+[[case]]
+id = "how_to_do_it"
+question = "How do I do that in the game?"
+tool = "get_recommendations"
+matches = [
+    'complete_mission hab_milan\]`\n   - [^\n]*\n   - How: F1 \(your country\) → «[^»]+» tab → click «[^»]+»',
+    'core_province \d+\]`\n(   - [^\n]*\n)+   - How: click \w+ on the map',
+    'declare_war POL\]`\n(   - [^\n]*\n)+   - How: click any province of \w+',
+]
+why = "Guide (D-059): each step names the game's screens and buttons in its own language."

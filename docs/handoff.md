@@ -312,7 +312,7 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
    `chancellor probe read` answers its questions.
    The first session (2026-11-20, at peace, enabled by `dlc_load.json`) showed the
    channel works. The second (1535) matched the casus belli with the diplomacy screen;
-   the subjects' casus belli (added after it) and the war score are still to check.
+   the third found the subjects' casus belli too. The war score is still to check.
    Play a few months at war, then
    read the log and `logs/error.log`. The user's autosave is yearly: monthly would
    make the panel, watches and journal monthly at no cost. Reading the game's memory

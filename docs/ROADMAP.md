@@ -293,7 +293,8 @@ Goal: explore how far the assistant can act, not just advise.
   against neighbours, rivals and holders of the player's claims or cores
 - [x] Casus belli against the diplomacy screen (2026-11-20): the player's own match
   exactly; the subjects' were missing, now checked too
-- [ ] Confirm the subjects' casus belli in game; a session at war (war score)
+- [x] The subjects' casus belli in game (2026-11-20): Hungary's conquest of Poland found
+- [ ] A session at war (war score)
 - [ ] If they work: war score and casus belli in the war check and the briefing
 
 ## Ideas / later

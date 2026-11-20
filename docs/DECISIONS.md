@@ -966,7 +966,17 @@ The player's own casus belli matched exactly (the rival one is `cb_humiliate_rot
 an overlord can declare with a subject's casus belli, and the screen lists them. The
 mod now checks each subject too (`every_subject_country`, the subject kept as an event
 target, `subcb` lines), against neighbours of the player or of the subject, the
-player's rivals and holders of the player's claims or cores; still to confirm in game.
+player's rivals and holders of the player's claims or cores.
+
+**Third session (2026-11-20, 1535.04).** The subject check works: six subjects
+checked, two with casus belli. Hungary's conquest of Poland, which the screen showed,
+is there (`cb_conquest`), with Hungary's conquest and crusade against the Ottomans and
+conquest against the Papal States, and Albania's core, conquest and crusade against
+the Ottomans and `cb_heretic` against Ragusa. `error.log` has nothing from the mod, so
+the event target and `is_neighbor_of = event_target:...` are accepted. Liège's "three
+Conquest" were one conquest casus belli covering three claimed provinces, which matches
+the mod's one `cb_conquest`; which provinces it covers comes from the save's claims.
+Every casus belli the user read on the screen is now accounted for.
 
 ## D-045 — Trend charts from the campaign journal, drawn as plain SVG
 

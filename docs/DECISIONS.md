@@ -1065,3 +1065,36 @@ pass every pair, D-048); and a way back to the rivals.
   Castile until it formed Spain; the save records `previous_country_tags = CAS` on
   Spain, so a comparison looks a country's numbers up under each tag it has had. Spain
   now has numbers on all 21 saves (318 development as Castile in 1455, 759 in 1525).
+
+## D-054 — Which missions can be completed now
+
+**Date:** 2026-11-20 · **Status:** Accepted (D-050 to D-053 are in open PRs)
+
+The mission tree said which missions were available (prerequisites done) and listed
+their requirements, but not whether the country already meets them: "what can I claim
+now?" needed the player to open each mission in the game.
+
+- **Checked against the save:** with the game rules, each available mission's trigger
+  goes through the decisions' three-valued evaluator, one requirement at a time:
+  `[x]` met, `[ ]` not met, `[?]` could not be checked. The tree opens with a summary:
+  which missions can be completed now, which are one requirement away, and which are
+  possible but have unchecked parts. `get_missions` and `chancellor missions` both do
+  it; the targets report, which only needs the provinces, does not.
+- **Two evaluator bugs found on the way**, which also affected the decisions and
+  formable nations:
+  - A geography scope without `type` (`europe = { owned_by = TUR }`) was read as "all
+    its provinces"; the game reads it as "any" (its own files write `type = all` 2,727
+    times and `type = any` 18). "El azote de Europa", which asks that the Ottomans own
+    nothing in Europe, looked complete because the Ottomans do not own *all* of it.
+  - Inside an `OR`, each `if`, `else_if` and `else` was evaluated on its own, and an
+    `else_if` whose `if` had applied counted as true, so any `OR` holding one was true.
+    "Relaciones ibéricas" (`OR = { if = { limit = { exists = SPA } ... } else_if =
+    { limit = { exists = CAS } ... } ... }`) looked complete. An `if` chain is now one
+    alternative, as `explain` already treated it at the top level.
+
+On the user's 1535.8.2 save: 18 available missions; can be completed now: Ducado de
+Milán, Conseguir Croacia, Sobrepasar a los polacos; one requirement away: nine (among
+them Imperio multicultural, adm tech 10 with 9 now, and El azote de Europa); possible
+with unchecked parts: five (Relaciones ibéricas needs development double Spain's, a
+variable comparison the evaluator does not do). In game, the three it called
+completable could be completed.

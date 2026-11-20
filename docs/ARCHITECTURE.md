@@ -42,7 +42,7 @@ flowchart LR
 | `game.modifiers` | Named modifiers and the stats they change (`ModifierLibrary`, `format_effect`) | 3 |
 | `game.imperial_reforms` | HRE imperial reforms: order, branches, DLC set, modifiers; the next reform (`ImperialReformLibrary`) | 4 |
 | `context.script` | Readable, localised descriptions of trigger and effect script | 3 |
-| `context.missions` | A country's mission tree with completed / available / locked status | 3 |
+| `context.missions` | A country's mission tree with completed / available / locked status, and each available mission's requirements checked against the save (D-054) | 3 |
 | `game.cache` | On-disk cache of parsed game data, invalidated by file size/mtime and package version | 3 |
 | `game.rules` | Culture/religion groups, geography (areas, regions, colonial regions…), scripted triggers | 3 |
 | `game.decisions` | Decisions and formable nations from `decisions/` (`DecisionLibrary`) | 3 |

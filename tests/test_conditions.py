@@ -199,6 +199,22 @@ def test_geography_scopes(evaluator: Evaluator):
     assert check(evaluator, "austria_area = { type = all owned_by = ROOT }") is True
     assert check(evaluator, "german_region = { type = all owned_by = ROOT }") is False
     assert check(evaluator, "german_region = { type = any owned_by = BOH }") is True
+    # Without `type` the game checks ANY province (D-054): "the Ottomans own nothing in
+    # Europe" is NOT = { europe = { owned_by = TUR } }, not "...own all of it".
+    assert check(evaluator, "german_region = { owned_by = BOH }") is True
+    assert check(evaluator, "NOT = { german_region = { owned_by = POL } }") is True
+    assert check(evaluator, "NOT = { german_region = { owned_by = BOH } }") is False
+
+
+def test_an_if_chain_is_one_alternative_of_an_or(evaluator: Evaluator):
+    # The `if` applies (HAB), so its `else_if` is skipped, not true on its own (D-054).
+    script = (
+        "OR = { if = { limit = { tag = HAB } adm_tech = 99 } "
+        "else_if = { limit = { tag = BOH } adm_tech = 1 } adm_tech = 50 }"
+    )
+    assert check(evaluator, script) is False
+    script = "OR = { if = { limit = { tag = BOH } adm_tech = 99 } else = { adm_tech = 1 } }"
+    assert check(evaluator, script) is True  # the else applies
 
 
 def test_province_counts(evaluator: Evaluator):

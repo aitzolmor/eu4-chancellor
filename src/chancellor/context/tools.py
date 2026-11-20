@@ -161,8 +161,11 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "description": (
             "A country's mission tree from the game files with progress from the save: "
             "completed, available now (prerequisites done) or locked, with requirements and "
-            "rewards (including the bonuses of granted modifiers). Set `brief` for titles "
-            "and status only. Omit `country` for the player."
+            "rewards (including the bonuses of granted modifiers). Each available mission's "
+            "requirements are checked against the save ([x] met, [ ] not met, [?] could not "
+            "be checked), with a summary of which can be completed now and which are one "
+            "requirement away. Set `brief` for titles and status only. Omit `country` for "
+            "the player."
         ),
         "input_schema": {
             "type": "object",
@@ -557,7 +560,8 @@ class Toolbox:
         return render_world(self.campaign, world_overview(self.campaign))
 
     def _get_missions(self, args: dict[str, Any]) -> str:
-        tree = mission_tree(self.campaign, self._missions, self._tag(args.get("country")))
+        tag = self._tag(args.get("country"))
+        tree = mission_tree(self.campaign, self._missions, tag, self._rules)
         brief = bool(args.get("brief"))
         return render_missions(self.campaign, tree, brief=brief, modifiers=self._modifiers)
 

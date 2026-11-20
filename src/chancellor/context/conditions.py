@@ -230,12 +230,23 @@ class Evaluator:
         if not isinstance(block, dict):
             return [None]
         results: list[Truth] = []
+        # An `if` with its `else_if`/`else` is ONE alternative: evaluated apart, an
+        # `else_if` whose `if` already applied looked true and made any OR true (D-054).
+        # The parser groups repeated keys, so the tail belongs to the last `if`.
+        ifs = _items(block["if"]) if "if" in block else []
+        tail = {k: block[k] for k in ("else_if", "else") if k in block}
         for key, value in block.items():
+            if key in ("else_if", "else"):
+                if not ifs:  # no `if` to attach to: cannot tell
+                    results.append(None)
+                continue
+            if key == "if":
+                for index, item in enumerate(ifs):
+                    chain = {"if": item, **tail} if index == len(ifs) - 1 else {"if": item}
+                    results.append(self._block(chain, entry))
+                continue
             for item in _items(value):
-                if key in ("if", "else_if", "else"):
-                    results.append(self._block({key: item}, entry))
-                else:
-                    results.append(self._logic(key, item, entry))
+                results.append(self._logic(key, item, entry))
         return results
 
     # --- country scope ------------------------------------------------------------------
@@ -457,7 +468,9 @@ class Evaluator:
         provinces = self.rules.geography.get(name, frozenset())
         conditions = {k: v for k, v in block.items() if k != "type"}
         results = [self.province(conditions, p) for p in sorted(provinces)]
-        return any_of(results) if block.get("type") == "any" else all_of(results)
+        # Without `type`, the game checks whether ANY province matches: its own files write
+        # `type = all` 2,727 times and `type = any` almost never (D-054).
+        return all_of(results) if block.get("type") == "all" else any_of(results)
 
     def _scripted(self, name: str, expected: bool, entry: Callable[[str, Any], Truth]) -> Truth:
         definition = self.rules.scripted_triggers[name]

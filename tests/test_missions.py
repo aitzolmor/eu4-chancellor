@@ -272,3 +272,39 @@ def test_uncommon_triggers_keep_their_key(campaign: Campaign):
     assert lines("has_institution = printing_press", campaign) == [
         "- has_institution: printing_press"
     ]
+
+
+def test_available_missions_are_checked_against_the_save(library: MissionLibrary):
+    from chancellor.game.rules import GameRules
+
+    world = parse(
+        """
+        countries={
+            HAB={
+                owned_provinces={ 1 }
+                completed_missions={ hab_first }
+                country_missions={ mission_slot={ hab_column_1 } mission_slot={ hab_column_2 } }
+            }
+            BOH={ owned_provinces={ 266 } }
+        }
+        provinces={ -1={ owner="HAB" } -266={ owner="BOH" cores={ "BOH" } } }
+        empire={ emperor=HAB }
+        """
+    )
+    campaign = Campaign({"player": "HAB", "date": "1450.1.1"}, world, Localisation(NAMES))
+    tree = mission_tree(campaign, library, "HAB", GameRules())
+    states = {m.mission.name: m for c in tree.columns for m in c.missions}
+    assert states["hab_alone"].completable is True  # is_emperor = yes
+    assert states["hab_second"].completable is False  # Prague is Bohemia's
+    assert states["hab_third"].requirements == []  # locked: not checked
+    assert states["hab_first"].completable is None  # completed
+    text = render_missions(campaign, tree)
+    assert "Can be completed now: hab alone." in text
+    assert "One requirement away: Second mission." in text
+    assert "  - Requires (can be completed now; 1 met, 0 not met):" in text
+    assert "  - Requires (not yet; 0 met, 1 not met):" in text
+    assert "    - [ ] " in text and "    - [x] " in text
+    # Without the rules the tree is as before: requirements listed, not checked.
+    assert "Can be completed now" not in render_missions(
+        campaign, mission_tree(campaign, library, "HAB")
+    )

@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from chancellor.context.campaign import Campaign, as_list, count_regiments
+from chancellor.context.ledger import OTHER, RECURRING_EXPENSES, read_ledger
 from chancellor.save.parser import LazyBlock, get_all
 
 FILE_NAME = "journal.json"
@@ -50,7 +51,7 @@ NUMBERS: tuple[tuple[str, str, int], ...] = (
 # Numbers kept for the rivals and great powers too, to compare with them (D-048).
 OTHER_NUMBERS = ("development", "regiments", "income", "treasury", "provinces", "manpower")
 # Kept in every snapshot, even trimmed ones: the numbers, the player's and the others'.
-_ALWAYS_KEPT = ("date", "tag", "numbers", "others", "rivals", "great_powers")
+_ALWAYS_KEPT = ("date", "tag", "numbers", "budget", "others", "rivals", "great_powers")
 # Changes in these numbers are events of their own; the rest go in one summary line.
 _EVENT_NUMBERS = ("adm_tech", "dip_tech", "mil_tech", "great_power_rank")
 
@@ -117,10 +118,16 @@ def take_snapshot(
         if other != tag and other not in others and campaign.exists(other):
             figures = country_numbers(campaign, other)
             others[other] = {k: v for k, v in figures.items() if k in COMPARE_KEYS}
+    budget = read_ledger(campaign, tag)
     return {
         "date": campaign.date,
         "tag": tag,
         "numbers": {k: v for k, v in numbers.items() if v is not None},
+        # Last month by category (D-053), kept in trimmed snapshots too, for the charts.
+        "budget": {
+            "income": {k: round(v, 2) for k, v in budget.last_month_income.items()},
+            "expenses": {k: round(v, 2) for k, v in budget.last_month_expenses.items()},
+        },
         "provinces": provinces,
         "uncored": sorted(str(p) for p in owned if p not in cores),
         "wars": sorted(str(w.get("name", "?")).strip() for w in campaign.wars_of(tag)),
@@ -330,6 +337,8 @@ TRACKED_LARGEST = 30
 # Numbers charted against the rivals (D-048), and how many countries at most.
 COMPARE_KEYS = ("development", "regiments", "income")
 COMPARED = 3
+# Budget categories charted (D-053): the largest few by name, the rest as "Other".
+BUDGET_SHOWN = 3
 # Journal lines worth marking on a chart: the moments the numbers usually move around.
 _MARKED = ("War began", "War ended", "New ruler", "Gained", "Lost")
 TREND_ROWS = 12
@@ -382,7 +391,57 @@ def trend_data(
         "series": {key: [s.get("numbers", {}).get(key) for s in known] for key in TREND_KEYS},
         "labels": {key: labels[key] for key in TREND_KEYS},
         "events": events,
+        "budget": {
+            "income": _budget_series(known, "income"),
+            "expenses": _budget_series(known, "expenses", recurring_only=True),
+            "one_off": [_one_off(s) for s in known],
+        },
     }
+
+
+def _budget_series(
+    snapshots: list[dict[str, Any]], side: str, recurring_only: bool = False
+) -> dict[str, list[float | None]]:
+    """The largest categories of one side of the budget over time, the rest as "Other".
+
+    The categories are the :data:`BUDGET_SHOWN` largest over the whole span, so a
+    category keeps its colour on every date. Snapshots recorded before the budget was
+    kept (D-053) are gaps.
+    """
+    rows = [(s.get("budget") or {}).get(side) for s in snapshots]
+    totals: dict[str, float] = {}
+    for row in rows:
+        for name, value in (row or {}).items():
+            if recurring_only and name not in RECURRING_EXPENSES:
+                continue
+            totals[name] = totals.get(name, 0.0) + value
+    shown = [n for n, _ in sorted(totals.items(), key=lambda i: -i[1]) if n != OTHER]
+    shown = shown[:BUDGET_SHOWN]
+    series: dict[str, list[float | None]] = {name: [] for name in [*shown, OTHER]}
+    for row in rows:
+        for name in series:
+            if row is None:
+                series[name].append(None)
+            elif name == OTHER:
+                rest = sum(
+                    v
+                    for n, v in row.items()
+                    if n not in shown and (not recurring_only or n in RECURRING_EXPENSES)
+                )
+                series[name].append(round(rest, 2))
+            else:
+                series[name].append(row.get(name, 0.0))
+    if not any(v for v in series[OTHER] if v):
+        del series[OTHER]
+    return series
+
+
+def _one_off(snapshot: dict[str, Any]) -> float | None:
+    """Last month's one-off spending (buildings, raising armies, ...), or ``None``."""
+    expenses = (snapshot.get("budget") or {}).get("expenses")
+    if expenses is None:
+        return None
+    return round(sum(v for n, v in expenses.items() if n not in RECURRING_EXPENSES), 2)
 
 
 def render_trends(data: dict[str, Any], country: str) -> str:
@@ -425,6 +484,18 @@ def render_trends(data: dict[str, Any], country: str) -> str:
                 continue
             cells = [_span(values[key]) for key in COMPARE_KEYS]
             lines.append(f"| {data['names'].get(tag, tag)} | " + " | ".join(cells) + " |")
+    budget = data.get("budget") or {}
+    for side, title in (("income", "Income by source"), ("expenses", "Recurring expenses")):
+        series = budget.get(side) or {}
+        if any(v is not None for values in series.values() for v in values):
+            lines += [
+                "",
+                f"{title} a month, first and latest save that recorded it:",
+                "",
+                "| Category | Change |",
+                "| --- | --- |",
+                *(f"| {name} | {_span(values)} |" for name, values in series.items()),
+            ]
     if data["events"]:
         lines += ["", "Main events:", ""]
         lines += [f"- {e['date']}: {e['text']}" for e in data["events"][-12:]]

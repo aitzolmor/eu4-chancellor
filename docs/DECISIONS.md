@@ -1094,3 +1094,32 @@ Checked in game (2026-11-20): last month's twelve categories matched the game's 
 ledger for July 1535. The campaign's 1,724 ducats on support loyalists also fit: the user
 paid them to Bohemia, a junior partner in a personal union, to lower its liberty desire
 before integrating it.
+
+## D-053 — The budget over time in the charts
+
+**Date:** 2026-11-20 · **Status:** Accepted (builds on D-052, D-045)
+
+With the ledger mapped (D-052), "why did my balance fall since 1530?" needs the
+categories over time, not just this month's.
+
+- **Journal:** each snapshot keeps last month's income and expenses by category
+  (`budget`, a few dozen numbers) and, like the numbers, keeps it when old snapshots
+  are trimmed. Saves recorded before this have no budget: `chancellor journal
+  --backfill` reads them again and replaces their snapshots. On the user's journal it
+  filled 31 of 35; the other four came from autosaves the game has since overwritten,
+  so the budget lines join their points across those gaps.
+- **Charts tab:** a *Where the money comes from and goes* section with three charts:
+  income by source, recurring expenses, and one-off spending (buildings, raising
+  armies, institutions...). Each budget chart names its three largest categories over
+  the whole span in the three validated hues and folds the rest into a dashed grey
+  "Other" (D-048's palette: no fourth hue passes every pair), so a category keeps its
+  colour on every date. One measure per chart, all in ducats a month; the table view
+  gains the same columns.
+- **`get_trends`** adds a table of each category's first and latest value.
+
+Checked with the user's 31 saves (1455–1535) backfilled into a temporary journal:
+taxation grew from 8.4 to 25.0 a month, production from 2.9 to 16.4 and gold from 2.7
+to 12.9; army maintenance from 9.0 to 35.1, peaking near 50 during the war of
+1528–1532; the one-off chart shows the two institutions embraced (301 and 476 ducats).
+In 1535 "Other" is the largest income line (trade 13.8, war reparations 10.4,
+vassals 3.5 together), a cost of the three-hue limit; `get_budget` names them.

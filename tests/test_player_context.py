@@ -104,7 +104,7 @@ def test_the_tools(toolbox):
     added = toolbox.run(
         "update_player_context", {"action": "add", "kind": "goal", "text": "Formar Alemania"}
     )
-    assert added == "Recorded #1 (goal): Formar Alemania"
+    assert added == "Recorded #1 (goal): Formar Alemania. Measure it with track_goal (goal 1)."
     text = toolbox.run("get_player_context", {})
     assert "## Goals\n\n- #1 Formar Alemania (recorded at 1519.4.2)" in text
     assert "Record only what the player says" in text

@@ -1385,3 +1385,31 @@ the sea ban, administrative divisions), the decree "Proclamado nombre dinástico
 1532.7.3 and seven tributaries; the Khalkha as a tributary; Ashikaga as shogun with
 Uesugi as its daimyo. Japanese countries outside the shogunate (Oda here) get no section
 yet: the save does not mark them as such.
+
+## D-061 — Goal progress: a recorded goal tied to measures from each save
+
+**Date:** 2026-11-20 · **Status:** Accepted (the part left of the goals and watches idea)
+
+The player's goals are recorded in their own words (D-039), so nothing said how far
+along they were. A goal now carries measures, chosen by the model from a closed list,
+the way a watch carries conditions (D-041), and each save reads them.
+
+- **Measures** (`player.goals`): `mission` (completed, can be completed, requirements
+  met, locked), `formable` (a decision's requirements met), `provinces` (held in an
+  area, region or superregion, with the non-tributary subjects or not, against a count
+  or the whole), `country` (another country becoming the player's subject, or gone),
+  and `metric` (any watch condition: development, income, war odds against a
+  country...). Countries are stored as tags, so a country that is gone is still named.
+- **`track_goal`** attaches measures to a goal, replacing earlier ones; countries are
+  resolved and mission, decision and geography keys are checked against the game
+  files, with an error that names the key to use. Recording a goal now answers "measure
+  it with track_goal", and both prompts say to.
+- **Where progress shows:** under each goal in `get_player_context` ("2 of 3 reached:
+  ...", or "not measured yet") and in the panel's *Your plan*, on its own line. The
+  mission tree and the decisions are computed once per save (about 3 seconds) and only
+  when a goal uses them.
+
+Tried on a copy of the user's context, with their two goals: Gelre still exists, the
+Austrian Netherlands mission lacks its requirement, the Low Countries at 8 of 16
+provinces (Holland, a vassal, counts); Naples not yet a subject, the Naples mission at 0
+of 2 requirements, war odds against France 1.88 (reached, 1.5 wanted).

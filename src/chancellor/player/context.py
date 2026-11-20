@@ -66,6 +66,7 @@ class Entry:
         text: What the player wants, rules out, decided or said.
         game_date: In-game date of the save it was recorded with.
         written: Real date it was recorded.
+        track: For a goal, the measures of its progress (D-061), as plain dicts.
     """
 
     id: int
@@ -73,6 +74,7 @@ class Entry:
     text: str
     game_date: str
     written: str
+    track: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -184,6 +186,22 @@ class PlayerContextStore:
         self._campaign_for_write(data, key).watches.append(watch)
         self._save(data)
         return watch
+
+    def track_goal(self, key: SaveKey, goal_id: int, measures: list[dict[str, Any]]) -> Entry:
+        """Attach measures to one of the campaign's goals, replacing any it had (D-061).
+
+        Raises:
+            PlayerContextError: If there is no goal with that id in the save's campaign.
+        """
+        data = self._load()
+        index, _ = _match(data["campaigns"], key)
+        entries = data["campaigns"][index].entries if index is not None else []
+        goal = next((e for e in entries if e.id == goal_id), None)
+        if goal is None or goal.kind != "goal":
+            raise PlayerContextError(f"No goal #{goal_id} in this campaign.")
+        goal.track = list(measures)
+        self._save(data)
+        return goal
 
     def fire(self, key: SaveKey, ids: list[int]) -> None:
         """Mark watches as fired on the save's date."""
@@ -372,9 +390,21 @@ def watch_lines(campaign: Campaign, results: list[tuple[Watch, list[Reading]]]) 
 
 
 def render_context(
-    view: ContextView, key: SaveKey, country: str, watches: list[str] | None = None
+    view: ContextView,
+    key: SaveKey,
+    country: str,
+    watches: list[str] | None = None,
+    progress: dict[int, str] | None = None,
 ) -> str:
-    """Markdown for ``get_player_context``; ``watches`` from :func:`watch_lines`."""
+    """Markdown for ``get_player_context``.
+
+    Args:
+        view: The context for the save.
+        key: The save.
+        country: The player's country, labelled.
+        watches: Lines from :func:`watch_lines`.
+        progress: Goal id → its progress line (D-061).
+    """
     lines = [f"# Player context: {country}", ""]
     campaign = view.campaign
     if campaign is None or not (campaign.entries or campaign.watches):
@@ -393,7 +423,12 @@ def render_context(
         entries = view.player if kind == "player" else _of_kind(campaign, kind)
         if entries:
             lines += ["", f"## {heading}", ""]
-            lines += [f"- #{e.id} {e.text} (recorded at {e.game_date})" for e in entries]
+            for e in entries:
+                lines.append(f"- #{e.id} {e.text} (recorded at {e.game_date})")
+                if progress and e.id in progress:
+                    lines.append(f"  - Progress: {progress[e.id]}")
+                elif kind == "goal" and not e.track:
+                    lines.append("  - Not measured yet: track_goal can tie it to the save.")
     if watches:
         lines += ["", "## Watches", "", *watches]
     lines += [
@@ -441,6 +476,7 @@ def _entry(raw: dict[str, Any]) -> Entry:
         text=str(raw.get("text", "")),
         game_date=str(raw.get("game_date", "")),
         written=str(raw.get("written", "")),
+        track=[m for m in raw.get("track", []) if isinstance(m, dict)],
     )
 
 

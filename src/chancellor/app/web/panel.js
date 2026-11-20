@@ -83,7 +83,7 @@ function renderPlan(plan) {
   const list = $("plan");
   list.replaceChildren();
   const rows = [
-    ...plan.entries.map((e) => ({ id: e.id, label: e.label, text: e.text, title: "" })),
+    ...plan.entries.map((e) => ({ id: e.id, label: e.label, text: e.text, title: "", progress: e.progress })),
     ...plan.waiting.map((w) => ({ id: w.id, label: "Watching", text: w.description, title: w.now })),
   ];
   for (const row of rows) {
@@ -94,6 +94,13 @@ function renderPlan(plan) {
     const text = document.createElement("span");
     text.className = "grow";
     text.textContent = row.text;
+    // A measured goal's progress (D-061), on its own line under the goal.
+    if (row.progress) {
+      const progress = document.createElement("small");
+      progress.className = "plan-progress";
+      progress.textContent = row.progress;
+      text.append(progress);
+    }
     if (row.title) item.title = row.title;
     item.append(label, text, dismissButton(row.id, "Remove from the plan"));
     list.append(item);

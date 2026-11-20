@@ -31,6 +31,31 @@ export const COMPARE_CHARTS = [
 const SERIES = ["var(--series-1)", "var(--series-2)", "var(--series-3)", "var(--series-other)"];
 const DASHED = 3; // the index drawn dashed
 const LEGEND = { income: "income", expenses: "expenses" };
+// The budget charts (D-053): the journal's largest categories by name in the three hues,
+// everything else as the dashed "Other" line, so the four colour slots are never exceeded.
+const OTHER = "Other";
+
+function budgetSeries(categories) {
+  const slots = [null, null, null, null];
+  Object.entries(categories ?? {}).forEach(([name, values], i) => {
+    const index = name === OTHER ? DASHED : i;
+    // bridge: saves recorded before D-053 (or since overwritten) are missing, not zero.
+    if (index <= DASHED) slots[index] = { label: name, values, bridge: true };
+  });
+  return slots;
+}
+
+function budgetColumns(data) {
+  const budget = data.budget ?? {};
+  const columns = [];
+  for (const [side, suffix] of [["income", "income"], ["expenses", "cost"]]) {
+    for (const [name, values] of Object.entries(budget[side] ?? {})) {
+      columns.push({ label: `${name} (${suffix})`, values });
+    }
+  }
+  if (budget.one_off) columns.push({ label: "One-off spending", values: budget.one_off });
+  return columns;
+}
 
 const number = new Intl.NumberFormat("en", { maximumFractionDigits: 1 });
 
@@ -186,8 +211,9 @@ function table(data) {
   summary.textContent = "Show the numbers as a table";
   const grid = document.createElement("table");
   const keys = CHARTS.flatMap((c) => c.keys);
+  const extra = budgetColumns(data);
   const head = grid.createTHead().insertRow();
-  for (const text of ["Date", ...keys.map((k) => data.labels[k] ?? k)]) {
+  for (const text of ["Date", ...keys.map((k) => data.labels[k] ?? k), ...extra.map((c) => c.label)]) {
     const cell = document.createElement("th");
     cell.textContent = text;
     head.append(cell);
@@ -199,6 +225,10 @@ function table(data) {
     for (const key of keys) {
       const value = data.series[key][i];
       row.insertCell().textContent = value === null ? "-" : number.format(value);
+    }
+    for (const column of extra) {
+      const value = column.values[i];
+      row.insertCell().textContent = value === null || value === undefined ? "-" : number.format(value);
     }
   });
   details.append(summary, grid);
@@ -281,6 +311,16 @@ export function renderCharts(container, data, picker = null) {
   for (const chart of CHARTS) {
     const series = chart.keys.map((key) => ({ label: LEGEND[key] ?? key, values: data.series[key] }));
     container.append(lineChart(data, chart.title, series, width));
+  }
+
+  const budget = data.budget;
+  if (budget && budget.one_off?.some((v) => v !== null && v !== undefined)) {
+    container.append(heading("Where the money comes from and goes"));
+    container.append(lineChart(data, "Income by source (a month)", budgetSeries(budget.income), width));
+    container.append(lineChart(data, "Recurring expenses (a month)", budgetSeries(budget.expenses), width));
+    container.append(
+      lineChart(data, "One-off spending (a month)", [{ label: "one-off", values: budget.one_off, bridge: true }], width),
+    );
   }
 
   const compare = data.compare ?? [];

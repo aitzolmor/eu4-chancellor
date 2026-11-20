@@ -1,12 +1,12 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
-updated on **2026-11-16** after checking AE and coring against the game and the
-wiki's retrieval (PRs #1–#53 merged; 555 tests passing, CI green on Ubuntu and
+updated on **2026-11-18** after checking AE and coring against the game and the
+wiki's retrieval (PRs #1–#53 merged; 559 tests passing, CI green on Ubuntu and
 Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-054; D-050 to D-053 are in PRs #50, #55, #56 and #57; D-044 is in the draft PR #50),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-054; D-044 and D-051 are in the draft PR #50),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -299,12 +299,15 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
    saves). The charts and `get_trends` also compare with the rivals (D-048) or any countries
    the player picks (D-049). The planning tools now point to `get_trends`. A trade question had to ask
    the player for their node shares and merchants, so `get_trade` now reads them
-   (D-046), verified in Claude Desktop.
+   (D-046), verified in Claude Desktop. A war question got the start date wrong and
+   lacked occupations and losses; `get_wars` reads them (D-050). Still to check: that
+   the quarterly war score (56 on the 1532 save) matches the game's peace screen.
    The user is no expert, so validate numbers against
    the game's tooltips (they can read those), not strategy. Any live API check needs
    the user's go-ahead; mind the 5 EUR balance.
-4. Remaining data gaps (casus belli, income breakdown), or the watches idea, whichever
-   the play-test shows matters more.
+4. Remaining data gaps: casus belli are in PR #50 and the income breakdown is done
+   (D-052, matched the game's ledger); then whichever the play-test
+   shows matters more.
 5. **Real-time data** (discussed 2026-11-14, not started): monthly autosaves already
    feed the panel; a small mod writing values to `game.log` with the `log` effect is
    worth a prototype; reading the game's memory is ruled out.

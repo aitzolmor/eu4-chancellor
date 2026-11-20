@@ -1413,3 +1413,37 @@ Tried on a copy of the user's context, with their two goals: Gelre still exists,
 Austrian Netherlands mission lacks its requirement, the Low Countries at 8 of 16
 provinces (Holland, a vassal, counts); Naples not yet a subject, the Naples mission at 0
 of 2 requirements, war odds against France 1.88 (reached, 1.5 wanted).
+
+## D-062 — Other models: LM Studio as an MCP client, and measuring a local model
+
+**Date:** 2026-11-20 · **Status:** Accepted; the measurement is pending
+
+The idea of 2026-11-16 (ROADMAP): the tools should not need a paid Claude plan. Its cheap
+step is another MCP client running a free local model.
+
+- **The model:** Qwen3 4B Instruct 2507, Q4_K_M (2.5 GB), in LM Studio. The user's laptop
+  has 8 GB of RAM and an integrated graphics card, so only a small model fits; Qwen3 is
+  among the small families that call tools well (Llama 3.2 3B worse, Gemma 3 without
+  native tool calling). LM Studio runs the model and is an MCP client itself.
+- **Configuration:** LM Studio reads the same `mcpServers` shape as Claude Desktop from
+  `~/.lmstudio/mcp.json`. `chancellor mcp-config --client lmstudio --write` adds the
+  Chancellor there, keeping other servers and copying the old file to `mcp.json.bak`.
+- **Measuring:** `chancellor eval --model <id>` asks the evaluation questions to a model
+  behind an OpenAI-compatible API (`llm.local`: LM Studio's `localhost:1234/v1`, Ollama
+  and others), runs the tools it calls, and reports per case whether it called the
+  expected tool, whether its answer has the case's `answer` facts (numbers, so any
+  language works), the time, and whether a tool result was cut to fit its context.
+  Results print as they come, so a slow run can be stopped without losing them. This
+  is a measuring loop, not a second chat: the panel's chat stays on Anthropic (D-028).
+- **A fix for small models:** Qwen passed `country: "player"` instead of leaving it out,
+  and the tools answered "no country named 'player'"; words such as player, me or my
+  country now mean the player (`PLAYER_WORDS`).
+
+What was measured on the user's laptop: 16k of context did not fit beside the model
+(12k did, CPU only); the tool descriptions take about 5k tokens, cached by LM Studio;
+reading a tool result runs at about 12 tokens a second, so a 4,000-token result costs
+5–6 minutes, and a question 5–15 minutes. In the questions it got through, Qwen chose
+the expected tool (trade, missions, budget). A first run of six questions was stopped
+at the third: LM Studio was also serving other requests, and the replies had no length
+cap (now 1,024 tokens). **Pending:** a full run with LM Studio otherwise idle (about an
+hour), to say how many answers are complete.

@@ -552,6 +552,10 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
 
 
 # Game data the toolbox loads lazily; shared when the save changes (see with_campaign).
+# Words a model may write for the player's own country instead of omitting `country`.
+PLAYER_WORDS = frozenset(
+    {"player", "the player", "me", "my country", "mine", "myself", "self", "root", "you", "yours"}
+)
 _GAME_DATA = ("_missions", "_decisions", "_rules", "_modifiers", "_trade_graph")
 
 
@@ -1085,7 +1089,11 @@ class Toolbox:
     # --- helpers ------------------------------------------------------------------------
 
     def _tag(self, country: str | None) -> str:
-        return self.campaign.resolve_country(country) if country else self.campaign.player
+        # Smaller models write "player" or "me" for the player instead of leaving the
+        # field out (D-062); those words are no country's name.
+        if not country or " ".join(country.lower().split()) in PLAYER_WORDS:
+            return self.campaign.player
+        return self.campaign.resolve_country(country)
 
     def _game_dir(self) -> Path:
         if self.game_dir is None:

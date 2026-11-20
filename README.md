@@ -230,6 +230,27 @@ answered from your save, at no extra cost beyond your plan.
 
 Every tool call reads the newest save, so just save the game before asking.
 
+## Use it with a free local model (LM Studio)
+
+The tools speak MCP, an open protocol, so they also work with a model running on your own
+computer, at no cost. [LM Studio](https://lmstudio.ai) runs the model and is an MCP client
+too:
+
+1. In LM Studio, download a small model that calls tools well (Qwen3 4B Instruct 2507,
+   Q4_K_M, about 2.5 GB, was tried on an 8 GB laptop without a graphics card), and load it
+   with a context of 12k tokens or more: the tools' descriptions alone take about 5k.
+2. Add the Chancellor to LM Studio's MCP servers (it keeps any others you have):
+
+   ```bash
+   chancellor mcp-config --client lmstudio --write
+   ```
+
+3. Restart LM Studio and ask in its chat with the `eu4-chancellor` tools enabled.
+
+Expect slower and weaker answers than Claude's; the tools do much of the work, but a small
+model can misread them. `chancellor eval --model <model id>` measures it on the evaluation
+questions (which tool it calls, and whether its answer has the key numbers).
+
 ## Desktop panel (early preview)
 
 A small window to keep beside the game, with your campaign at a glance: country, date,

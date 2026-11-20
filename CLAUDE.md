@@ -74,6 +74,8 @@ chancellor player-context   # goals and preferences recorded in chats (--remove 
 chancellor journal         # what changed between the saves read (--saves N)
 chancellor journal --backfill [--ids ID,...]  # add older saves of this campaign
 chancellor eval            # evaluation set (evals/*.toml) against its save, if present
+chancellor eval --model qwen3-4b --cases a,b  # ask a local model (LM Studio) the questions
+chancellor mcp-config --client lmstudio --write  # add the server to LM Studio
 ```
 
 Exploring real saves: load with `chancellor.save.loader.load_save`, then `parse_lazy` and

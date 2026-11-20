@@ -7,6 +7,7 @@
 #
 # Checks use keys, tags and numbers, never localised names. `matches` are regular
 # expressions (multi-line); TOML literal strings ('...') keep their backslashes.
+# `answer` lists facts a model's answer should mention, for `chancellor eval --model`.
 
 [save]
 file = "Austria1535_08_02.eu4"
@@ -42,6 +43,7 @@ why = "An else_if evaluated on its own made the OR true (D-054); the development
 
 [[case]]
 id = "multicultural_needs_adm_10"
+answer = ["10"]
 question = "What do I lack for the multicultural empire mission?"
 tool = "get_missions"
 matches = ['hab_multicultural_empire`\)\*\*, available now\n  - Requires \(not yet']
@@ -50,6 +52,7 @@ why = "Austria has administrative technology 9 on this save."
 
 [[case]]
 id = "poland_reward_waits_for_300"
+answer = ["695", "300"]
 question = "When should I complete the Poland mission?"
 tool = "get_missions"
 contains = [
@@ -62,6 +65,7 @@ why = "The reward's scripted effect needs Poland plus its subjects under 300, no
 
 [[case]]
 id = "budget_by_category"
+answer = ["35.1"]
 question = "Where does my money come from and go?"
 tool = "get_budget"
 contains = [
@@ -98,6 +102,7 @@ absent = ["War score recorded"]
 
 [[case]]
 id = "war_on_poland"
+answer = ["254", "93"]
 question = "Who would fight if I declared war on Poland?"
 tool = "check_war"
 args = { target = "POL" }
@@ -127,6 +132,7 @@ contains = [
 
 [[case]]
 id = "trade_home_node"
+answer = ["65"]
 question = "How can I earn more from trade?"
 tool = "get_trade"
 contains = ["65% of its trade power (218 of 336)", "collecting 13.84 a month"]

@@ -63,12 +63,17 @@ def journal_path(context_file: Path) -> Path:
 
 
 def take_snapshot(
-    campaign: Campaign, tag: str | None = None, extra: Iterable[str] = ()
+    campaign: Campaign,
+    tag: str | None = None,
+    extra: Iterable[str] = (),
+    ready: Any = None,
 ) -> dict[str, Any]:
     """A compact record of a country on this save, as plain JSON values.
 
     ``extra`` are countries tracked in full besides the rivals and great powers: the
-    ones the player picked to compare with (D-049).
+    ones the player picked to compare with (D-049). ``ready`` is what can be claimed now
+    (:class:`chancellor.context.alerts.ReadyNow`), kept so the journal can say what
+    became ready (D-055); backfilled saves go without it.
     """
     from chancellor.context.summarizer import _find_person, _rivals  # one source for both
 
@@ -153,6 +158,11 @@ def take_snapshot(
         },
         "emperor": campaign.emperor or "",
         "imperial_reforms": sorted(str(r) for r in as_list(campaign.empire.get("passed_reform"))),
+        **(
+            {"ready": {"missions": list(ready.missions), "formables": list(ready.formables)}}
+            if ready is not None
+            else {}
+        ),
     }
 
 
@@ -221,6 +231,11 @@ def changes(before: dict[str, Any], after: dict[str, Any], campaign: Campaign) -
         events.append(
             "Imperial reform passed: " + _listed([campaign.text(f"{r}_title") for r in passed])
         )
+    if "ready" in before and "ready" in after:  # what became claimable (D-055)
+        for kind, label in (("formables", "Can now be taken"), ("missions", "Mission ready")):
+            fresh = [k for k in after["ready"][kind] if k not in before["ready"][kind]]
+            if fresh:
+                events.append(f"{label}: " + _listed([_title(campaign, k) for k in fresh]))
     old, new = before.get("numbers", {}), after.get("numbers", {})
     for key in _EVENT_NUMBERS:
         if key in old and key in new and old[key] != new[key]:
@@ -619,6 +634,11 @@ def _great_power_rank(campaign: Campaign, tag: str) -> float | None:
 
     value = rank(campaign, tag)
     return float(value) if value else None
+
+
+def _title(campaign: Campaign, key: str) -> str:
+    text = campaign.loc.get(f"{key}_title", "")
+    return campaign.text(f"{key}_title") if text else key.replace("_", " ")
 
 
 def _float(value: Any) -> float | None:

@@ -7,11 +7,17 @@ against a briefing or a war check. UI_DESIGN, build order step 3.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 
 from chancellor.context.campaign import Campaign, as_list
+from chancellor.context.decisions import check_decisions
+from chancellor.context.missions import mission_tree
+from chancellor.context.script import clean_text
+from chancellor.game.decisions import DecisionLibrary
 from chancellor.game.imperial_reforms import IMPERIAL_REFORM_COST, ImperialReformLibrary
+from chancellor.game.missions import MissionLibrary
+from chancellor.game.rules import GameRules
 from chancellor.save.parser import get_all
 
 Severity = Literal["high", "medium", "info"]
@@ -43,10 +49,51 @@ class Alert:
         return asdict(self)
 
 
+@dataclass
+class ReadyNow:
+    """What the country can claim right now (D-055).
+
+    Attributes:
+        missions: Keys of the available missions whose requirements are all met.
+        formables: Keys of the formable-nation decisions whose requirements are all met.
+    """
+
+    missions: list[str] = field(default_factory=list)
+    formables: list[str] = field(default_factory=list)
+
+
+def ready_now(
+    campaign: Campaign,
+    rules: GameRules,
+    missions: MissionLibrary,
+    decisions: DecisionLibrary,
+    tag: str | None = None,
+) -> ReadyNow:
+    """Missions that can be completed and nations that can be formed now (about 3 s).
+
+    Only what the evaluator settles as certainly met counts; a requirement it cannot
+    check keeps the mission or nation out, so the alert never claims too much.
+    """
+    tag = tag or campaign.player
+    tree = mission_tree(campaign, missions, tag, rules)
+    formables = check_decisions(campaign, rules, decisions, tag, missions, formables_only=True)
+    return ReadyNow(
+        missions=[m.mission.name for m in tree.available() if m.completable is True],
+        formables=[d.decision.name for d in formables if d.can_take is True],
+    )
+
+
+def title(campaign: Campaign, key: str) -> str:
+    """A mission's or decision's title in the game's language."""
+    text = campaign.loc.get(f"{key}_title", "")
+    return clean_text(text, campaign) if text else key.replace("_", " ")
+
+
 def campaign_alerts(
     campaign: Campaign,
     tag: str | None = None,
     reforms: ImperialReformLibrary | None = None,
+    ready: ReadyNow | None = None,
 ) -> list[Alert]:
     """Alerts for a country (default: the player), most severe first.
 
@@ -55,6 +102,8 @@ def campaign_alerts(
         tag: Country to check; defaults to the player.
         reforms: Imperial reforms from the game files; without them the reform alert is
             skipped.
+        ready: What can be claimed now (:func:`ready_now`); without it, no mission or
+            formable alerts.
 
     Raises:
         KeyError: If the country is not in the save.
@@ -71,6 +120,7 @@ def campaign_alerts(
         *_stability(country),
         *_monarch_power(country),
         *_imperial_reform(campaign, tag, reforms),
+        *_ready(campaign, ready),
     ]
     return sorted(alerts, key=lambda a: _ORDER[a.severity])
 
@@ -205,6 +255,20 @@ def _imperial_reform(
             f"{titles} can be proposed (imperial authority {authority:.0f})",
         )
     ]
+
+
+def _ready(campaign: Campaign, ready: ReadyNow | None) -> list[Alert]:
+    if ready is None:
+        return []
+    alerts = []
+    if ready.formables:
+        names = ", ".join(title(campaign, d) for d in ready.formables)
+        alerts.append(Alert("formable_ready", "medium", f"Can be taken now: {names}"))
+    if ready.missions:
+        names = ", ".join(title(campaign, m) for m in ready.missions)
+        count = _plural(len(ready.missions), "mission")
+        alerts.append(Alert("missions_ready", "info", f"{count} can be completed: {names}"))
+    return alerts
 
 
 def _plural(count: int, noun: str) -> str:

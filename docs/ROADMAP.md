@@ -104,7 +104,8 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
 - [x] Alerts: wars, coalition and countries at 50+ AE, truces with rivals or neighbours
   ending within two years, losses, loans, overextension, war exhaustion, negative
   stability, monarch power near the cap, an imperial reform ready
-- [ ] Alerts: missions or formables that became available since the previous save
+- [x] Alerts: missions or formables that became available since the previous save
+  (D-055): a panel alert while any is ready, and a journal line when one becomes ready
 - [x] `app.layout`: docked layout on two screens and undock; on one screen a floating,
   draggable icon that opens the panel and Claude Desktop as an overlay (D-022), shown
   only while the game is in front; verified live with EU4 running as administrator; the

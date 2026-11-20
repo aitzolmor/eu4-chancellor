@@ -124,7 +124,9 @@ class PanelApi:
         """
         try:
             toolbox = self._provider.toolbox()
-            alerts = campaign_alerts(toolbox.campaign, reforms=self._imperial_reforms())
+            alerts = campaign_alerts(
+                toolbox.campaign, reforms=self._imperial_reforms(), ready=toolbox.ready()
+            )
             fired = toolbox.player_plan()["fired"]
         except (RuntimeError, OSError, KeyError, ValueError) as exc:
             return {"ok": False, "error": str(exc) or exc.__class__.__name__}

@@ -1183,3 +1183,28 @@ them Imperio multicultural, adm tech 10 with 9 now, and El azote de Europa); pos
 with unchecked parts: five (Relaciones ibéricas needs development double Spain's, a
 variable comparison the evaluator does not do). In game, the three it called
 completable could be completed.
+
+## D-055 — Alerts for missions and nations ready to claim
+
+**Date:** 2026-11-20 · **Status:** Accepted (builds on D-054)
+
+With missions checked against the save (D-054), the panel can say what is ready
+without the player asking.
+
+- **What counts as ready** (`alerts.ready_now`): available missions whose requirements
+  are all certainly met, and formable-nation decisions that can be taken. A requirement
+  the evaluator cannot check keeps a mission out, so the alert never claims too much.
+  About 3 seconds on the user's save, computed once per save by the `Toolbox`
+  (`Toolbox.ready()`), only with the game files.
+- **Panel:** an `info` alert lists the missions that can be completed, and a `medium`
+  one the nations that can be formed, as long as they are ready.
+- **Journal:** each snapshot of a save read keeps what was ready (`ready`, the mission
+  and decision keys), and the changes between two saves say what became ready
+  ("Mission ready: …", "Can now be taken: …"), so "since your last save" and
+  `get_campaign_journal` mention it once. Backfilled saves skip the 3 seconds and keep
+  no `ready`, so no line is made against them.
+
+On the user's 1535.8.2 save the panel gains "3 missions can be completed: Ducado de
+Milán, Conseguir Croacia, Sobrepasar a los polacos", next to the coalition and
+overextension alerts. The journal's lines start from the next save read, the first
+with `ready` recorded.

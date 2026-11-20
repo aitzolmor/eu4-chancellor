@@ -900,7 +900,7 @@ at war, a ruler dying) are left for later.
 
 ## D-044 — A probe mod for data the save lacks, read from game.log
 
-**Date:** 2026-11-17 · **Status:** Prototype, waiting for a game session
+**Date:** 2026-11-17 · **Status:** Prototype; the channel works (2026-11-20), war score and casus belli to check
 
 "Real-time data" turned out to be two different needs. Freshness is mostly a setting:
 the user's autosave is yearly (`settings.txt`), and monthly autosaves would make the
@@ -929,3 +929,41 @@ sets its own variables and logs `CHANCELLOR|...` lines, answering in one session
 (Windows-1252, read whole: it restarts empty with each game start). Costs to weigh once
 it works: the player installs and enables a mod, which a patch can break; casus belli
 cannot be listed, only checked one type and one country at a time.
+
+**First session (2026-11-20, 1534.07 to 1534.11, at peace).** The user starts `eu4.exe`
+without the launcher, so the mod was enabled by `dlc_load.json` in the game's user
+folder (`{"enabled_mods":["mod/chancellor_probe.mod"],"disabled_dlcs":[]}`), which the
+game reads at start. Answers: (1) yes, one heartbeat a month, on the country's own pulse
+day (22nd or 26th), with the month's name in the game's language; (2) yes, the treasury
+with three decimals (438.574 on 1534.10.22; the 1534.11.1 save had 451.047); `error.log`
+has nothing from the mod. (3) is still open: at peace there is no enemy for the ladder,
+and the direct value printed 0. Each line carries the game date (`EVENT [1534.07.22]:`),
+which the reader now keeps.
+
+**Casus belli added.** Each month the mod checks, for every neighbour, rival (both
+ways) and holder of a claim or core of the player, each casus belli type in the game's
+`common/cb_types` (100 in 1.37; `chancellor probe install` reads them, with a short
+built-in list when the game folder is unknown) with
+`has_casus_belli = { type target }`, a trigger the game's own decisions use (Austria's
+personal union checks). It logs the countries checked (`cbtarget`) and each type found
+(`cb`); the reader keeps the latest month. Open question: whether that trigger sees the
+casus belli the game derives on the fly (claims, cores, rivals) or only the ones events
+and missions add; the diplomacy screen is the reference.
+
+**Second session (2026-11-20, 1535.01 to 1535.04).** It does see them. Each month 40
+countries were checked and 18 had at least one casus belli, the same three months
+running. Against the diplomacy screen, which the user read for five countries:
+
+| Country | Diplomacy screen | Mod |
+| --- | --- | --- |
+| France | Conquest, Imperial ban, Imperial campaign, Humiliate | `cb_conquest`, `cb_imperial_ban`, `cb_imperial_ban_incident`, `cb_humiliate_rotw` |
+| Poland | Humiliate; several Conquest of Hungary's | `cb_humiliate_rotw` |
+| Liège | three Conquest | `cb_conquest` |
+| Teutonic Order, Lübeck | none | not checked (none of the target rules matched) |
+
+The player's own casus belli matched exactly (the rival one is `cb_humiliate_rotw`,
+"Humillar a su rival", not `cb_humiliate`). What the mod missed were the subjects':
+an overlord can declare with a subject's casus belli, and the screen lists them. The
+mod now checks each subject too (`every_subject_country`, the subject kept as an event
+target, `subcb` lines), against neighbours of the player or of the subject, the
+player's rivals and holders of the player's claims or cores; still to confirm in game.

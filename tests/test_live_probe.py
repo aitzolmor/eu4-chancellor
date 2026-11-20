@@ -3,7 +3,15 @@
 from pathlib import Path
 
 from chancellor.live.gamelog import game_log_path, read_probe, render_probe
-from chancellor.live.probe import FOLDER, LADDER_STEP, MOD_NAME, install, probe_files
+from chancellor.live.probe import (
+    DEFAULT_CB_TYPES,
+    FOLDER,
+    LADDER_STEP,
+    MOD_NAME,
+    cb_types_from,
+    install,
+    probe_files,
+)
 from chancellor.save.parser import parse
 
 
@@ -60,3 +68,88 @@ def test_an_empty_log_explains_why(tmp_path: Path):
     log = tmp_path / "game.log"
     log.write_text("[x.cpp:1]: nothing\n", encoding="cp1252")
     assert "No Chancellor lines" in render_probe(read_probe(log), log)
+
+
+def test_the_casus_belli_check_covers_the_types_and_the_targets(tmp_path: Path):
+    events = probe_files(["cb_core", "cb_conquest"])["events/chancellor_probe.txt"]
+    parse(events)  # still valid game script
+    assert events.count("has_casus_belli") == 4  # the player and each subject
+    assert "has_casus_belli = { type = cb_conquest target = PREV }" in events
+    assert 'log = "CHANCELLOR|cb|[This.GetTag]|cb_conquest"' in events
+    assert 'log = "CHANCELLOR|cbtarget|[This.GetTag]|[This.GetName]"' in events
+    for target in ("is_neighbor_of = ROOT", "is_rival = ROOT", "is_claim = ROOT"):
+        assert target in events
+    assert len(probe_files()["events/chancellor_probe.txt"].split("has_casus_belli")) == 33
+
+
+def test_the_types_come_from_the_game_files(tmp_path: Path):
+    folder = tmp_path / "common" / "cb_types"
+    folder.mkdir(parents=True)
+    (folder / "00_cb_types.txt").write_text(
+        "# casus belli\ncb_core = {\n\tvalid_for_subject = no\n}\ncb_conquest = { }\n",
+        encoding="cp1252",
+    )
+    assert cb_types_from(tmp_path) == ["cb_core", "cb_conquest"]
+    assert cb_types_from(None) == list(DEFAULT_CB_TYPES)
+    assert cb_types_from(tmp_path / "missing") == list(DEFAULT_CB_TYPES)
+
+
+CB_LOG = """EVENT [1534.07.22]:CHANCELLOR|heartbeat|1534|julio|Austria
+EVENT [1534.07.22]:CHANCELLOR|cbtarget|VEN|Venecia
+EVENT [1534.07.22]:CHANCELLOR|cb|VEN|cb_core
+EVENT [1534.08.22]:CHANCELLOR|heartbeat|1534|agosto|Austria
+EVENT [1534.08.22]:CHANCELLOR|cbtarget|VEN|Venecia
+EVENT [1534.08.22]:CHANCELLOR|cbtarget|HUN|Hungr\xeda
+EVENT [1534.08.22]:CHANCELLOR|cb|HUN|cb_conquest
+EVENT [1534.08.22]:CHANCELLOR|cb|HUN|cb_insult
+"""
+
+
+def test_the_reader_keeps_the_last_month_of_casus_belli(tmp_path: Path):
+    log = tmp_path / "game.log"
+    log.write_bytes(CB_LOG.encode("cp1252"))
+    report = read_probe(log)
+    assert report.last_date == "1534.08.22"
+    assert report.cb_targets == {"VEN": "Venecia", "HUN": "Hungría"}
+    assert report.casus_belli == {"HUN": ["cb_conquest", "cb_insult"]}
+    text = render_probe(report, log)
+    assert "4. Casus belli (has_casus_belli), last month: 2 countries checked, 1 with" in text
+    assert "   - Hungría (HUN): cb_conquest, cb_insult" in text
+    old = tmp_path / "old.log"
+    old.write_text("EVENT [1534.07.22]:CHANCELLOR|treasury|1\n", encoding="cp1252")
+    assert "no check ran" in render_probe(read_probe(old), old)
+
+
+def test_subjects_are_checked_too():
+    events = probe_files(["cb_conquest"])["events/chancellor_probe.txt"]
+    parse(events)
+    assert "every_subject_country = {" in events
+    assert "save_event_target_as = chancellor_subject" in events
+    assert (
+        "event_target:chancellor_subject = { has_casus_belli = { type = cb_conquest "
+        "target = PREV } }" in events
+    )
+    assert "NOT = { is_subject_of = ROOT }" in events
+
+
+SUBJECT_LOG = """EVENT [1535.03.22]:CHANCELLOR|heartbeat|1535|marzo|Austria
+EVENT [1535.03.22]:CHANCELLOR|cbtarget|POL|Polonia
+EVENT [1535.03.22]:CHANCELLOR|cb|POL|cb_humiliate_rotw
+EVENT [1535.03.22]:CHANCELLOR|subject|HUN|Hungr\xeda
+EVENT [1535.03.22]:CHANCELLOR|subcb|POL|Polonia|cb_conquest
+EVENT [1535.03.22]:CHANCELLOR|subject|ALB|Albania
+EVENT [1535.03.22]:CHANCELLOR|subject|HOL|Holanda
+EVENT [1535.03.22]:CHANCELLOR|subcb|LIE|Lieja|cb_conquest
+"""
+
+
+def test_the_reader_groups_casus_belli_by_subject(tmp_path: Path):
+    log = tmp_path / "game.log"
+    log.write_bytes(SUBJECT_LOG.encode("cp1252"))
+    report = read_probe(log)
+    assert report.subjects == {"HUN": "Hungría", "ALB": "Albania", "HOL": "Holanda"}
+    assert report.subject_cb == {"HUN": {"POL": ["cb_conquest"]}, "HOL": {"LIE": ["cb_conquest"]}}
+    text = render_probe(report, log)
+    assert "5. Subjects' casus belli, last month: 3 subjects, 2 with at least one" in text
+    assert "   - Hungría (HUN) against Polonia (POL): cb_conquest" in text
+    assert "   - Holanda (HOL) against Lieja (LIE): cb_conquest" in text

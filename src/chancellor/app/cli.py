@@ -31,7 +31,7 @@ from chancellor.game.modifiers import ModifierLibrary
 from chancellor.game.power_rules import PowerRules
 from chancellor.game.rules import GameRules
 from chancellor.live.gamelog import game_log_path, read_probe, render_probe
-from chancellor.live.probe import MOD_NAME, install
+from chancellor.live.probe import MOD_NAME, cb_types_from, install
 from chancellor.player.context import context_path
 from chancellor.save.loader import SaveFormatError, find_current_save, load_save
 from chancellor.wiki.store import import_exports, render_hits, search, wiki_path
@@ -386,12 +386,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             if settings.save_dir is None:
                 raise CliError("Set EU4_SAVE_DIR: the mod and the log sit next to it.")
             if args.action == "install":
-                written = install(settings.save_dir.parent / "mod")
+                cb_types = cb_types_from(settings.game_dir)
+                written = install(settings.save_dir.parent / "mod", cb_types)
                 for path in written:
                     print(path, file=sys.stderr)
                 print(
-                    f"Installed '{MOD_NAME}'. Enable it in the launcher's playset, play a few "
-                    "months, then run: chancellor probe read",
+                    f"Installed '{MOD_NAME}' (checks {len(cb_types)} casus belli types). Enable "
+                    "it in the launcher's playset, or in dlc_load.json when the game starts "
+                    "without the launcher; play a few months, then run: chancellor probe read",
                     file=sys.stderr,
                 )
                 return 0

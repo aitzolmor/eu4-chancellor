@@ -266,8 +266,14 @@ Goal: explore how far the assistant can act, not just advise.
 - [x] Probe mod: monthly heartbeat, treasury as a control, war score against each enemy
   (direct `trigger_value:war_score` and a `war_score_against` ladder) to `game.log`;
   `chancellor probe install|read`
-- [ ] Run it in a game session at war and read the answers (waiting for the user)
-- [ ] If it works: war score in the war check and the briefing; then casus belli
+- [x] First session (2026-11-20, at peace): the monthly pulse and a variable in a log
+  line both work; enabled through `dlc_load.json`, since the user skips the launcher
+- [x] Casus belli: each type from `common/cb_types` checked with `has_casus_belli`
+  against neighbours, rivals and holders of the player's claims or cores
+- [x] Casus belli against the diplomacy screen (2026-11-20): the player's own match
+  exactly; the subjects' were missing, now checked too
+- [ ] Confirm the subjects' casus belli in game; a session at war (war score)
+- [ ] If they work: war score and casus belli in the war check and the briefing
 
 ## Ideas / later
 

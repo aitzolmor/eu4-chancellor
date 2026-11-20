@@ -301,8 +301,11 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
 5. **Real-time data** (prototype built 2026-11-17, **waiting for a game session**,
    D-044): the probe mod (`chancellor probe install`, already installed in the user's
    `mod` folder) logs a monthly heartbeat, the treasury and the war score against each
-   enemy to `logs/game.log`; `chancellor probe read` answers the three questions.
-   Enable "Chancellor probe" in the launcher's playset, play a few months at war, then
+   enemy to `logs/game.log`; `chancellor probe read` answers its questions.
+   The first session (2026-11-20, at peace, enabled by `dlc_load.json`) showed the
+   channel works. The second (1535) matched the casus belli with the diplomacy screen;
+   the subjects' casus belli (added after it) and the war score are still to check.
+   Play a few months at war, then
    read the log and `logs/error.log`. The user's autosave is yearly: monthly would
    make the panel, watches and journal monthly at no cost. Reading the game's memory
    is ruled out.

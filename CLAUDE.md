@@ -70,7 +70,7 @@ chancellor wiki-import FILE.xml...  # index pages exported from the wiki (Specia
 chancellor wiki-search coalition   # search the imported wiki
 chancellor player-context   # goals and preferences recorded in chats (--remove ID)
 chancellor journal         # what changed between the saves read (--saves N)
-chancellor probe install|read  # prototype mod: war score via logs/game.log
+chancellor probe install|read  # prototype mod: war score, casus belli via game.log
 ```
 
 Exploring real saves: load with `chancellor.save.loader.load_save`, then `parse_lazy` and

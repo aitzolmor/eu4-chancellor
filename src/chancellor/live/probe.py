@@ -12,6 +12,16 @@ that channel is worth building on:
    ``direct`` exports ``trigger_value:war_score`` (it may not exist), and ``ladder``
    narrows the score down with ``war_score_against`` checks every 5 points, a trigger
    the game's own events use.
+4. Which casus belli does the player have, and against whom? For each country worth
+   attacking (neighbours, rivals both ways, and holders of the player's claims or cores)
+   the mod logs a ``cbtarget`` line, then a ``cb`` line for each casus belli type that
+   ``has_casus_belli`` finds against it. The types come from the game's
+   ``common/cb_types``. Whether that trigger also sees the casus belli the game derives
+   on the fly (claims, cores, rivals), not only those added by events, is part of the
+   question; the diplomacy screen is the reference. The same check runs for each of the
+   player's subjects (``subject`` then ``subcb`` lines), whose casus belli the overlord
+   can use: neighbours of the player or of the subject, the player's rivals, and
+   holders of the player's claims or cores, leaving out the player's own subjects.
 
 Every line starts with ``CHANCELLOR|`` so :mod:`chancellor.live.gamelog` can find it.
 Nothing here changes the game: the event is hidden and only sets the mod's variables.
@@ -19,6 +29,8 @@ Nothing here changes the game: the event is hidden and only sets the mod's varia
 
 from __future__ import annotations
 
+import re
+from collections.abc import Sequence
 from pathlib import Path
 
 MOD_NAME = "Chancellor probe"
@@ -26,28 +38,72 @@ FOLDER = "chancellor_probe"
 NAMESPACE = "chancellor_probe"
 LADDER_STEP = 5
 SUPPORTED_VERSION = "1.37.*.*"
+# Used when the game folder is unknown: the casus belli a player most often has.
+DEFAULT_CB_TYPES = (
+    "cb_core",
+    "cb_conquest",
+    "cb_fabricated_claims",
+    "cb_restore_personal_union",
+    "cb_claim_throne",
+    "cb_vassalize_mission",
+    "cb_insult",
+    "cb_border_war",
+    "cb_humiliate",
+    "cb_trade_conflict",
+    "cb_religious_conformance",
+    "cb_heretic",
+    "cb_crusade",
+    "cb_imperial",
+    "cb_hegemon",
+    "cb_super_badboy",
+)
+_TOP_LEVEL = re.compile(r"^([A-Za-z0-9_]+)\s*=\s*\{", re.MULTILINE)
 
 
-def probe_files() -> dict[str, str]:
-    """The mod's files, by path inside the mod folder."""
+def cb_types_from(game_dir: Path | None) -> list[str]:
+    """Every casus belli type in the game's ``common/cb_types``, in file order.
+
+    Falls back to :data:`DEFAULT_CB_TYPES` when the folder is unknown or empty.
+    """
+    folder = game_dir / "common" / "cb_types" if game_dir else None
+    if folder is None or not folder.is_dir():
+        return list(DEFAULT_CB_TYPES)
+    names: list[str] = []
+    for path in sorted(folder.glob("*.txt")):
+        text = path.read_bytes().decode("cp1252", errors="replace")
+        names += [name for name in _TOP_LEVEL.findall(text) if name not in names]
+    return names or list(DEFAULT_CB_TYPES)
+
+
+def probe_files(cb_types: Sequence[str] = DEFAULT_CB_TYPES) -> dict[str, str]:
+    """The mod's files, by path inside the mod folder.
+
+    Args:
+        cb_types: The casus belli types to check against each country.
+    """
     return {
         "descriptor.mod": _descriptor(),
         "common/on_actions/zz_chancellor_probe.txt": _on_actions(),
-        f"events/{NAMESPACE}.txt": _events(),
+        f"events/{NAMESPACE}.txt": _events(cb_types),
     }
 
 
-def install(mod_dir: Path) -> list[Path]:
+def install(mod_dir: Path, cb_types: Sequence[str] = DEFAULT_CB_TYPES) -> list[Path]:
     """Write the mod into the game's ``mod`` folder (``Documents/.../mod``).
 
-    The launcher lists a mod from its ``<name>.mod`` file next to the folder.
+    The launcher lists a mod from its ``<name>.mod`` file next to the folder; without
+    the launcher, ``dlc_load.json`` in the game's user folder enables it.
+
+    Args:
+        mod_dir: The game's ``mod`` folder.
+        cb_types: The casus belli types to check (:func:`cb_types_from`).
 
     Returns:
         The files written.
     """
     root = mod_dir / FOLDER
     written = []
-    for relative, text in probe_files().items():
+    for relative, text in probe_files(cb_types).items():
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")
@@ -76,7 +132,20 @@ def _on_actions() -> str:
     return f"on_monthly_pulse = {{\n\tevents = {{\n\t\t{NAMESPACE}.1\n\t}}\n}}\n"
 
 
-def _events() -> str:
+def _events(cb_types: Sequence[str]) -> str:
+    checks = "\n".join(
+        f"\t\t\tif = {{ limit = {{ ROOT = {{ has_casus_belli = {{ type = {cb} target = PREV }} }} "
+        f'}} log = "CHANCELLOR|cb|[This.GetTag]|{cb}" }}'
+        for cb in cb_types
+    )
+    # A subject's casus belli are the overlord's to use too (the diplomacy screen lists
+    # them with the subject's name), so each subject is checked as well.
+    subject_checks = "\n".join(
+        f"\t\t\t\tif = {{ limit = {{ event_target:chancellor_subject = {{ has_casus_belli = "
+        f"{{ type = {cb} target = PREV }} }} }} "
+        f'log = "CHANCELLOR|subcb|[This.GetTag]|[This.GetName]|{cb}" }}'
+        for cb in cb_types
+    )
     ladder = "\n".join(
         f"\t\t\t\tif = {{ limit = {{ war_score_against = {{ who = PREV value = {value} }} }} "
         f"set_variable = {{ which = chancellor_ladder value = {value} }} }}"
@@ -118,6 +187,46 @@ country_event = {{
 {ladder}
 \t\t\t}}
 \t\t\tlog = "CHANCELLOR|ladder|[This.GetName]|[Root.chancellor_ladder.GetValue]"
+\t\t}}
+\t\tevery_country = {{
+\t\t\tlimit = {{
+\t\t\t\tNOT = {{ tag = ROOT }}
+\t\t\t\tOR = {{
+\t\t\t\t\tis_neighbor_of = ROOT
+\t\t\t\t\tis_rival = ROOT
+\t\t\t\t\tROOT = {{ is_rival = PREV }}
+\t\t\t\t\tany_owned_province = {{
+\t\t\t\t\t\tOR = {{
+\t\t\t\t\t\t\tis_claim = ROOT
+\t\t\t\t\t\t\tis_core = ROOT
+\t\t\t\t\t\t}}
+\t\t\t\t\t}}
+\t\t\t\t}}
+\t\t\t}}
+\t\t\tlog = "CHANCELLOR|cbtarget|[This.GetTag]|[This.GetName]"
+{checks}
+\t\t}}
+\t\tevery_subject_country = {{
+\t\t\tlog = "CHANCELLOR|subject|[This.GetTag]|[This.GetName]"
+\t\t\tsave_event_target_as = chancellor_subject
+\t\t\tevery_country = {{
+\t\t\t\tlimit = {{
+\t\t\t\t\tNOT = {{ tag = ROOT }}
+\t\t\t\t\tNOT = {{ is_subject_of = ROOT }}
+\t\t\t\t\tOR = {{
+\t\t\t\t\t\tis_neighbor_of = ROOT
+\t\t\t\t\t\tis_neighbor_of = event_target:chancellor_subject
+\t\t\t\t\t\tis_rival = ROOT
+\t\t\t\t\t\tany_owned_province = {{
+\t\t\t\t\t\t\tOR = {{
+\t\t\t\t\t\t\t\tis_claim = ROOT
+\t\t\t\t\t\t\t\tis_core = ROOT
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t}}
+\t\t\t\t}}
+{subject_checks}
+\t\t\t}}
 \t\t}}
 \t}}
 

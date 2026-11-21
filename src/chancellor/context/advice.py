@@ -508,11 +508,11 @@ def _peace(campaign: Campaign, wars: list[WarReport], live: Any) -> list[Recomme
                     [
                         source,
                         held,
-                        "a separate peace with one of its allies has its own score "
-                        "(the game's peace screen)",
+                        "what each demand costs is in get_peace_options; a deal spends at "
+                        "most the war score",
                     ],
                     leader,
-                    "get_wars",
+                    "get_peace_options",
                 )
             )
         elif score <= LOSING_SCORE:

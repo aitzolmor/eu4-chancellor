@@ -22,6 +22,7 @@ from chancellor.context.coring import coring_costs
 from chancellor.context.decisions import check_decisions, render_decisions
 from chancellor.context.ledger import read_ledger, render_budget
 from chancellor.context.missions import mission_tree, render_missions
+from chancellor.context.peace import peace_options, render_peace
 from chancellor.context.power import power_report
 from chancellor.context.summarizer import summarize
 from chancellor.context.targets import find_targets, render_targets
@@ -516,6 +517,20 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "get_peace_options",
+        "description": (
+            "What a peace can demand in each of the player's wars, and what each demand "
+            "costs in war score, as the game's 1.37 peace screen prices it: every province "
+            "of the enemy side that is occupied, a claim or core, or the war goal (0.8 x "
+            "development each, with whether it is occupied and whose claim it is: none "
+            "means more aggressive expansion), releasing an enemy's subject (at most 100), "
+            "war reparations, gold, annulling treaties; with the war score to spend and "
+            "each enemy's development with and without its subjects. Use it before "
+            "advising a peace: a deal can only spend the war score it has."
+        ),
+        "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
+    },
 ]
 
 
@@ -539,6 +554,7 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
     "get_trends": {"countries": _Field(list)},
     "get_trade": {"country": _Field(str)},
     "get_wars": {"country": _Field(str)},
+    "get_peace_options": {},
     "get_budget": {"country": _Field(str)},
     "create_watch": {
         "description": _Field(str, required=True),
@@ -694,6 +710,12 @@ class Toolbox:
         return render_wars(
             self.campaign, war_reports(self.campaign, tag), live=live.data if live else None
         )
+
+    def _get_peace_options(self, args: dict[str, Any]) -> str:
+        wars = war_reports(self.campaign, self.campaign.player)
+        live = load_war_score(self.campaign, self.game_log).data
+        options = [peace_options(self.campaign, w, live=live, wars=len(wars)) for w in wars]
+        return render_peace(self.campaign, options)
 
     def _get_budget(self, args: dict[str, Any]) -> str:
         tag = self._tag(args.get("country"))

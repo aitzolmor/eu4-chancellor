@@ -72,6 +72,7 @@ chancellor wiki-import FILE.xml...  # index pages exported from the wiki (Specia
 chancellor wiki-search coalition   # search the imported wiki
 chancellor player-context   # goals and preferences recorded in chats (--remove ID)
 chancellor journal         # what changed between the saves read (--saves N)
+chancellor probe install|read  # prototype mod: war score, casus belli via game.log
 chancellor journal --backfill [--ids ID,...]  # add older saves of this campaign
 chancellor eval            # evaluation set (evals/*.toml) against its save, if present
 chancellor eval --model qwen3-4b --cases a,b  # ask a local model (LM Studio) the questions

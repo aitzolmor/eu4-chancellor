@@ -898,11 +898,89 @@ The steps are as fine as the saves read: with monthly autosaves and the panel op
 month; otherwise from one chat to the next. Watches on events from the journal (an ally
 at war, a ruler dying) are left for later.
 
+## D-044 — A probe mod for data the save lacks, read from game.log
+
+**Date:** 2026-11-17 · **Status:** Prototype; the channel works (2026-11-20), war score and casus belli to check
+
+"Real-time data" turned out to be two different needs. Freshness is mostly a setting:
+the user's autosave is yearly (`settings.txt`), and monthly autosaves would make the
+panel, watches and journal monthly without any code. What no setting gives is data the
+save does not hold: the war score of the player's wars and the casus belli available,
+gaps since Phase 2.
+
+Mods cannot make network requests, and reading the game's memory was ruled out on
+2026-11-14. The one channel out is the `log` effect, which writes to `logs/game.log`
+while the game runs. The game files show what a mod can build on: `on_monthly_pulse`
+exists and is empty in 1.37; `log` strings take localisation like `[Root.GetName]`;
+`[Root.<variable>.GetValue]` shows a variable in localisation; `export_to_variable`
+takes `value = treasury` or `value = trigger_value:<trigger>`; and the game's own events
+compare war score with `war_score_against = { who value }`.
+
+The probe (`live.probe`, written by `chancellor probe install` into the game's `mod`
+folder) hooks `on_monthly_pulse` with a hidden event for the player's country that only
+sets its own variables and logs `CHANCELLOR|...` lines, answering in one session:
+
+1. Does the monthly pulse run it? A heartbeat line with the year and month.
+2. Does a log line show a variable? The treasury, which the save has too, as a control.
+3. Can the war score be read? Directly (`trigger_value:war_score`, which may not exist)
+   and by a ladder of `war_score_against` checks every 5 points against each enemy.
+
+`chancellor probe read` (`live.gamelog`) answers each question from the log
+(Windows-1252, read whole: it restarts empty with each game start). Costs to weigh once
+it works: the player installs and enables a mod, which a patch can break; casus belli
+cannot be listed, only checked one type and one country at a time.
+
+**First session (2026-11-20, 1534.07 to 1534.11, at peace).** The user starts `eu4.exe`
+without the launcher, so the mod was enabled by `dlc_load.json` in the game's user
+folder (`{"enabled_mods":["mod/chancellor_probe.mod"],"disabled_dlcs":[]}`), which the
+game reads at start. Answers: (1) yes, one heartbeat a month, on the country's own pulse
+day (22nd or 26th), with the month's name in the game's language; (2) yes, the treasury
+with three decimals (438.574 on 1534.10.22; the 1534.11.1 save had 451.047); `error.log`
+has nothing from the mod. (3) is still open: at peace there is no enemy for the ladder,
+and the direct value printed 0. Each line carries the game date (`EVENT [1534.07.22]:`),
+which the reader now keeps.
+
+**Casus belli added.** Each month the mod checks, for every neighbour, rival (both
+ways) and holder of a claim or core of the player, each casus belli type in the game's
+`common/cb_types` (100 in 1.37; `chancellor probe install` reads them, with a short
+built-in list when the game folder is unknown) with
+`has_casus_belli = { type target }`, a trigger the game's own decisions use (Austria's
+personal union checks). It logs the countries checked (`cbtarget`) and each type found
+(`cb`); the reader keeps the latest month. Open question: whether that trigger sees the
+casus belli the game derives on the fly (claims, cores, rivals) or only the ones events
+and missions add; the diplomacy screen is the reference.
+
+**Second session (2026-11-20, 1535.01 to 1535.04).** It does see them. Each month 40
+countries were checked and 18 had at least one casus belli, the same three months
+running. Against the diplomacy screen, which the user read for five countries:
+
+| Country | Diplomacy screen | Mod |
+| --- | --- | --- |
+| France | Conquest, Imperial ban, Imperial campaign, Humiliate | `cb_conquest`, `cb_imperial_ban`, `cb_imperial_ban_incident`, `cb_humiliate_rotw` |
+| Poland | Humiliate; several Conquest of Hungary's | `cb_humiliate_rotw` |
+| Liège | three Conquest | `cb_conquest` |
+| Teutonic Order, Lübeck | none | not checked (none of the target rules matched) |
+
+The player's own casus belli matched exactly (the rival one is `cb_humiliate_rotw`,
+"Humillar a su rival", not `cb_humiliate`). What the mod missed were the subjects':
+an overlord can declare with a subject's casus belli, and the screen lists them. The
+mod now checks each subject too (`every_subject_country`, the subject kept as an event
+target, `subcb` lines), against neighbours of the player or of the subject, the
+player's rivals and holders of the player's claims or cores.
+
+**Third session (2026-11-20, 1535.04).** The subject check works: six subjects
+checked, two with casus belli. Hungary's conquest of Poland, which the screen showed,
+is there (`cb_conquest`), with Hungary's conquest and crusade against the Ottomans and
+conquest against the Papal States, and Albania's core, conquest and crusade against
+the Ottomans and `cb_heretic` against Ragusa. `error.log` has nothing from the mod, so
+the event target and `is_neighbor_of = event_target:...` are accepted. Liège's "three
+Conquest" were one conquest casus belli covering three claimed provinces, which matches
+the mod's one `cb_conquest`; which provinces it covers comes from the save's claims.
+Every casus belli the user read on the screen is now accounted for.
+
 ## D-045 — Trend charts from the campaign journal, drawn as plain SVG
 
 **Date:** 2026-11-17 · **Status:** Accepted
-
-(D-044, the probe mod, is in the draft PR #50 and lands with it.)
 
 The vision's second secondary goal is charts in the workspace; what was missing was
 data over time, and the campaign journal (D-043) now keeps every read save's numbers.
@@ -1092,6 +1170,39 @@ field held the save's own date for a war declared in 1528.
 - **Not covered:** the live war score against each enemy is not in the save; the probe
   mod (D-044) is the way to it. On the user's save: 68 provinces occupied (637
   development), none lost, 100,447 men lost against 54,479, quarterly score 56.
+
+## D-051 — Casus belli in the war check and the targets, from the probe mod
+
+**Date:** 2026-11-20 · **Status:** Accepted (builds on D-044)
+
+The probe mod's casus belli matched the diplomacy screen in three game sessions (D-044),
+so the planning tools now use them instead of saying casus belli are unknown.
+
+- **Reading** (`live.casus_belli`): the latest month's check in `logs/game.log`, the
+  player's and each subject's (an overlord can declare with a subject's casus belli).
+  It is only trusted when the log's heartbeat names the save's country and its date is
+  within a year of the save's: the log restarts empty with each game start, and the
+  player may have loaded another campaign since. Otherwise the tools say why there is
+  none (no log, mod not enabled or no month passed yet, another country, too old).
+- **Where it shows.** `check_war`, when the player attacks: a *Casus belli* line under
+  the title, with each type's name in the game's language and whose it is ("Humillar a
+  su rival (yours); Conquista (Hungría)"). `get_expansion_targets`: a *Casus belli*
+  column and a detail line per owner; `?` when the mod did not check that country.
+  The CLI's `war-check` and `targets` do the same. `Toolbox` takes the log's path.
+- **Wider check.** On the user's 1535 save most targets showed `?`: missions and the
+  formable Germany point at German minors that are neither neighbours, rivals nor
+  holders of claims. The mod now also checks every country on the player's continent
+  (`same_continent = ROOT`, as the game's own events use it). Subjects keep the
+  narrower set (neighbours of the player or the subject, rivals, claims and cores) to
+  keep the monthly cost down.
+- **Prompts:** both now say casus belli are known when the probe mod runs, and that
+  `check_war` and `get_expansion_targets` say so when they are not.
+
+On the user's save (log of 1535.04.26): against Poland, "Humillar a su rival (yours);
+Conquista (Hungría)"; against Liège, "Conquista (yours)"; Savoy, checked, none. With the
+wider check in game (1535.05 to 1535.07): 88 countries checked, 21 with casus belli,
+and none of the 15 war targets listed is unchecked any more (the Teutonic Order and
+Lübeck: none, as on the diplomacy screen; Denmark: Imperial ban and Imperial campaign).
 
 ## D-052 — Income and expenses by category, from the ledger
 
@@ -1447,3 +1558,59 @@ the expected tool (trade, missions, budget). A first run of six questions was st
 at the third: LM Studio was also serving other requests, and the replies had no length
 cap (now 1,024 tokens). **Pending:** a full run with LM Studio otherwise idle (about an
 hour), to say how many answers are complete.
+
+## D-044 (follow-up) — The war score read at war, 2026-11-21
+
+The probe's third question, answered in the user's war against Poland (with Lithuania,
+Gotland and Naples on Poland's side), played from 1537.08 to 1537.11 with the mod on:
+
+| | Game's screen (1537.12.17) | Mod, direct (`trigger_value:war_score`) | Mod, ladder | Save, `last_warscore_quarter` |
+| --- | --- | --- | --- | --- |
+| Poland (war leader) | +87 | 61, 74, 78, 88 (Aug–Nov) | 60, 70, 75, 85 | 87 |
+| Lithuania | +84 | — | -100 | — |
+| Gotland | +0 | — | -100 | — |
+
+- **The direct value works** and is exact (to three decimals): it is the war score
+  against the enemy war leader, the one the game shows for the whole war and that
+  decides a peace with the leader's side. The ladder agrees with it, rounded down to 5.
+- **Per ally it cannot be read:** `war_score_against` holds for none of the ladder's
+  steps against Lithuania or Gotland (-100), though the game shows +84 and +0; the
+  trigger only answers for the war leader.
+- **The save's quarterly score is the same number** (87 here; 56 in the Ragusa war of
+  D-050 was not checked in game then): `get_wars` already reports it, a quarter late at
+  most; the mod gives it monthly.
+
+Next: the live score into `get_wars`, the war check and the recommendations ("+88
+against Poland: enough to ask for peace"), from the mod's log when it runs, else the
+quarterly score.
+
+## D-063 — The live war score and the casus belli in the advice
+
+**Date:** 2026-11-21 · **Status:** Accepted (closes PR #50: D-044, D-051)
+
+With the war score checked against the game (D-044 follow-up), the probe mod's two
+readings go where they are useful.
+
+- **Reading** (`live.war_score`): the latest month's `direct` value and `ladder` (the log
+  reader now keeps only the latest month of them, as of the casus belli), trusted like
+  the casus belli when the log is the save's country's and within a year. The exact
+  `direct` value is used when the player is in one war (it does not say which war);
+  otherwise the ladder's value against that war's enemy leader, to the nearest 5 below.
+  Against a leader's ally nothing can be read (-100), so nothing is said.
+- **`get_wars`:** "War score: +88 against Polonia (exact, the probe mod on 1537.11.22)"
+  above the quarterly one; without the mod, the quarterly score says where the live one
+  is. "1 province" is now singular.
+- **Peace in the recommendations** (`make_peace`): a war score of +50 or more against
+  the enemy leader is "ask for peace" (now from +90, otherwise soon), with the score and
+  its source, the provinces occupied, and a note that a separate peace with an ally has
+  its own score; -50 or less is "seek a peace" (now). Guide's steps: a province of the
+  leader, its flag, its diplomacy, «Pedir la paz» (`PEACETITLE`).
+- **Casus belli in the recommendations:** the probe mod's check (D-051) now feeds the
+  war targets, so "War on Lieja: casus belli Conquista" or "get a casus belli" replace
+  "not checked"; without it, the reason the lookup gives says why.
+- **Prompts and `get_wars`' description** say the score is against the enemy leader,
+  monthly with the mod, quarterly without.
+
+On the user's 1537.12.17 save, with the game just restarted (no month in the new log
+yet): "Ask Polonia for peace", war score +87 at the quarterly check, 59 provinces
+occupied (581 development). With the previous session's log, the live +88.

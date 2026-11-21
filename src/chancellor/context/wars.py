@@ -194,8 +194,36 @@ def development(campaign: Campaign, province: int) -> float:
     return sum(float(data.get(k) or 0) for k in ("base_tax", "base_production", "base_manpower"))
 
 
-def render_wars(campaign: Campaign, reports: list[WarReport], listed: int = 15) -> str:
-    """Markdown for ``get_wars``."""
+def live_score(war: WarReport, live: Any, wars: int, campaign: Campaign) -> str | None:
+    """The live war score against a war's enemy leader, as a phrase (D-063), or ``None``.
+
+    Args:
+        war: The war.
+        live: The probe mod's reading (``live.war_score.LiveWarScore``), or ``None``.
+        wars: How many wars the player is in.
+        campaign: The loaded save.
+    """
+    if live is None or not war.their_side:
+        return None
+    leader = war.their_side[0]
+    found = live.against(campaign, leader, wars)
+    if found is None:
+        return None
+    score, how = found
+    return f"{score:+.0f} against {campaign.name(leader)} ({how}, the probe mod on {live.date})"
+
+
+def render_wars(
+    campaign: Campaign, reports: list[WarReport], listed: int = 15, live: Any = None
+) -> str:
+    """Markdown for ``get_wars``.
+
+    Args:
+        campaign: The loaded save.
+        reports: The wars.
+        listed: Occupied provinces named per owner.
+        live: The probe mod's war score (``live.war_score.LiveWarScore``), when it runs.
+    """
     lines = [f"# Wars of {campaign.label(campaign.player)}", ""]
     if not reports:
         lines.append("At peace.")
@@ -213,12 +241,20 @@ def render_wars(campaign: Campaign, reports: list[WarReport], listed: int = 15) 
             )
         lines.append(f"- Our side: {_names(campaign, war.our_side)}.")
         lines.append(f"- Their side: {_names(campaign, war.their_side)}.")
+        now = live_score(war, live, len(reports), campaign)
+        if now:
+            lines.append(f"- War score: {now}.")
         if war.quarterly_score is not None:
             lines.append(
                 f"- War score recorded by the game at its last quarterly check: "
                 f"{war.quarterly_score:g}"
                 + (f" (next check {war.next_check})" if war.next_check else "")
-                + ". The live score, per enemy, is on the game's peace screen."
+                + (
+                    "."
+                    if now
+                    else ". The live score is on the game's peace screen, or monthly from "
+                    "the probe mod."
+                )
             )
         lines += _occupation_lines(campaign, war, listed)
         lines += _battle_lines(campaign, war)
@@ -232,8 +268,9 @@ def render_wars(campaign: Campaign, reports: list[WarReport], listed: int = 15) 
         lines.append("")
     lines.append(
         "_From the save: occupations are provinces one side owns and the other controls; "
-        "battles come from the war's history. The save does not hold the live war score "
-        "against each enemy._"
+        "battles come from the war's history. The war score is against the enemy war "
+        "leader (a separate peace with one of its allies has its own score, on the game's "
+        "peace screen)._"
     )
     return "\n".join(lines) + "\n"
 
@@ -266,7 +303,8 @@ def _occupation_lines(campaign: Campaign, war: WarReport, listed: int) -> list[s
         for province, owner in occupied:
             by_owner.setdefault(owner, []).append(province)
         total = sum(development(campaign, p) for p, _ in occupied)
-        lines.append(f"- {label} {len(occupied)} provinces ({total:.0f} development):")
+        noun = "province" if len(occupied) == 1 else "provinces"
+        lines.append(f"- {label} {len(occupied)} {noun} ({total:.0f} development):")
         for owner, provinces in sorted(by_owner.items(), key=lambda item: -len(item[1])):
             ranked = sorted(provinces, key=lambda p: -development(campaign, p))
             shown = ", ".join(

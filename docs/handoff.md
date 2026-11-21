@@ -6,7 +6,7 @@ wiki's retrieval (PRs #1–#53 merged; 559 tests passing, CI green on Ubuntu and
 Windows with Python 3.11 and 3.12).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
-[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-062; D-044 and D-051 are in the draft PR #50),
+[ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-063),
 [SAVE_FORMAT](SAVE_FORMAT.md) (verified save facts), [ARCHITECTURE](ARCHITECTURE.md).
 
 ## What we were doing
@@ -305,12 +305,23 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
    The user is no expert, so validate numbers against
    the game's tooltips (they can read those), not strategy. Any live API check needs
    the user's go-ahead; mind the 5 EUR balance.
-4. Remaining data gaps: casus belli are in PR #50 and the income breakdown is done
-   (D-052, matched the game's ledger); then whichever the play-test
+4. Remaining data gaps: casus belli come from the probe mod (D-051) and the income
+   breakdown is done (D-052, matched the game's ledger); then whichever the play-test
    shows matters more.
-5. **Real-time data** (discussed 2026-11-14, not started): monthly autosaves already
-   feed the panel; a small mod writing values to `game.log` with the `log` effect is
-   worth a prototype; reading the game's memory is ruled out.
+5. **Real-time data** (prototype built 2026-11-17, two game sessions on 2026-11-20,
+   D-044): the probe mod (`chancellor probe install`, already installed in the user's
+   `mod` folder) logs a monthly heartbeat, the treasury, the war score against each
+   enemy and the casus belli of the player and its subjects to `logs/game.log`;
+   `chancellor probe read` answers its questions.
+   The first session (2026-11-20, at peace, enabled by `dlc_load.json`) showed the
+   channel works. The second (1535) matched the casus belli with the diplomacy screen;
+   the third found the subjects' casus belli too, and `check_war` and
+   `get_expansion_targets` now list them (D-051). The war score was checked at war
+   (2026-11-21, D-044): it reads the score against the enemy leader exactly.
+   Play a few months at war, then
+   read the log and `logs/error.log`. The user's autosave is yearly: monthly would
+   make the panel, watches and journal monthly at no cost. Reading the game's memory
+   is ruled out.
 
 **Tip:** a Claude Code session on this machine has the `eu4-chancellor` MCP tools too
 (`mcp__eu4-chancellor__*`), so play-tests can be run from here at no API cost. They read

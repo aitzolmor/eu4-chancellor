@@ -31,6 +31,9 @@ from chancellor.game.missions import MissionLibrary
 from chancellor.game.modifiers import ModifierLibrary
 from chancellor.game.power_rules import PowerRules
 from chancellor.game.rules import GameRules
+from chancellor.live.casus_belli import load_casus_belli
+from chancellor.live.gamelog import game_log_for, game_log_path, read_probe, render_probe
+from chancellor.live.probe import MOD_NAME, cb_types_from, install
 from chancellor.player.backfill import backfill, pick, render_groups, save_groups
 from chancellor.player.context import context_path
 from chancellor.save.loader import SaveFormatError, find_current_save, load_save
@@ -155,6 +158,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     player.add_argument("--remove", type=int, metavar="ID", help="Remove the entry with this id.")
 
+    probe = sub.add_parser(
+        "probe",
+        help="Prototype: a mod that reports war score to the game's log (D-044).",
+        description=(
+            "install: write the probe mod into the game's mod folder (enable it in the "
+            "launcher's playset). read: show what the mod wrote to logs/game.log."
+        ),
+    )
+    probe.add_argument("action", choices=["install", "read"])
     setup = sub.add_parser(
         "setup",
         help="Find the game and your saves, and remember them (run this first).",
@@ -354,7 +366,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             campaign, _ = _load_campaign(args, settings)
             target = campaign.resolve_country(" ".join(args.target))
             attacker = campaign.resolve_country(args.attacker) if args.attacker else None
-            text = render_war_check(campaign, check_war(campaign, target, attacker))
+            text = render_war_check(
+                campaign,
+                check_war(campaign, target, attacker),
+                load_casus_belli(campaign, game_log_for(settings.save_dir)),
+            )
             if settings.game_dir is not None:
                 ae_rules = AeRules.load(settings.game_dir)
                 rules = GameRules.load(settings.game_dir)
@@ -457,6 +473,28 @@ def main(argv: Sequence[str] | None = None) -> int:
             from chancellor.app.chat import run_chat  # deferred: the SDK is slow to import
 
             return run_chat(settings, load)
+        if args.command == "probe":
+            settings = load_settings()
+            if settings.save_dir is None:
+                raise CliError("Set EU4_SAVE_DIR: the mod and the log sit next to it.")
+            if args.action == "install":
+                cb_types = cb_types_from(settings.game_dir)
+                written = install(settings.save_dir.parent / "mod", cb_types)
+                for path in written:
+                    print(path, file=sys.stderr)
+                print(
+                    f"Installed '{MOD_NAME}' (checks {len(cb_types)} casus belli types). Enable "
+                    "it in the launcher's playset, or in dlc_load.json when the game starts "
+                    "without the launcher; play a few months, then run: chancellor probe read",
+                    file=sys.stderr,
+                )
+                return 0
+            log = game_log_path(settings.save_dir)
+            try:
+                _write_stdout(render_probe(read_probe(log), log))
+            except FileNotFoundError as exc:
+                raise CliError(f"No game log at {log}: start the game first.") from exc
+            return 0
         if args.command == "journal":
             settings = load_settings()
             campaign, _ = _load_campaign(args, settings)
@@ -490,7 +528,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 DecisionLibrary.load(settings.game_dir),
                 tag,
             )
-            text = render_targets(campaign, report, top=max(1, args.top))
+            text = render_targets(
+                campaign,
+                report,
+                top=max(1, args.top),
+                casus_belli=load_casus_belli(campaign, game_log_for(settings.save_dir)),
+            )
             return _emit(args, text, f"Expansion targets of {campaign.label(tag)}")
     except ValueError as exc:  # e.g. a country attacking itself
         return _fail(str(exc))

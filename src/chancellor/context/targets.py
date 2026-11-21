@@ -29,6 +29,7 @@ from chancellor.context.war_check import COALITION_AE, CoalitionRisk, check_war
 from chancellor.game.decisions import DecisionLibrary
 from chancellor.game.missions import MissionLibrary
 from chancellor.game.rules import GameRules
+from chancellor.live.casus_belli import CasusBelliLookup, describe_against, short_against
 from chancellor.save.parser import Repeated, get_all
 
 # Condition keys whose integer value is a province id.
@@ -332,13 +333,27 @@ def _about_ownership(block: Any) -> bool:
     return any(key in _OWNERSHIP_KEYS or _about_ownership(value) for key, value in block.items())
 
 
-def render_targets(campaign: Campaign, report: TargetReport, top: int = 15) -> str:
+def render_targets(
+    campaign: Campaign,
+    report: TargetReport,
+    top: int = 15,
+    casus_belli: CasusBelliLookup | None = None,
+) -> str:
     """Render a :class:`TargetReport` as Markdown.
 
     War targets come first, best odds first. Provinces held by the country's own subjects,
     allies or overlord are listed apart, because they are gained by diplomacy, not war.
+
+    Args:
+        campaign: The loaded save.
+        report: The targets.
+        top: How many war targets to list.
+        casus_belli: The probe mod's casus belli check (D-051), used when the report is
+            the player's: a column per target, or a note saying why it is missing.
     """
     label = campaign.label
+    lookup = casus_belli if report.tag == campaign.player else None
+    cb = lookup.data if lookup is not None else None
     lines = [f"# Expansion targets: {label(report.tag)}, {report.date}", ""]
     if not report.targets:
         lines.append(
@@ -373,8 +388,10 @@ def render_targets(campaign: Campaign, report: TargetReport, top: int = 15) -> s
             "development first.",
             "",
             "| # | Held by | Provinces | Dev | Wanted for | You vs defenders | Odds "
-            "| Coalition risk | Notes |",
-            "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+            "| Coalition risk |" + (" Casus belli |" if cb else "") + " Notes |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- |"
+            + (" --- |" if cb else "")
+            + " --- |",
         ]
         for index, target in enumerate(war[:top], 1):
             sides = f"{target.attacker_regiments} vs {target.defender_regiments}"
@@ -383,7 +400,9 @@ def render_targets(campaign: Campaign, report: TargetReport, top: int = 15) -> s
             lines.append(
                 f"| {index} | {label(target.owner)} | {len(target.provinces)} "
                 f"| {target.development:.0f} | {_reasons(target)} | {sides} "
-                f"| {target.odds:.1f}x | {_risk(target)} | {_notes(campaign, target)} |"
+                f"| {target.odds:.1f}x | {_risk(target)} |"
+                + (f" {short_against(campaign, cb, target.owner)} |" if cb else "")
+                + f" {_notes(campaign, target)} |"
             )
         if len(war) > top:
             lines += ["", f"{len(war) - top} more war targets not shown."]
@@ -405,15 +424,19 @@ def render_targets(campaign: Campaign, report: TargetReport, top: int = 15) -> s
             "",
             "## Hard targets (defenders outnumber you)",
             "",
-            "| Held by | Provinces | Dev | Wanted for | You vs defenders | Odds | Notes |",
-            "| --- | --- | --- | --- | --- | --- | --- |",
+            "| Held by | Provinces | Dev | Wanted for | You vs defenders | Odds |"
+            + (" Casus belli |" if cb else "")
+            + " Notes |",
+            "| --- | --- | --- | --- | --- | --- |" + (" --- |" if cb else "") + " --- |",
         ]
         for target in hard[:_HARD_SHOWN]:
             lines.append(
                 f"| {label(target.owner)} | {len(target.provinces)} "
                 f"| {target.development:.0f} | {_reasons(target)} "
                 f"| {target.attacker_regiments} vs {target.defender_regiments} "
-                f"| {target.odds:.1f}x | {_notes(campaign, target)} |"
+                f"| {target.odds:.1f}x |"
+                + (f" {short_against(campaign, cb, target.owner)} |" if cb else "")
+                + f" {_notes(campaign, target)} |"
             )
         if len(hard) > _HARD_SHOWN:
             lines += ["", f"{len(hard) - _HARD_SHOWN} more hard targets not shown."]
@@ -437,12 +460,22 @@ def render_targets(campaign: Campaign, report: TargetReport, top: int = 15) -> s
         lines.append(f"  - Wanted for: {'; '.join(target.reasons)}.")
         if defenders:
             lines.append(f"  - Defenders: {defenders}.")
+        if cb:
+            lines.append(f"  - Casus belli: {describe_against(campaign, cb, target.owner)}.")
     if report.unowned:
         lines += [
             "",
             f"{len(report.unowned)} wanted provinces are not owned by anyone "
             "(colonisable or wasteland).",
         ]
+    if cb:
+        lines += [
+            "",
+            f"Casus belli are the probe mod's check on {cb.date}: yours and your subjects' "
+            "(an overlord can use a subject's); ? means the mod did not check that country.",
+        ]
+    elif lookup is not None:
+        lines += ["", f"Casus belli unknown: {lookup.reason}"]
     lines += [
         "",
         "_Odds ignore casus belli, fort levels, generals and terrain; truce end dates are "

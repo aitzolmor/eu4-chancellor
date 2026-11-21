@@ -12,6 +12,7 @@ from chancellor.game.decisions import DecisionLibrary, parse_decision_file
 from chancellor.game.localisation import Localisation
 from chancellor.game.missions import MissionLibrary, parse_mission_file
 from chancellor.game.rules import GameRules
+from chancellor.live.casus_belli import CasusBelli, CasusBelliLookup
 from chancellor.save.parser import parse
 
 RULES = GameRules(
@@ -353,3 +354,18 @@ def test_possible_defenders_are_named(report):
     assert poland.possible_defenders == ["ENG"]
     text = render_targets(campaign, result)
     assert "| 5 vs 2 (up to 3: ENG) |" in text
+
+
+def test_render_with_casus_belli(report):
+    campaign, result = report
+    data = CasusBelli(
+        date="1475.1.1", checked={"SAL": "SAL", "VEN": "VEN"}, own={"SAL": ["cb_core"]}
+    )
+    text = render_targets(campaign, result, casus_belli=CasusBelliLookup(data))
+    assert "| Coalition risk | Casus belli | Notes |" in text
+    assert "| 1 | SAL (SAL) | 1 | 8 | cores | 5 vs 1 | 5.0x | low | core |  |" in text
+    assert "  - Casus belli: core (yours)." in text
+    assert "Casus belli are the probe mod's check on 1475.1.1" in text
+    unknown = render_targets(campaign, result, casus_belli=CasusBelliLookup(None, "No log."))
+    assert "Casus belli unknown: No log." in unknown
+    assert "| Casus belli |" not in unknown

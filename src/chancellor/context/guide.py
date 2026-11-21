@@ -26,6 +26,7 @@ UI: dict[str, tuple[str, str]] = {
     "decisions": ("HEADER_MISSION_REMOVE", "Decisions"),
     "stability": ("HEADER_STABILITY_EXPANSION", "Stability and Expansion"),
     "declare_war": ("WARTITLE", "Declare War"),
+    "sue_for_peace": ("PEACETITLE", "Sue for Peace"),
     "improve_relations": ("HINT_IMPROVERELATIONS_TITLE", "Improve Relations"),
     "fabricate_claim": ("FABRICATE_CLAIM", "Fabricate Claim"),
     "make_core": ("CV_BUILD_CORE", "Make core"),
@@ -98,6 +99,12 @@ def steps(campaign: Campaign, kind: str, target: str | None) -> list[str]:
         return [
             f"click a province of {campaign.name(target)} next to yours",
             f"click {ui(campaign, 'fabricate_claim')} (it sends a diplomat)",
+        ]
+    if kind == "make_peace" and target:
+        return [
+            f"click any province of {campaign.name(target)} on the map, then its flag to open "
+            f"its {ui(campaign, 'diplomacy')}",
+            f"click {ui(campaign, 'sue_for_peace')}, choose what to demand, and send it",
         ]
     if kind == "hold_expansion":
         return [

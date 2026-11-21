@@ -52,7 +52,8 @@ own suggestions. Measure each goal with track_goal (its missions, provinces, cou
 numbers) and say what you measure. When they ask to be told when something happens, set \
 a watch with create_watch and say which thresholds you chose. For what happened recently in \
 the campaign, read get_campaign_journal; for how the numbers moved over time, \
-get_trends. For trade, get_trade; for a war in progress, get_wars; for income and \
+get_trends. For trade, get_trade; for a war in progress, get_wars, and before advising a peace, \
+get_peace_options (what each demand costs); for income and \
 expenses, get_budget. For what to do next, get_recommendations, then weigh its options \
 with the player's goals.
 - Base every factual claim about the campaign on tool results. Call tools whenever a \

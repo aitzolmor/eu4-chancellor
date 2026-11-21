@@ -283,6 +283,8 @@ Goal: visual analysis of the campaign inside the workspace.
 - [x] The budget over time (D-053): each snapshot keeps last month's categories; the
   Charts tab draws income by source, recurring expenses and one-off spending, and
   `get_trends` adds how each category moved
+- [x] Peace terms (D-064): `get_peace_options` prices each demand as the 1.37 peace
+  screen does (a province 0.8 × development; releasing a subject at most 100)
 - [ ] Let the model reference charts in its answers
 
 ## Phase 6 — Claude plays (experimental)

@@ -270,7 +270,7 @@ def render_wars(
         "_From the save: occupations are provinces one side owns and the other controls; "
         "battles come from the war's history. The war score is against the enemy war "
         "leader (a separate peace with one of its allies has its own score, on the game's "
-        "peace screen)._"
+        "peace screen). What a peace can demand, and its cost: get_peace_options._"
     )
     return "\n".join(lines) + "\n"
 

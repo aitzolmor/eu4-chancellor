@@ -1614,3 +1614,39 @@ readings go where they are useful.
 On the user's 1537.12.17 save, with the game just restarted (no month in the new log
 yet): "Ask Polonia for peace", war score +87 at the quarterly check, 59 provinces
 occupied (581 development). With the previous session's log, the live +88.
+
+## D-064 — Peace terms: what each demand costs, from the game's peace screen
+
+**Date:** 2026-11-21 · **Status:** Accepted
+
+Asked whether to fight on to 100% or ask Poland for peace now, Claude Desktop proposed a
+deal that released Lithuania, Poland's junior partner, "cheaply (about 0.4 times its
+provinces, per the wiki)". On the peace screen it cost 100%: the wiki leaves out the cap.
+Nothing in the tools priced a peace, so the model took the wiki's 1.24 rules.
+
+- **The rules, measured, not assumed.** The user read the peace screen for eighteen
+  Polish and Lithuanian provinces: every one costs exactly 0.8 × its development (Barlad
+  5 → 4.0, Poznan 25 → 20.0, Varsovia 22 → 17.6, Vilnius 24 → 19.2, Viazma not occupied
+  8 → 6.4). The wiki's 1.24 formula (5 per province, the capital, trade power, buildings,
+  the size of the owner) does not apply in 1.37: Vilnius has a capital, a centre of trade
+  and three buildings and still costs 0.8 × 24. Releasing a subject costs 0.4 × its
+  provinces' cost, capped at `MAX_PEACE_COST_CANCEL_SUBJECT` = 100 (Lithuania, 393
+  development: 126, so 100). Fixed treaties come from `common/defines.lua`.
+- **The other columns** of the peace screen: the last is the prestige (0.25 per
+  development), the one before the aggressive expansion (about 1.33 per development for
+  Poland, 2 for its ally; none for Barlad and Besarabia, claims of Austria's vassal
+  Hungary). So a claim or core of the player **or of its subjects** marks a demand as
+  justified.
+- **`get_peace_options`** (`context.peace`): for each of the player's wars, the war score
+  to spend (live from the probe mod, else the quarterly check, D-063), each enemy's
+  development with and without its subjects (what a mission such as "Sobrepasar a los
+  polacos" measures), the subjects that can be released with their cost and whether it
+  fits, every enemy province that is occupied, claimed or the war goal with its cost,
+  whether it is occupied and whose claim it is, and the fixed treaties. The prompts send
+  the model there before it advises a peace; `get_wars` and the peace recommendation
+  point to it.
+
+Not covered: modifiers the user's game did not show (great projects, autonomy, ideas that
+lower war score costs), the AE a deal adds (the war check estimates a conquest's), and
+the score of a separate peace with one of the leader's allies, which only the peace
+screen shows.

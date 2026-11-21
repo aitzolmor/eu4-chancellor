@@ -182,6 +182,26 @@ def build_parser() -> argparse.ArgumentParser:
         "--check", action="store_true", help="Only show what it finds; write nothing."
     )
 
+    evaluate = sub.add_parser(
+        "eval",
+        help="Run the evaluation set: real questions and what each tool must answer (D-058).",
+        description=(
+            "Runs each set in evals/ (or the files given) against the save it names in your "
+            "save folder, and reports which checks fail. Saves are not in the repository: "
+            "a set whose save is missing is skipped."
+        ),
+    )
+    evaluate.add_argument("files", nargs="*", type=Path, help="Sets to run (default: evals/).")
+    evaluate.add_argument(
+        "--model",
+        help="Ask the questions to this model on an OpenAI-compatible server instead "
+        "(e.g. LM Studio's qwen3-4b) and report its tool choice and answers (D-062).",
+    )
+    evaluate.add_argument(
+        "--base-url", default="http://localhost:1234/v1", help="The server (default: LM Studio)."
+    )
+    evaluate.add_argument("--cases", help="Comma-separated case ids to ask (default: all).")
+
     journal = sub.add_parser(
         "journal",
         parents=[common],
@@ -212,13 +232,25 @@ def build_parser() -> argparse.ArgumentParser:
             "starts this command itself; see `chancellor mcp-config`."
         ),
     )
-    sub.add_parser(
+    mcp_config = sub.add_parser(
         "mcp-config",
-        help="Print the Claude Desktop configuration for the MCP server.",
+        help="Print (or write) an MCP client's configuration for the Chancellor's server.",
         description=(
             "Print the JSON to merge into Claude Desktop's claude_desktop_config.json, "
-            "with this installation's Python and your save and game folders."
+            "with this installation's Python and your save and game folders. With "
+            "--client lmstudio --write, add it to LM Studio's mcp.json instead (D-062)."
         ),
+    )
+    mcp_config.add_argument(
+        "--client",
+        choices=["claude", "lmstudio"],
+        default="claude",
+        help="The MCP client (default: Claude Desktop).",
+    )
+    mcp_config.add_argument(
+        "--write",
+        action="store_true",
+        help="Write it into the client's file (LM Studio only), keeping other servers.",
     )
 
     sub.add_parser(
@@ -274,6 +306,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     """
     args = build_parser().parse_args(argv)
     _use_utf8()
+    if args.command == "eval":
+        if args.model:
+            return _run_model_evals(args)
+        return _run_evals(args.files)
     if args.command == "clear-cache":
         removed = clear_cache()
         print(f"Removed {removed} cached file(s) from {cache_dir()}.", file=sys.stderr)
@@ -404,9 +440,27 @@ def main(argv: Sequence[str] | None = None) -> int:
                 ) from exc
             return 0
         if args.command == "mcp-config":
-            from chancellor.app.mcp_server import desktop_config_json
+            from chancellor.app.mcp_server import (
+                CLIENT_CONFIGS,
+                desktop_config_json,
+                write_client_config,
+            )
 
-            _write_stdout(desktop_config_json(load_settings()) + "\n")
+            settings = load_settings()
+            if not args.write:
+                _write_stdout(desktop_config_json(settings) + "\n")
+                return 0
+            if args.client not in CLIENT_CONFIGS:
+                raise CliError(
+                    "--write is for --client lmstudio; Claude Desktop's file is edited by hand."
+                )
+            path = CLIENT_CONFIGS[args.client]
+            try:
+                backup = write_client_config(path, settings)
+            except ValueError as exc:
+                raise CliError(str(exc)) from exc
+            kept = f" (previous file kept as {backup.name})" if backup else ""
+            print(f"Added the Chancellor to {path}{kept}.", file=sys.stderr)
             return 0
         if args.command == "chat":
             settings = load_settings()
@@ -620,6 +674,73 @@ def _load_campaign(args: argparse.Namespace, settings: Settings) -> tuple[Campai
         loc = Localisation.load(settings.game_dir, language)
 
     return Campaign.from_raw(raw, loc), save_path
+
+
+def _run_evals(files: list[Path]) -> int:
+    """Run the evaluation sets; exit code 1 if any check fails (D-058)."""
+    import tempfile
+
+    from chancellor.evals import eval_files, load_eval, open_save, render_results, run_eval
+
+    settings = load_settings()
+    language = settings.language or (
+        detect_language(settings.save_dir.parent) if settings.save_dir else "english"
+    )
+    failed = 0
+    for path in files or eval_files():
+        evalset = load_eval(path)
+        with tempfile.TemporaryDirectory() as work:
+            runner = open_save(evalset, settings.save_dir, settings.game_dir, language, Path(work))
+            if runner is None:
+                print(
+                    f"Skipped {evalset.name}: {evalset.save} is not in the save folder.",
+                    file=sys.stderr,
+                )
+                continue
+            results = run_eval(evalset, runner)
+        _write_stdout(render_results(evalset, results))
+        failed += sum(1 for r in results if not r.passed)
+    return 1 if failed else 0
+
+
+def _run_model_evals(args: argparse.Namespace) -> int:
+    """Ask a model the evaluation questions with the Chancellor's tools (D-062)."""
+    import tempfile
+
+    from chancellor.app.mcp_server import INSTRUCTIONS
+    from chancellor.evals import (
+        eval_files,
+        load_eval,
+        open_save,
+        render_model_results,
+        run_model_eval,
+    )
+    from chancellor.llm.local import ask
+
+    settings = load_settings()
+    ids = [i.strip() for i in args.cases.split(",")] if args.cases else None
+    for path in args.files or eval_files():
+        evalset = load_eval(path)
+        with tempfile.TemporaryDirectory() as work:
+            tools = open_save(evalset, settings.save_dir, settings.game_dir, "spanish", Path(work))
+            if tools is None:
+                print(f"Skipped {evalset.name}: {evalset.save} is not here.", file=sys.stderr)
+                continue
+            results = run_model_eval(
+                evalset,
+                lambda q, t=tools: ask(
+                    q, t, args.model, system=INSTRUCTIONS, base_url=args.base_url
+                ),
+                ids,
+                # Each result as it comes: a slow local run can be stopped without losing it.
+                lambda r, s=evalset: print(
+                    render_model_results(s, args.model, [r]).split("\n", 2)[2],
+                    file=sys.stderr,
+                    flush=True,
+                ),
+            )
+        _write_stdout(render_model_results(evalset, args.model, results))
+    return 0
 
 
 def _emit(args: argparse.Namespace, text: str, what: str) -> int:

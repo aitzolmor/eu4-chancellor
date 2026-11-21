@@ -41,11 +41,13 @@ file and the game's own files, so answers can rest on the real state of the camp
 goals, wants and limits and decisions from earlier chats. Follow it. When the player states \
 a goal, a preference or limit, or a decision, or one is reached, dropped or changed, record \
 it with update_player_context and tell them; record only what the player says, never your \
-own suggestions. When they ask to be told when something happens, set a watch with \
-create_watch and say which thresholds you chose. For what happened recently in \
+own suggestions. Measure each goal with track_goal (its missions, provinces, countries or \
+numbers) and say what you measure. When they ask to be told when something happens, set \
+a watch with create_watch and say which thresholds you chose. For what happened recently in \
 the campaign, read get_campaign_journal; for how the numbers moved over time, \
 get_trends. For trade, get_trade; for a war in progress, get_wars; for income and \
-expenses, get_budget.
+expenses, get_budget. For what to do next, get_recommendations, then weigh its options \
+with the player's goals.
 - Call them whenever a question depends on the campaign: the player's country, another \
 country, a possible war, the world, missions, formable nations or where to expand. \
 Several independent lookups can be made in parallel.
@@ -86,6 +88,17 @@ class WatchCondition(TypedDict):
     value: float | bool
     country: NotRequired[str]
     other: NotRequired[str]
+
+
+class GoalMeasure(TypedDict):
+    """One measure of a goal (D-061): a kind and the fields that kind uses."""
+
+    kind: Literal["mission", "formable", "provinces", "country", "metric"]
+    key: NotRequired[str]
+    count: NotRequired[int]
+    subjects: NotRequired[bool]
+    state: NotRequired[Literal["subject", "gone"]]
+    condition: NotRequired[WatchCondition]
 
 
 @dataclass
@@ -192,6 +205,10 @@ def build_server(provider: CampaignProvider) -> Any:
     def get_decisions(country: str | None = None, formables_only: bool = False) -> str:
         return call("get_decisions", country=country, formables_only=formables_only)
 
+    @server.tool(description=_DESCRIPTIONS["get_recommendations"], annotations=read_only)
+    def get_recommendations(country: str | None = None) -> str:
+        return call("get_recommendations", country=country)
+
     @server.tool(description=_DESCRIPTIONS["get_expansion_targets"], annotations=read_only)
     def get_expansion_targets(country: str | None = None) -> str:
         return call("get_expansion_targets", country=country)
@@ -247,6 +264,15 @@ def build_server(provider: CampaignProvider) -> Any:
         )
 
     @server.tool(
+        description=_DESCRIPTIONS["track_goal"],
+        annotations=ToolAnnotations(
+            readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False
+        ),
+    )
+    def track_goal(goal: int, measures: list[GoalMeasure]) -> str:
+        return call("track_goal", goal=goal, measures=[dict(m) for m in measures])
+
+    @server.tool(
         description=(
             "Which save the tools are reading: file name, in-game date and the player's "
             "country. Use it to confirm the data is current."
@@ -291,3 +317,43 @@ def desktop_config(settings: Settings, executable: str | None = None) -> dict[st
 def desktop_config_json(settings: Settings, executable: str | None = None) -> str:
     """:func:`desktop_config` as pretty-printed JSON."""
     return json.dumps(desktop_config(settings, executable), indent=2, ensure_ascii=False)
+
+
+# MCP clients whose configuration file this module can write (D-062). LM Studio reads the
+# same "mcpServers" shape as Claude Desktop, from its own folder.
+CLIENT_CONFIGS = {
+    "lmstudio": Path.home() / ".lmstudio" / "mcp.json",
+}
+
+
+def write_client_config(
+    path: Path, settings: Settings, executable: str | None = None
+) -> Path | None:
+    """Add (or update) the Chancellor in an MCP client's ``mcpServers`` file.
+
+    Other servers in the file are kept. The previous file is copied beside it with a
+    ``.bak`` suffix first.
+
+    Returns:
+        The backup, or ``None`` when there was no file before.
+
+    Raises:
+        ValueError: If the existing file is not a JSON object.
+    """
+    data: dict[str, Any] = {}
+    backup = None
+    if path.is_file():
+        text = path.read_text(encoding="utf-8")
+        data = json.loads(text) if text.strip() else {}
+        if not isinstance(data, dict):
+            raise ValueError(f"{path} is not a JSON object")
+        backup = path.with_suffix(path.suffix + ".bak")
+        backup.write_text(text, encoding="utf-8")
+    servers = data.get("mcpServers")
+    data["mcpServers"] = {
+        **(servers if isinstance(servers, dict) else {}),
+        **desktop_config(settings, executable)["mcpServers"],
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return backup

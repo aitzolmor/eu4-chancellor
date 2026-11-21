@@ -14,11 +14,15 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any
 
+from chancellor.context.advice import Goal, goals_from, recommend, render_recommendations
 from chancellor.context.ae import render_ae_section
+from chancellor.context.alerts import ReadyNow, ready_now
 from chancellor.context.campaign import Campaign, CountryLookupError, _date_key
+from chancellor.context.coring import coring_costs
 from chancellor.context.decisions import check_decisions, render_decisions
 from chancellor.context.ledger import read_ledger, render_budget
 from chancellor.context.missions import mission_tree, render_missions
+from chancellor.context.power import power_report
 from chancellor.context.summarizer import summarize
 from chancellor.context.targets import find_targets, render_targets
 from chancellor.context.trade import render_trade, trade_line, trade_report
@@ -46,6 +50,13 @@ from chancellor.player.context import (
     render_context,
     watch_lines,
 )
+from chancellor.player.goals import GoalError, Measure
+from chancellor.player.goals import Progress as GoalProgress
+from chancellor.player.goals import from_dict as measure_from
+from chancellor.player.goals import progress as goal_progress
+from chancellor.player.goals import render as render_goal
+from chancellor.player.goals import to_dict as measure_dict
+from chancellor.player.goals import validate as validate_measure
 from chancellor.player.journal import (
     JournalStore,
     journal_entries,
@@ -330,6 +341,60 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "track_goal",
+        "description": (
+            "Tie one of the player's recorded goals to measures read from every save, so "
+            "its progress shows in get_player_context and the panel. Use it right after "
+            "recording a goal with update_player_context (or for a goal listed as 'not "
+            "measured yet'). Measures, from what the goal says: `mission` (key: a mission "
+            "key from get_missions), `formable` (key: a decision key from get_decisions), "
+            "`provinces` (key: an area, region or superregion name such as "
+            "low_countries_region; `count`: how many, 0 for all; `subjects`: whether the "
+            "subjects' provinces count, default true), `country` (key: a name or tag; "
+            "`state`: subject or gone), `metric` (`condition`: a watch condition, metric "
+            "op value as in create_watch). Replaces the goal's earlier measures. Tell the "
+            "player what you measure. Metrics: " + metric_list() + "."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "goal": {"type": "integer", "description": "The goal's id (#n)."},
+                "measures": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": ["mission", "formable", "provinces", "country", "metric"],
+                            },
+                            "key": {"type": "string"},
+                            "count": {"type": "integer"},
+                            "subjects": {"type": "boolean"},
+                            "state": {"type": "string", "enum": ["subject", "gone"]},
+                            "condition": {
+                                "type": "object",
+                                "properties": {
+                                    "metric": {"type": "string"},
+                                    "op": {"type": "string", "enum": [">=", "<=", "is"]},
+                                    "value": {"type": ["number", "boolean"]},
+                                    "country": {"type": "string"},
+                                    "other": {"type": "string"},
+                                },
+                                "required": ["metric", "op", "value"],
+                                "additionalProperties": False,
+                            },
+                        },
+                        "required": ["kind"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            "required": ["goal", "measures"],
+            "additionalProperties": False,
+        },
+    },
+    {
         "name": "get_campaign_journal",
         "description": (
             "What changed in the player's campaign between the saves the Chancellor has "
@@ -429,6 +494,26 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "get_recommendations",
+        "description": (
+            "What the player should do now: a ranked list of concrete actions, each with "
+            "the facts behind it and the tool with the details. Built from rules over the "
+            "save: missions and nations ready to claim, a deficit or loans, monarch power "
+            "near the cap or a technology to buy, overextension and the cheapest cores, "
+            "the best expansion targets (odds, coalition risk, casus belli when known), "
+            "aggressive expansion to let cool down, missions one requirement away. Marks "
+            "the ones that touch the player's recorded goals, and gives each one's steps in "
+            "the game (screens and buttons, in the game's language). Use it for 'what should I "
+            "do?', 'what next?' or at the start of a session; then weigh the options with "
+            "the player's goals and say which to take first. Omit `country` for the player."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"country": _COUNTRY},
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -445,6 +530,7 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
     "get_missions": {"country": _Field(str), "brief": _Field(bool)},
     "get_decisions": {"country": _Field(str), "formables_only": _Field(bool)},
     "get_expansion_targets": {"country": _Field(str)},
+    "get_recommendations": {"country": _Field(str)},
     "search_wiki": {"query": _Field(str, required=True), "max_results": _Field(int)},
     "get_player_context": {},
     "get_campaign_journal": {"saves": _Field(int)},
@@ -456,6 +542,10 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
         "description": _Field(str, required=True),
         "conditions": _Field(list, required=True),
     },
+    "track_goal": {
+        "goal": _Field(int, required=True),
+        "measures": _Field(list, required=True),
+    },
     "update_player_context": {
         "action": _Field(str, required=True),
         "kind": _Field(str),
@@ -466,6 +556,10 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
 
 
 # Game data the toolbox loads lazily; shared when the save changes (see with_campaign).
+# Words a model may write for the player's own country instead of omitting `country`.
+PLAYER_WORDS = frozenset(
+    {"player", "the player", "me", "my country", "mine", "myself", "self", "root", "you", "yours"}
+)
 _GAME_DATA = ("_missions", "_decisions", "_rules", "_modifiers", "_trade_graph")
 
 
@@ -645,7 +739,97 @@ class Toolbox:
         results = refresh_watches(store, key, self.campaign)
         view = store.view(key)
         lines = watch_lines(self.campaign, results)
-        return render_context(view, key, self.campaign.label(key.tag), lines)
+        progress = {gid: render_goal(items) for gid, items in self.goal_progress().items()}
+        return render_context(view, key, self.campaign.label(key.tag), lines, progress)
+
+    def _track_goal(self, args: dict[str, Any]) -> str:
+        if not args["measures"]:
+            raise ToolInputError("track_goal needs at least one measure")
+        try:
+            measures = [validate_measure(item) for item in args["measures"]]
+        except GoalError as exc:
+            raise ToolInputError(str(exc)) from exc
+        for measure in measures:  # names to tags, and keys the game files know
+            self._check_measure(measure)
+        store = PlayerContextStore(self.context_file)
+        try:
+            goal = store.track_goal(
+                self._save_key(), int(args["goal"]), [measure_dict(m) for m in measures]
+            )
+        except PlayerContextError as exc:
+            raise ToolInputError(str(exc)) from exc
+        items = self.goal_progress().get(goal.id, [])
+        return f"Goal #{goal.id} measured: {render_goal(items)}"
+
+    def _check_measure(self, measure: Measure) -> None:
+        """Resolve countries to tags and check keys against the game files."""
+        if measure.kind == "country":
+            measure.key = self._tag(measure.key)
+        if measure.kind == "metric":
+            for field_name in ("country", "other"):
+                if measure.condition.get(field_name):
+                    measure.condition[field_name] = self._tag(measure.condition[field_name])
+        if self.game_dir is None:
+            return
+        if measure.kind == "mission" and self._missions.mission(measure.key) is None:
+            raise ToolInputError(f"No mission '{measure.key}' in the game files.")
+        if measure.kind == "formable" and self._decisions.get(measure.key) is None:
+            raise ToolInputError(f"No decision '{measure.key}' in the game files.")
+        if measure.kind == "provinces" and measure.key not in self._rules.geography:
+            raise ToolInputError(
+                f"'{measure.key}' is not an area, region or superregion (use the game's key, "
+                "such as low_countries_region)."
+            )
+
+    def goal_progress(self) -> dict[int, list[GoalProgress]]:
+        """Each measured goal's progress on this save (D-061)."""
+        store = PlayerContextStore(self.context_file)
+        view = store.view(self._save_key())
+        goals = [e for e in (view.campaign.entries if view.campaign else []) if e.track]
+        if not goals:
+            return {}
+        measures = {g.id: [m for m in map(measure_from, g.track) if m] for g in goals}
+        kinds = {m.kind for ms in measures.values() for m in ms}
+        missions: dict[str, Any] = {}
+        decisions: dict[str, Any] = {}
+        geography: dict[str, frozenset[int]] = {}
+        cache = self.__dict__.setdefault("_goal_data", {})  # once per save: ~3 seconds
+        if self.game_dir is not None:
+            if "mission" in kinds:
+                if "missions" not in cache:
+                    tree = mission_tree(
+                        self.campaign, self._missions, self.campaign.player, self._rules
+                    )
+                    cache["missions"] = {
+                        m.mission.name: m for c in tree.columns for m in c.missions
+                    }
+                missions = cache["missions"]
+            if "formable" in kinds:
+                if "decisions" not in cache:
+                    checks = check_decisions(
+                        self.campaign,
+                        self._rules,
+                        self._decisions,
+                        self.campaign.player,
+                        self._missions,
+                    )
+                    cache["decisions"] = {c.decision.name: c for c in checks}
+                decisions = cache["decisions"]
+            if "provinces" in kinds:
+                geography = self._rules.geography
+        return {
+            goal_id: [
+                goal_progress(
+                    self.campaign,
+                    m,
+                    missions=missions,
+                    decisions=decisions,
+                    geography=geography,
+                )
+                for m in items
+            ]
+            for goal_id, items in measures.items()
+        }
 
     def _create_watch(self, args: dict[str, Any]) -> str:
         raw = args["conditions"]
@@ -686,6 +870,11 @@ class Toolbox:
                 if "kind" not in args or text is None:
                     raise ToolInputError("add needs `kind` and `text`")
                 entry = store.add(key, args["kind"], text)
+                if entry.kind == "goal":  # D-061: a goal is worth measuring
+                    return (
+                        f"Recorded #{entry.id} (goal): {entry.text}. Measure it with "
+                        f"track_goal (goal {entry.id})."
+                    )
                 return f"Recorded #{entry.id} ({entry.kind}): {entry.text}"
             if action in ("remove", "replace"):
                 if entry_id is None:
@@ -713,7 +902,21 @@ class Toolbox:
         campaign_key = PlayerContextStore(self.context_file).campaign_key(key)
         journal = JournalStore(journal_path(self.context_file))
         # The countries picked to compare with are tracked in full (D-049).
-        return journal.record(campaign_key, take_snapshot(self.campaign, extra=self._picked()))
+        snapshot = take_snapshot(self.campaign, extra=self._picked(), ready=self.ready())
+        return journal.record(campaign_key, snapshot)
+
+    def ready(self) -> ReadyNow | None:
+        """What the player can claim on this save (D-055).
+
+        ``None`` without the game files. Computed once per save (about 3 seconds).
+        """
+        if self.game_dir is None:
+            return None
+        if "_ready_now" not in self.__dict__:
+            self.__dict__["_ready_now"] = ready_now(
+                self.campaign, self._rules, self._missions, self._decisions
+            )
+        return self.__dict__["_ready_now"]
 
     def remember_other(self, campaign: Campaign) -> bool:
         """Record another save of this campaign in this campaign's journal (backfill)."""
@@ -812,6 +1015,7 @@ class Toolbox:
         results = refresh_watches(store, key, self.campaign)
         view = store.view(key)
         entries = [*(view.campaign.entries if view.campaign else []), *view.player]
+        progress = {gid: render_goal(items) for gid, items in self.goal_progress().items()}
         return {
             "entries": [
                 {
@@ -819,6 +1023,7 @@ class Toolbox:
                     "kind": e.kind,
                     "label": PANEL_LABELS.get(e.kind, e.kind),
                     "text": e.text,
+                    "progress": progress.get(e.id, ""),  # D-061
                 }
                 for e in entries
             ],
@@ -860,10 +1065,52 @@ class Toolbox:
             self.campaign, report, casus_belli=load_casus_belli(self.campaign, self.game_log)
         )
 
+    def _get_recommendations(self, args: dict[str, Any]) -> str:
+        tag = self._tag(args.get("country"))
+        player = tag == self.campaign.player
+        goals: list[Goal] = []
+        if player:
+            view = PlayerContextStore(self.context_file).view(self._save_key())
+            goals = goals_from(view.campaign.entries if view.campaign else [])
+        missing = ["casus belli (the save does not hold them)"]
+        inputs: dict[str, Any] = {}
+        if self.game_dir is None:
+            missing.append("missions, nations, monarch power, coring and targets (no game files)")
+        else:
+            inputs = {
+                "ready": (
+                    self.ready()
+                    if player
+                    else ready_now(self.campaign, self._rules, self._missions, self._decisions, tag)
+                ),
+                "tree": mission_tree(self.campaign, self._missions, tag, self._rules),
+                "power": (
+                    power_report(self.campaign, self._power_rules, tag)
+                    if self._power_rules
+                    else None
+                ),
+                "coring": coring_costs(self.campaign, self._coring_rules, self._rules, tag),
+                "targets": find_targets(
+                    self.campaign, self._rules, self._missions, self._decisions, tag
+                ),
+            }
+        found = recommend(
+            self.campaign,
+            tag=tag,
+            ledger=read_ledger(self.campaign, tag),
+            goals=goals,
+            **inputs,
+        )
+        return render_recommendations(self.campaign, found, goals, tag, missing)
+
     # --- helpers ------------------------------------------------------------------------
 
     def _tag(self, country: str | None) -> str:
-        return self.campaign.resolve_country(country) if country else self.campaign.player
+        # Smaller models write "player" or "me" for the player instead of leaving the
+        # field out (D-062); those words are no country's name.
+        if not country or " ".join(country.lower().split()) in PLAYER_WORDS:
+            return self.campaign.player
+        return self.campaign.resolve_country(country)
 
     def _game_dir(self) -> Path:
         if self.game_dir is None:

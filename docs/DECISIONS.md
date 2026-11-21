@@ -1295,6 +1295,270 @@ with unchecked parts: five (Relaciones ibéricas needs development double Spain'
 variable comparison the evaluator does not do). In game, the three it called
 completable could be completed.
 
+## D-055 — Alerts for missions and nations ready to claim
+
+**Date:** 2026-11-20 · **Status:** Accepted (builds on D-054)
+
+With missions checked against the save (D-054), the panel can say what is ready
+without the player asking.
+
+- **What counts as ready** (`alerts.ready_now`): available missions whose requirements
+  are all certainly met, and formable-nation decisions that can be taken. A requirement
+  the evaluator cannot check keeps a mission out, so the alert never claims too much.
+  About 3 seconds on the user's save, computed once per save by the `Toolbox`
+  (`Toolbox.ready()`), only with the game files.
+- **Panel:** an `info` alert lists the missions that can be completed, and a `medium`
+  one the nations that can be formed, as long as they are ready.
+- **Journal:** each snapshot of a save read keeps what was ready (`ready`, the mission
+  and decision keys), and the changes between two saves say what became ready
+  ("Mission ready: …", "Can now be taken: …"), so "since your last save" and
+  `get_campaign_journal` mention it once. Backfilled saves skip the 3 seconds and keep
+  no `ready`, so no line is made against them.
+
+On the user's 1535.8.2 save the panel gains "3 missions can be completed: Ducado de
+Milán, Conseguir Croacia, Sobrepasar a los polacos", next to the coalition and
+overextension alerts. The journal's lines start from the next save read, the first
+with `ready` recorded.
+
+## D-056 — Advise: structured recommendations from rules over the save
+
+**Date:** 2026-11-20 · **Status:** Accepted (first rung of "Claude plays", VISION)
+
+The vision's last ladder is Advise, Guide, Act. Each tool so far describes one side of
+the campaign, and the model put them together itself, unevenly. `get_recommendations`
+turns what the code already computes into a ranked list of actions.
+
+- **Structured, not prose** (`context.advice.Recommendation`): a `kind`
+  (`complete_mission`, `form_nation`, `fix_deficit`, `repay_loan`, `plan_income`,
+  `buy_technology`, `spend_power`, `save_power`, `buy_idea`, `raise_stability`,
+  `core_province`, `declare_war`, `get_casus_belli`, `hold_expansion`,
+  `work_towards_mission`), a target, a priority (`now`, `soon`, `consider`), the facts
+  behind it and the tool with the details. A stable kind and target are what "Guide"
+  will map to the game's screens and "Act" will carry out.
+- **Rules, not guesses:** each comes from numbers the player can check: missions and
+  nations ready to claim (D-055); a recurring deficit, a loan the treasury can repay,
+  war reparations that will stop; monarch power near the cap or a technology that is
+  affordable and not ahead of its time; overextension with the cheapest cores; the best
+  expansion targets (odds 2x or more, no truce or allied defender, coalition risk not
+  high), dropping the ones whose only reason is a mission already claimable; 3+
+  countries at 50+ AE; missions one requirement away, with the requirement.
+- **Goals:** the player's recorded goals head the list, and a recommendation whose
+  target country, or a proper name in its mission title, appears in a goal is marked
+  with it and comes first within its priority.
+- **Choosing is left to the model and the player:** the output says these are options
+  to weigh with the goals, not a plan. The prompts point to the tool for "what next?".
+- **Casus belli:** the advice takes them as an optional input with the probe mod's
+  shape (D-051), so it does not depend on the draft PR #50; until that merges, targets
+  say the casus belli were not checked.
+
+On the user's 1535.8.2 save (about 5 seconds): now, the three missions ready; soon,
+coring Widin (6% overextension, 35 adm) and letting AE cool down (34 countries at 50+,
+Switzerland 101); to consider, the Austrian Netherlands mission (16 provinces in the
+region, matching goal #1), the war reparations (13% of income), wars on the Teutonic
+Order (5.2x, low risk) and Liège (2.5x, medium risk). Two fixes came from
+reading it: a title's first word no longer matches goals ("Liberar los Balcanes" was
+tied to "liberar un vasallo"), and a missing requirement is shown whole.
+
+## D-057 — When to claim a mission: rewards that depend on a condition
+
+**Date:** 2026-11-20 · **Status:** Accepted (refines D-054 and D-056)
+
+The first recommendations said "complete «Sobrepasar a los polacos» now" and dropped the
+war on Poland. The user pointed out that players often wait: that mission's reward is
+a casus belli to restore the union with Poland only if Poland is small enough, and
+plain conquest claims otherwise, so they were taking land from Poland first.
+
+- **Reward conditions** (`missions.reward_conditions`): the `if`/`else_if` blocks and
+  `complex_dynamic_effect` branches of a mission's effect, following hidden effects and
+  the scripted effects it calls (`GameRules.scripted_effects`, now loaded; cache format
+  5). A branch that only wraps further branches is not listed: the inner ones decide.
+  That matters here: the game's text says "less than 400 development", but the scripted
+  effect grants the casus belli only below 300.
+- **Only what waiting can change:** conditions without a number the player can move (a
+  DLC, the age, the religion) are left out; each one kept shows the current value
+  against the threshold. The evaluator gained
+  `total_own_and_non_tributary_subject_development` (the country plus its subjects,
+  tributaries left out) and `Evaluator.number` for showing values.
+- **Missions:** an available mission lists them under "The reward depends on
+  conditions (it may pay to claim it later)".
+- **Advice:** a mission that can be completed but whose reward improves under an unmet
+  condition becomes `time_mission` ("complete now, or wait for the better reward", soon),
+  with the value and what would be lost; and the war targets keep a reason a waiting
+  mission names, adding that taking land brings that reward closer.
+
+On the user's 1535.8.2 save it is the only such mission: Poland has 303 development and
+its junior partner Lithuania 392, so 695 against the 300 needed; the war on Poland
+(2.7x, low coalition risk) is back with that reason. The user's plan of shrinking
+Poland holds, though it is further off than the game's "400" suggests, and Lithuania
+counts too.
+
+## D-058 — An evaluation set of real questions, run against a real save
+
+**Date:** 2026-11-20 · **Status:** Accepted
+
+Several bugs this week were found by hand on the user's save: a region scope read as
+"all provinces", an `else_if` that made every `OR` true, the Poland reward's real
+threshold (300, not the 400 the game shows). The unit tests use small fixtures, which
+had not caught them. Before building "Guide" on the recommendations, the answers to
+real questions get a safety net.
+
+- **Cases** (`evals/*.toml`, read with the standard library's `tomllib`): a question,
+  the tool the model should call for it, its input, and checks on the output: text it
+  must contain, text it must not, regular expressions it must match; `why` says where
+  the expected facts come from (the game screen, a fixed bug). Checks use keys, tags and
+  numbers (`hab_milan`, `(POL)`, `695`), not localised names, so they hold in any
+  language and the committed files stay in English; recommendations now show their
+  target key beside their kind (`[time_mission hab_surpass_poland]`).
+- **Tied to one save:** saves are never committed, so a set names a save in the
+  player's folder (`Austria1535_08_02.eu4`, 1535.8.2) and runs where it exists:
+  `chancellor eval` reports each case and exits 1 on a failure, and `pytest` runs each
+  set as one test (about 8 seconds, with the real game-data cache) and skips it
+  elsewhere, as in CI. The tools get an empty player context, so the answers depend on
+  the save alone.
+- **The first set** has 15 cases: the three missions the user confirmed can be
+  completed; the Ottoman and Iberian missions (the two evaluator bugs); the
+  multicultural mission (administrative technology 9 of 10); the Poland reward (695
+  against less than 300); the budget the user matched with the ledger; the war
+  reparations ending; Austria-Hungary one requirement short; at peace; who defends
+  Poland (Lithuania); the targets and the Ottoman truce; the briefing's basics; trade at
+  Venice; and the recommendations (missions to complete, Poland's to time, the war on
+  Poland bringing it closer).
+- **It catches what it should:** with the region bug put back, exactly the Ottoman case
+  failed.
+
+A set is a baseline for a save that does not change: when a tool's wording changes on
+purpose, the set is updated with it.
+
+**Any country, not just the one played.** The user asked that every tool work whatever
+the country, Austria or Japan. On the same save, every tool was run as if each of 26
+countries were the player (France, the Ottomans, the Papal States, Ming, Ashikaga,
+Spain, Portugal, Great Britain, Russia, Crimea, the Nogai, Vijayanagar, Ethiopia,
+Hungary, the Iroquois, the Aztecs, Korea, Delhi, the Mamluks, Switzerland, three
+colonial nations, Ulm, Kilwa): none failed, each got its own mission tree, budget,
+targets and recommendations. Two fixes came of it: a colonial nation's empty mission
+slot was listed as a missing series named "{}"; and `get_recommendations` for a
+country other than the player's did not compute the missions it can claim. The source
+names Austria only in comments recording where numbers were checked against the game.
+Tests keep it so: the tools answer as Turkey, Bohemia and Hungary on the small fixture
+save (everywhere), and every tool answers as Ashikaga, the Iroquois, a colonial nation
+and Ming on the real save (where it exists). A gap remains, not an error: the briefing
+has a section for the Holy Roman Empire but none for China's Mandate of Heaven or
+Japan's shogunate (closed by D-060).
+
+## D-059 — Guide: each recommendation as steps in the game's interface
+
+**Date:** 2026-11-20 · **Status:** Accepted (second rung of "Claude plays", VISION)
+
+Recommendations carry a stable kind and target (D-056, D-058); Guide turns them into
+the clicks that carry them out, so the player (and later "Act") knows where each action
+lives.
+
+- **Names from the game, in its language** (`context.guide`): every screen and button is
+  named with its localisation key, read from the game's files, so the steps say
+  «Misiones», «Crear un núcleo», «Declarar la guerra» in the user's Spanish game and the
+  English names in an English one; an English fallback covers a missing key. The tabs'
+  keys are the `HEADER_*` ones the country screen uses (Decisions is
+  `HEADER_MISSION_REMOVE`); the buttons' keys are those of the province and diplomacy
+  windows (`CV_BUILD_CORE`, `WARTITLE`, `FABRICATE_CLAIM`, `CV_REPAY_LOAN`,
+  `CV_BOOST_STABILITY`, ...).
+- **Only what the files settle:** F1 opens the country screen (`interface/topbar.gui`);
+  the other tabs' function keys are in the game's code, not its files, so steps go
+  through F1 and the tab rather than guess a key.
+- **Per kind:** missions (the Missions tab; for a mission worth timing, "or leave it"),
+  formable decisions, a technology (the button under its column), an idea, stability,
+  coring (the province by the name the map shows: the save's, so Widin, not the
+  localisation's Vidin), a loan, a deficit (maintenance sliders, an advisor to
+  dismiss), a war (a province of the target, its flag, its diplomacy, Declare War), a
+  claim to fabricate, relations to improve. Kinds that are not one action (planning for
+  the end of the war reparations) get no steps.
+- **Where it shows:** a *How* line under each recommendation in `get_recommendations`;
+  the evaluation set checks it.
+
+## D-060 — The Empire of China and the shogunate in the briefing
+
+**Date:** 2026-11-20 · **Status:** Accepted (closes the gap noted in D-058)
+
+Running the tools as other players (D-058) showed the briefing had a section for the
+Holy Roman Empire and nothing equivalent for East Asia's two systems.
+
+- **Empire of China** (`Campaign.celestial_empire`, from the save's `celestial_empire`
+  block): shown to the emperor and to its tributaries (subject type `tributary_state`;
+  a vassal of the emperor is not one). Role, emperor, the Mandate
+  (`imperial_influence`, of 100), the celestial reforms passed (their `_title`
+  localisation), the decree in force with the date issued (the decree's own key names
+  it), and, for the emperor, how many tributaries.
+- **Japan:** shown to the shogun (the country with the `shogunate` government reform)
+  and its daimyos (subject type `daimyo_vassal`): role, the daimyos, and the Shinto
+  isolationism level when the save has one.
+
+On the user's 1535 save: Ming as emperor with Mandate 84.2, three reforms (Gaituguiliu,
+the sea ban, administrative divisions), the decree "Proclamado nombre dinástico" of
+1532.7.3 and seven tributaries; the Khalkha as a tributary; Ashikaga as shogun with
+Uesugi as its daimyo. Japanese countries outside the shogunate (Oda here) get no section
+yet: the save does not mark them as such.
+
+## D-061 — Goal progress: a recorded goal tied to measures from each save
+
+**Date:** 2026-11-20 · **Status:** Accepted (the part left of the goals and watches idea)
+
+The player's goals are recorded in their own words (D-039), so nothing said how far
+along they were. A goal now carries measures, chosen by the model from a closed list,
+the way a watch carries conditions (D-041), and each save reads them.
+
+- **Measures** (`player.goals`): `mission` (completed, can be completed, requirements
+  met, locked), `formable` (a decision's requirements met), `provinces` (held in an
+  area, region or superregion, with the non-tributary subjects or not, against a count
+  or the whole), `country` (another country becoming the player's subject, or gone),
+  and `metric` (any watch condition: development, income, war odds against a
+  country...). Countries are stored as tags, so a country that is gone is still named.
+- **`track_goal`** attaches measures to a goal, replacing earlier ones; countries are
+  resolved and mission, decision and geography keys are checked against the game
+  files, with an error that names the key to use. Recording a goal now answers "measure
+  it with track_goal", and both prompts say to.
+- **Where progress shows:** under each goal in `get_player_context` ("2 of 3 reached:
+  ...", or "not measured yet") and in the panel's *Your plan*, on its own line. The
+  mission tree and the decisions are computed once per save (about 3 seconds) and only
+  when a goal uses them.
+
+Tried on a copy of the user's context, with their two goals: Gelre still exists, the
+Austrian Netherlands mission lacks its requirement, the Low Countries at 8 of 16
+provinces (Holland, a vassal, counts); Naples not yet a subject, the Naples mission at 0
+of 2 requirements, war odds against France 1.88 (reached, 1.5 wanted).
+
+## D-062 — Other models: LM Studio as an MCP client, and measuring a local model
+
+**Date:** 2026-11-20 · **Status:** Accepted; the measurement is pending
+
+The idea of 2026-11-16 (ROADMAP): the tools should not need a paid Claude plan. Its cheap
+step is another MCP client running a free local model.
+
+- **The model:** Qwen3 4B Instruct 2507, Q4_K_M (2.5 GB), in LM Studio. The user's laptop
+  has 8 GB of RAM and an integrated graphics card, so only a small model fits; Qwen3 is
+  among the small families that call tools well (Llama 3.2 3B worse, Gemma 3 without
+  native tool calling). LM Studio runs the model and is an MCP client itself.
+- **Configuration:** LM Studio reads the same `mcpServers` shape as Claude Desktop from
+  `~/.lmstudio/mcp.json`. `chancellor mcp-config --client lmstudio --write` adds the
+  Chancellor there, keeping other servers and copying the old file to `mcp.json.bak`.
+- **Measuring:** `chancellor eval --model <id>` asks the evaluation questions to a model
+  behind an OpenAI-compatible API (`llm.local`: LM Studio's `localhost:1234/v1`, Ollama
+  and others), runs the tools it calls, and reports per case whether it called the
+  expected tool, whether its answer has the case's `answer` facts (numbers, so any
+  language works), the time, and whether a tool result was cut to fit its context.
+  Results print as they come, so a slow run can be stopped without losing them. This
+  is a measuring loop, not a second chat: the panel's chat stays on Anthropic (D-028).
+- **A fix for small models:** Qwen passed `country: "player"` instead of leaving it out,
+  and the tools answered "no country named 'player'"; words such as player, me or my
+  country now mean the player (`PLAYER_WORDS`).
+
+What was measured on the user's laptop: 16k of context did not fit beside the model
+(12k did, CPU only); the tool descriptions take about 5k tokens, cached by LM Studio;
+reading a tool result runs at about 12 tokens a second, so a 4,000-token result costs
+5–6 minutes, and a question 5–15 minutes. In the questions it got through, Qwen chose
+the expected tool (trade, missions, budget). A first run of six questions was stopped
+at the third: LM Studio was also serving other requests, and the replies had no length
+cap (now 1,024 tokens). **Pending:** a full run with LM Studio otherwise idle (about an
+hour), to say how many answers are complete.
+
 ## D-044 (follow-up) — The war score read at war, 2026-11-21
 
 The probe's third question, answered in the user's war against Poland (with Lithuania,

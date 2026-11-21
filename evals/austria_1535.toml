@@ -1,0 +1,172 @@
+# Evaluation set for the user's Austria campaign, save of 1535.8.2 (D-058).
+#
+# The save is not committed: it is read from the player's save folder, and the set is
+# skipped where it does not exist. Every expected fact below was checked against the game
+# (the mission screen, the ledger, the diplomacy screen) or comes from a bug fixed on this
+# save; `why` says which.
+#
+# Checks use keys, tags and numbers, never localised names. `matches` are regular
+# expressions (multi-line); TOML literal strings ('...') keep their backslashes.
+# `answer` lists facts a model's answer should mention, for `chancellor eval --model`.
+
+[save]
+file = "Austria1535_08_02.eu4"
+player = "HAB"
+date = "1535.8.2"
+
+# --- missions -----------------------------------------------------------------------
+
+[[case]]
+id = "missions_ready"
+question = "Which missions can I complete now?"
+tool = "get_missions"
+matches = [
+    'hab_milan`\)\*\*, available now\n  - Requires \(can be completed now',
+    'hab_croatia`\)\*\*, available now\n  - Requires \(can be completed now',
+    'hab_surpass_poland`\)\*\*, available now\n  - Requires \(can be completed now',
+]
+why = "The user confirmed in game that these three can be completed (D-054)."
+
+[[case]]
+id = "scourge_needs_the_ottomans_out_of_europe"
+question = "Can I complete the mission against the Ottomans?"
+tool = "get_missions"
+matches = ['hab_beat_up_ottomans`\)\*\*, available now\n  - Requires \(not yet']
+why = "A region scope without `type` means any province; read as all, it looked complete (D-054)."
+
+[[case]]
+id = "iberian_relations_not_complete"
+question = "Can I complete the Iberian relations mission?"
+tool = "get_missions"
+matches = ['hab_spain_pu`\)\*\*, available now\n  - Requires \(possibly']
+why = "An else_if evaluated on its own made the OR true (D-054); the development comparison with Spain cannot be checked."
+
+[[case]]
+id = "multicultural_needs_adm_10"
+answer = ["10"]
+question = "What do I lack for the multicultural empire mission?"
+tool = "get_missions"
+matches = ['hab_multicultural_empire`\)\*\*, available now\n  - Requires \(not yet']
+contains = ["Administrative technology 10 or more"]
+why = "Austria has administrative technology 9 on this save."
+
+[[case]]
+id = "poland_reward_waits_for_300"
+answer = ["695", "300"]
+question = "When should I complete the Poland mission?"
+tool = "get_missions"
+contains = [
+    "development with its subjects 695, needs less than 300",
+    "cb_restore_personal_union",
+]
+why = "The reward's scripted effect needs Poland plus its subjects under 300, not the 400 the game's text says; Poland 303 + Lithuania 392 (D-057)."
+
+# --- economy ------------------------------------------------------------------------
+
+[[case]]
+id = "budget_by_category"
+answer = ["35.1"]
+question = "Where does my money come from and go?"
+tool = "get_budget"
+contains = [
+    "Last month: income 81.98, expenses 63.69, balance +18.29 ducats.",
+    "| Taxation | 24.97 |",
+    "| War reparations | 10.42 |",
+    "| Army maintenance | 35.10 |",
+    "| Fort maintenance | 11.38 |",
+]
+why = "The user matched last month's categories with the game's ledger (D-052)."
+
+[[case]]
+id = "reparations_will_stop"
+question = "Is my income safe?"
+tool = "get_budget"
+contains = ["War reparations are paid for a limited time after a peace (10 years)"]
+why = "10.4 of the 82 ducats a month are war reparations (wiki: 10 years)."
+
+# --- nations and wars ---------------------------------------------------------------
+
+[[case]]
+id = "austria_hungary_one_short"
+question = "Can I form Austria-Hungary?"
+tool = "get_decisions"
+args = { formables_only = true }
+contains = ["`form_austria_hungary`: not yet; 14 met, 1 not met."]
+
+[[case]]
+id = "at_peace"
+question = "How is my war going?"
+tool = "get_wars"
+contains = ["At peace."]
+absent = ["War score recorded"]
+
+[[case]]
+id = "war_on_poland"
+answer = ["254", "93"]
+question = "Who would fight if I declared war on Poland?"
+tool = "check_war"
+args = { target = "POL" }
+contains = ["| Attackers | 10 | 254 |", "| Defenders | 5 | 93 |", "34 countries"]
+matches = ['\(LIT\) \| subject']
+why = "Lithuania, Poland's junior partner, defends it."
+
+[[case]]
+id = "targets_and_truces"
+question = "Where should I expand?"
+tool = "get_expansion_targets"
+contains = ["(TUR) (truce until about 1542.1.1)"]
+matches = ['^\| 1 \| [^|]*\(POL\) \|']
+
+# --- briefing and trade ---------------------------------------------------------------
+
+[[case]]
+id = "briefing_basics"
+question = "How is my country doing?"
+tool = "get_country_briefing"
+contains = [
+    "Technology (adm/dip/mil): 9/8/10",
+    "Overextension: 6%",
+    "Role: Emperor",
+    "Coring: Widin 35 adm, 32 months",
+]
+
+[[case]]
+id = "trade_home_node"
+answer = ["65"]
+question = "How can I earn more from trade?"
+tool = "get_trade"
+contains = ["65% of its trade power (218 of 336)", "collecting 13.84 a month"]
+why = "Trade was answered from the save after D-046."
+
+# --- recommendations ------------------------------------------------------------------
+
+[[case]]
+id = "what_to_do_now"
+question = "What should I do now?"
+tool = "get_recommendations"
+contains = [
+    "[complete_mission hab_milan]",
+    "[complete_mission hab_croatia]",
+    "[time_mission hab_surpass_poland]",
+    "[hold_expansion]",
+]
+matches = ['\[core_province \d+\]']
+absent = ["[complete_mission hab_surpass_poland]"]
+why = "The user waits to claim the Poland mission until Poland is small enough (D-057)."
+
+[[case]]
+id = "war_on_poland_helps_the_mission"
+question = "Should I keep taking land from Poland?"
+tool = "get_recommendations"
+contains = ["[declare_war POL]", "brings a mission's better reward closer"]
+
+[[case]]
+id = "how_to_do_it"
+question = "How do I do that in the game?"
+tool = "get_recommendations"
+matches = [
+    'complete_mission hab_milan\]`\n   - [^\n]*\n   - How: F1 \(your country\) → «[^»]+» tab → click «[^»]+»',
+    'core_province \d+\]`\n(   - [^\n]*\n)+   - How: click \w+ on the map',
+    'declare_war POL\]`\n(   - [^\n]*\n)+   - How: click any province of \w+',
+]
+why = "Guide (D-059): each step names the game's screens and buttons in its own language."

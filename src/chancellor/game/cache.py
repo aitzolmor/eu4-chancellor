@@ -26,7 +26,9 @@ from chancellor import __version__
 T = TypeVar("T")
 
 # Bump when the shape of cached objects changes in a way the version would not catch.
-CACHE_FORMAT = 4  # 2: area colours; 3: AE difficulty (D-034); 4: idea slots, efficiency (D-037)
+# 2: area colours; 3: AE difficulty (D-034); 4: idea slots, efficiency (D-037);
+# 5: scripted effects in the game rules (D-057)
+CACHE_FORMAT = 5
 _SUFFIX = ".pickle"
 
 

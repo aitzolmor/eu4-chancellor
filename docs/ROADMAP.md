@@ -104,7 +104,8 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
 - [x] Alerts: wars, coalition and countries at 50+ AE, truces with rivals or neighbours
   ending within two years, losses, loans, overextension, war exhaustion, negative
   stability, monarch power near the cap, an imperial reform ready
-- [ ] Alerts: missions or formables that became available since the previous save
+- [x] Alerts: missions or formables that became available since the previous save
+  (D-055): a panel alert while any is ready, and a journal line when one becomes ready
 - [x] `app.layout`: docked layout on two screens and undock; on one screen a floating,
   draggable icon that opens the panel and Claude Desktop as an overlay (D-022), shown
   only while the game is in front; verified live with EU4 running as administrator; the
@@ -119,7 +120,8 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
   that tab
 - [x] API chat tab behind the player's chat-mode switch (D-020), on a budget (D-028):
   priced responses, a cap per question, a running total across sessions, Sonnet 5.5
-- [ ] Evaluation set of real questions with expected reasoning
+- [x] Evaluation set of real questions with expected answers (D-058): `evals/*.toml`,
+  run by `chancellor eval` and by `pytest` where the set's save exists
 - [ ] Answer quality of the chat. First live question (2026-11-14, Sonnet 5.5 at
   `medium`, $0.031): "how is my campaign going?" used only the briefing and the world
   overview; the facts were right and the diagnosis pointed the right way (AE near a
@@ -287,8 +289,13 @@ Goal: visual analysis of the campaign inside the workspace.
 
 Goal: explore how far the assistant can act, not just advise.
 
-- [ ] Advise: structured action recommendations
-- [ ] Guide: exact UI steps for each recommendation
+- [x] Advise: structured action recommendations (D-056): `get_recommendations`, a
+  ranked list of actions from rules over the save, each with its facts and goals
+- [x] Missions whose reward improves later (D-057): the reward's conditions, with the
+  current value against the threshold, and a timing recommendation
+- [ ] Advise: feed it the probe mod's casus belli once PR #50 merges
+- [x] Guide: exact UI steps for each recommendation (D-059): a *How* line per
+  recommendation, naming the game's screens and buttons in the player's language
 - [ ] Act: computer-use prototype that performs approved actions while the game is paused
 
 ## Real-time data (prototype, D-044)
@@ -316,7 +323,9 @@ Goal: explore how far the assistant can act, not just advise.
 
 ### Idea: other models, and no need for a paid Claude plan (2026-11-16)
 
-Not scheduled. The tools should not require a Claude subscription or the Anthropic API.
+Started (D-062): LM Studio is configured by `chancellor mcp-config --client lmstudio --write`, and `chancellor eval --model` asks a local model the evaluation questions. **Pending:** a full run with Qwen3 4B (about an hour on the user's laptop, with LM Studio otherwise idle) to measure it.
+
+Was not scheduled. The tools should not require a Claude subscription or the Anthropic API.
 
 - **Cheap step:** MCP is an open protocol, so the server already works with other MCP
   clients, some of them free or running local models (Ollama, LM Studio). Test one,
@@ -332,7 +341,8 @@ Not scheduled. The tools should not require a Claude subscription or the Anthrop
 ### Idea: goal-based watches and a campaign journal (2026-11-13)
 
 (Built so far: the player's context, D-039, the watches, D-041 and D-042, and the
-campaign journal, D-043. Left: tracking a goal's progress with the checklists, and
+campaign journal, D-043, and goal progress, D-061. Left: watches on events from the
+journal (set aside: the game already notifies them), and
 watches on events from the journal, such as an ally declaring war or a ruler dying.)
 
 Not scheduled. Raised after using the panel: its key numbers and alerts repeat what the

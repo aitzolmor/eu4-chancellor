@@ -122,7 +122,8 @@ def test_server_lists_every_tool(provider):
     assert server.name == SERVER_NAME
     assert "Europa Universalis IV" in server.instructions
     writers = {name for name, tool in tools.items() if not tool.annotations.read_only_hint}
-    assert writers == {"update_player_context", "create_watch"}  # they write (D-039, D-041)
+    # They write (D-039, D-041, D-061).
+    assert writers == {"update_player_context", "create_watch", "track_goal"}
     assert tools["update_player_context"].annotations.destructive_hint is False
     assert set(tools["check_war"].input_schema["required"]) == {"target"}
     assert tools["check_war"].description == next(

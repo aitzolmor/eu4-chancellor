@@ -33,7 +33,11 @@ flowchart LR
 | `context.campaign` | Shared, cached view of one loaded save: countries, wars, names, country lookup by name | 2 |
 | `context.summarizer` | Build a compact, LLM-friendly Markdown briefing from any country's perspective | 1–2 |
 | `context.status` | The campaign at a glance as plain values (`CampaignStatus`) for the desktop panel | 4 |
-| `context.alerts` | Ranked alerts (wars, coalitions, truces, economy, stability, imperial reform) for the panel | 4 |
+| `context.advice` | Structured recommendations: rules over the other modules' numbers turned into ranked actions with their facts (D-056) | 6 |
+| `llm.local` | Asks a question to a model behind an OpenAI-compatible API (LM Studio, Ollama) with the Chancellor's tools, for measuring other models (D-062) | 4 |
+| `evals` | The evaluation set: questions, the tool for each, checks on its output; runs where the set's save exists (D-058) | 4 |
+| `context.guide` | Guide: each recommendation kind as steps in the game's interface, named from its localisation (D-059) | 6 |
+| `context.alerts` | Ranked alerts (wars, coalitions, truces, economy, stability, imperial reform, missions and nations ready to claim) for the panel | 4 |
 | `app.cli` | Command-line entry point (`chancellor`) | 1 |
 | `app.clipboard` | Dependency-free clipboard copy (Win32 API, `pbcopy`, `wl-copy`/`xclip`) | 1 |
 | `context.war_check` | Who would fight in a hypothetical war, how strong each side is and the coalition risk (`WarCheck`, `CoalitionRisk` + Markdown renderer) | 2 |
@@ -63,6 +67,7 @@ flowchart LR
 | `context.power` | Monarch power: costs of the next technologies with their parts, ideas, stability, generals; monthly gain; months to each technology; leaders and advisors (D-029) | 4 |
 | `wiki.wikitext` | Wiki pages to plain sections: headings, the game version each was checked for, no markup (D-032) | 4 |
 | `player.context` | The player's context per campaign: goals, wants and limits, decisions, notes; matched by campaign id or by country and date; a JSON file in the game's user folder (D-039) | 4 |
+| `player.goals` | Goal progress: a recorded goal's measures (missions, decisions, provinces, countries, watch metrics) read from each save (D-061) | 4 |
 | `player.watches` | Watches: the player's "tell me when ..." as conditions on metrics read from the save, checked on every save, firing once (D-041) | 4 |
 | `live.casus_belli` | The probe mod's latest casus belli check, trusted only for the save's country and date; words for the war check and targets (D-051) | 4 |
 | `live.probe` / `live.gamelog` | Prototype: a mod that logs values the save lacks (war score, casus belli) to `logs/game.log`, and its reader (D-044) | 4 |

@@ -185,6 +185,11 @@ into concrete conditions and tells you the thresholds it chose; every save check
 and a watch that fires shows at the top of the panel and in the next answer. The
 panel's *Your plan* section lists your goals and the watches still waiting.
 
+Goals show their progress too: when you set one, Claude ties it to what can be measured
+in the save (the missions it needs, the provinces of a region, a country becoming your
+subject or disappearing, a number such as your war odds), and every save updates it:
+"2 of 3 reached: Low Countries 8 of 16 provinces; ...".
+
 The Chancellor also keeps a journal of your campaign: each time it reads a new save it
 notes what changed since the previous one (provinces gained or lost, wars, allies, a new
 ruler, ideas, technology and the key numbers). Ask "what has happened lately?" in a chat,
@@ -225,6 +230,27 @@ answered from your save, at no extra cost beyond your plan.
 
 Every tool call reads the newest save, so just save the game before asking.
 
+## Use it with a free local model (LM Studio)
+
+The tools speak MCP, an open protocol, so they also work with a model running on your own
+computer, at no cost. [LM Studio](https://lmstudio.ai) runs the model and is an MCP client
+too:
+
+1. In LM Studio, download a small model that calls tools well (Qwen3 4B Instruct 2507,
+   Q4_K_M, about 2.5 GB, was tried on an 8 GB laptop without a graphics card), and load it
+   with a context of 12k tokens or more: the tools' descriptions alone take about 5k.
+2. Add the Chancellor to LM Studio's MCP servers (it keeps any others you have):
+
+   ```bash
+   chancellor mcp-config --client lmstudio --write
+   ```
+
+3. Restart LM Studio and ask in its chat with the `eu4-chancellor` tools enabled.
+
+Expect slower and weaker answers than Claude's; the tools do much of the work, but a small
+model can misread them. `chancellor eval --model <model id>` measures it on the evaluation
+questions (which tool it calls, and whether its answer has the key numbers).
+
 ## Desktop panel (early preview)
 
 A small window to keep beside the game, with your campaign at a glance: country, date,
@@ -251,6 +277,14 @@ way; see [docs/UI_DESIGN.md](docs/UI_DESIGN.md).
   Only non-ironman (plain text) saves are supported for now.
 - EU4 mods cannot make network requests, so the chat lives in a separate window rather
   than inside the game UI.
+
+## Evaluation set
+
+`evals/` holds real questions, the tool that should answer each, and what the answer
+must say, checked against the game on one save of the author's campaign. Saves are not
+in the repository, so `chancellor eval` (and `pytest`) run a set only where its save
+exists, and skip it elsewhere. A failing check means a tool now says something different
+about a save that did not change.
 
 ## Documentation
 

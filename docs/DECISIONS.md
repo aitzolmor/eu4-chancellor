@@ -1294,3 +1294,28 @@ them Imperio multicultural, adm tech 10 with 9 now, and El azote de Europa); pos
 with unchecked parts: five (Relaciones ibéricas needs development double Spain's, a
 variable comparison the evaluator does not do). In game, the three it called
 completable could be completed.
+
+## D-044 (follow-up) — The war score read at war, 2026-11-21
+
+The probe's third question, answered in the user's war against Poland (with Lithuania,
+Gotland and Naples on Poland's side), played from 1537.08 to 1537.11 with the mod on:
+
+| | Game's screen (1537.12.17) | Mod, direct (`trigger_value:war_score`) | Mod, ladder | Save, `last_warscore_quarter` |
+| --- | --- | --- | --- | --- |
+| Poland (war leader) | +87 | 61, 74, 78, 88 (Aug–Nov) | 60, 70, 75, 85 | 87 |
+| Lithuania | +84 | — | -100 | — |
+| Gotland | +0 | — | -100 | — |
+
+- **The direct value works** and is exact (to three decimals): it is the war score
+  against the enemy war leader, the one the game shows for the whole war and that
+  decides a peace with the leader's side. The ladder agrees with it, rounded down to 5.
+- **Per ally it cannot be read:** `war_score_against` holds for none of the ladder's
+  steps against Lithuania or Gotland (-100), though the game shows +84 and +0; the
+  trigger only answers for the war leader.
+- **The save's quarterly score is the same number** (87 here; 56 in the Ragusa war of
+  D-050 was not checked in game then): `get_wars` already reports it, a quarter late at
+  most; the mod gives it monthly.
+
+Next: the live score into `get_wars`, the war check and the recommendations ("+88
+against Poland: enough to ask for peace"), from the mod's log when it runs, else the
+quarterly score.

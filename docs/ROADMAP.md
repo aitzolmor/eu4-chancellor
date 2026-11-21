@@ -276,7 +276,8 @@ Goal: visual analysis of the campaign inside the workspace.
 - [x] Wars in progress (D-050): `get_wars` gives the real start (the first history
   entry, not `action`), occupations both ways, losses from the participants, some
   recorded battles and the quarterly war score; the briefing has a line per war
-- [ ] Live war score per enemy (needs the probe mod, D-044)
+- [x] Live war score (D-044, 2026-11-21): the probe mod's direct value is the war score
+  against the enemy war leader, as the game shows it; per ally it cannot be read
 - [x] The budget over time (D-053): each snapshot keeps last month's categories; the
   Charts tab draws income by source, recurring expenses and one-off spending, and
   `get_trends` adds how each category moved
@@ -302,7 +303,9 @@ Goal: explore how far the assistant can act, not just advise.
 - [x] Casus belli against the diplomacy screen (2026-11-20): the player's own match
   exactly; the subjects' were missing, now checked too
 - [x] The subjects' casus belli in game (2026-11-20): Hungary's conquest of Poland found
-- [ ] A session at war (war score)
+- [x] A session at war (war score), 2026-11-21: Poland +87 in game, the mod 88 a
+  month earlier, the save's quarterly score 87
+- [ ] Put the live war score into get_wars, the war check and the recommendations
 - [x] Casus belli in the war check and the targets (D-051), from the probe mod's log
 - [ ] War score in the war check and the briefing, once a session at war confirms it
 

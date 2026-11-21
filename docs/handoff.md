@@ -316,7 +316,8 @@ extended monitor, 1366×768 at 96 DPI), and the second play-test is recorded
    The first session (2026-11-20, at peace, enabled by `dlc_load.json`) showed the
    channel works. The second (1535) matched the casus belli with the diplomacy screen;
    the third found the subjects' casus belli too, and `check_war` and
-   `get_expansion_targets` now list them (D-051). The war score is still to check.
+   `get_expansion_targets` now list them (D-051). The war score was checked at war
+   (2026-11-21, D-044): it reads the score against the enemy leader exactly.
    Play a few months at war, then
    read the log and `logs/error.log`. The user's autosave is yearly: monthly would
    make the panel, watches and journal monthly at no cost. Reading the game's memory

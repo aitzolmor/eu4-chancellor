@@ -42,10 +42,12 @@ def test_install_writes_the_mod_and_its_launcher_file(tmp_path: Path):
 
 LOG = """[eventwindow.cpp:486]: Selected event option 0 for event estate_regency_events.7
 [effectimplementation.cpp:21890]: CHANCELLOR|heartbeat|1520|2|Austria
+[effectimplementation.cpp:21890]: CHANCELLOR|direct|9.000
+[effectimplementation.cpp:21890]: CHANCELLOR|ladder|Gelre|5.000
+[effectimplementation.cpp:21890]: CHANCELLOR|heartbeat|1520|3|Austria
 [effectimplementation.cpp:21890]: CHANCELLOR|treasury|603.350
 [effectimplementation.cpp:21890]: CHANCELLOR|direct|12.500
 [effectimplementation.cpp:21890]: CHANCELLOR|ladder|Gelre|35.000
-[effectimplementation.cpp:21890]: CHANCELLOR|heartbeat|1520|3|Austria
 [province.cpp:15513]: Santa Elena was colonized by Espa\xf1a in 1525.04.26
 """
 

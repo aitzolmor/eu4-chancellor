@@ -293,7 +293,7 @@ Goal: explore how far the assistant can act, not just advise.
   ranked list of actions from rules over the save, each with its facts and goals
 - [x] Missions whose reward improves later (D-057): the reward's conditions, with the
   current value against the threshold, and a timing recommendation
-- [ ] Advise: feed it the probe mod's casus belli once PR #50 merges
+- [x] Advise: the probe mod's casus belli feed the war targets (D-063)
 - [x] Guide: exact UI steps for each recommendation (D-059): a *How* line per
   recommendation, naming the game's screens and buttons in the player's language
 - [ ] Act: computer-use prototype that performs approved actions while the game is paused
@@ -312,7 +312,8 @@ Goal: explore how far the assistant can act, not just advise.
 - [x] The subjects' casus belli in game (2026-11-20): Hungary's conquest of Poland found
 - [x] A session at war (war score), 2026-11-21: Poland +87 in game, the mod 88 a
   month earlier, the save's quarterly score 87
-- [ ] Put the live war score into get_wars, the war check and the recommendations
+- [x] The live war score in get_wars and the recommendations (D-063): monthly from the
+  probe mod, the quarterly score otherwise; a peace to ask for or to seek
 - [x] Casus belli in the war check and the targets (D-051), from the probe mod's log
 - [ ] War score in the war check and the briefing, once a session at war confirms it
 

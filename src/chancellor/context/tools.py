@@ -40,6 +40,7 @@ from chancellor.game.power_rules import PowerRules
 from chancellor.game.rules import GameRules
 from chancellor.game.trade_nodes import TradeGraph
 from chancellor.live.casus_belli import load_casus_belli
+from chancellor.live.war_score import load_war_score
 from chancellor.player.context import (
     KINDS,
     PlayerContextError,
@@ -468,7 +469,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "to attrition and in ships, some recorded battles, participation, and the war "
             "score the game recorded at its last quarterly check. Use it for anything about a "
             "war in progress: how it is going, what to demand at the peace, whether to make "
-            "a separate peace. The live war score against each enemy is not in the save. "
+            "a separate peace. The war score is against the enemy war leader: monthly when "
+            "the probe mod runs, otherwise the game's last quarterly check. "
             "Omit `country` for the player."
         ),
         "input_schema": {
@@ -688,7 +690,10 @@ class Toolbox:
 
     def _get_wars(self, args: dict[str, Any]) -> str:
         tag = self._tag(args.get("country"))
-        return render_wars(self.campaign, war_reports(self.campaign, tag))
+        live = load_war_score(self.campaign, self.game_log) if tag == self.campaign.player else None
+        return render_wars(
+            self.campaign, war_reports(self.campaign, tag), live=live.data if live else None
+        )
 
     def _get_budget(self, args: dict[str, Any]) -> str:
         tag = self._tag(args.get("country"))
@@ -1072,12 +1077,24 @@ class Toolbox:
         if player:
             view = PlayerContextStore(self.context_file).view(self._save_key())
             goals = goals_from(view.campaign.entries if view.campaign else [])
-        missing = ["casus belli (the save does not hold them)"]
+        missing = []
         inputs: dict[str, Any] = {}
+        # The probe mod's casus belli and live war score (D-051, D-063), for the player.
+        cb = load_casus_belli(self.campaign, self.game_log) if player else None
+        if cb is not None and cb.data is not None:
+            inputs["casus_belli"] = cb.data
+        else:
+            missing.append(
+                (cb.reason if cb else "Casus belli are only known for the player's country").rstrip(
+                    "."
+                )
+            )
+        live = load_war_score(self.campaign, self.game_log) if player else None
+        wars = war_reports(self.campaign, tag)
         if self.game_dir is None:
             missing.append("missions, nations, monarch power, coring and targets (no game files)")
         else:
-            inputs = {
+            inputs |= {
                 "ready": (
                     self.ready()
                     if player
@@ -1099,6 +1116,8 @@ class Toolbox:
             tag=tag,
             ledger=read_ledger(self.campaign, tag),
             goals=goals,
+            wars=wars,
+            live=live.data if live else None,
             **inputs,
         )
         return render_recommendations(self.campaign, found, goals, tag, missing)

@@ -53,8 +53,10 @@ country, a possible war, the world, missions, formable nations or where to expan
 Several independent lookups can be made in parallel.
 - Countries can be named by tag (BUR) or by name in the player's game language (Borgoña).
 - Every call reads the newest save, so after the player saves, look things up again.
-- The tools do not know the live war score (get_wars gives the score at the game's last \
-quarterly check). Casus belli are known only when the Chancellor probe mod runs in the \
+- The war score is against the enemy war leader: get_wars gives it monthly when the \
+Chancellor probe mod runs, otherwise as the game's last quarterly check; a separate peace \
+with an ally has its own score, only on the game's peace screen. Casus belli are known \
+only when the Chancellor probe mod runs in the \
 game (check_war and get_expansion_targets then list them, the subjects' included); \
 otherwise those tools say so. Truces are known, but their end dates are estimates. \
 Requirements marked [?] could not be checked automatically.

@@ -17,7 +17,7 @@ player, with the player's recorded goals marked on the ones that touch them.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 from chancellor.context.alerts import ReadyNow, title
 from chancellor.context.campaign import Campaign
@@ -27,6 +27,7 @@ from chancellor.context.ledger import Ledger
 from chancellor.context.missions import MissionTree, one_line
 from chancellor.context.power import PowerReport, months_until_affordable
 from chancellor.context.targets import TargetReport
+from chancellor.context.wars import WarReport, development
 from chancellor.save.parser import get_all
 
 Priority = Literal["now", "soon", "consider"]
@@ -96,6 +97,8 @@ def recommend(
     targets: TargetReport | None = None,
     casus_belli: CasusBelliData | None = None,
     goals: list[Goal] | None = None,
+    wars: list[WarReport] | None = None,
+    live: Any = None,
 ) -> list[Recommendation]:
     """Recommendations for a country (the player's by default), most urgent first.
 
@@ -119,6 +122,8 @@ def recommend(
             line for lines in waiting.values() for line in lines if line.startswith("now ")
         ]
         found += _expansion(campaign, targets, casus_belli, done, wait_lines)
+    if wars:
+        found += _peace(campaign, wars, live)
     found += _coalition(campaign, tag)
     if tree is not None:
         found += _missions_close(tree)
@@ -465,6 +470,60 @@ def _expansion(
                     [*reasons, "casus belli not checked (the save does not hold them)"],
                     target.owner,
                     "check_war",
+                )
+            )
+    return found
+
+
+PEACE_SCORE = 50  # at or above: a good peace is within reach (D-063)
+PEACE_NOW = 90
+LOSING_SCORE = -50
+
+
+def _peace(campaign: Campaign, wars: list[WarReport], live: Any) -> list[Recommendation]:
+    """A peace to ask for, or to seek, from each war's score (live when the mod runs)."""
+    found = []
+    for war in wars:
+        if not war.their_side:
+            continue
+        leader = war.their_side[0]
+        name = campaign.name(leader)
+        reading = live.against(campaign, leader, len(wars)) if live is not None else None
+        if reading is not None:
+            score, how = reading
+            source = f"war score {score:+.0f} against {name} ({how}, the probe mod on {live.date})"
+        elif war.quarterly_score is not None:
+            score = war.quarterly_score
+            source = f"war score {score:+.0f} at the game's last quarterly check"
+        else:
+            continue
+        occupied = sum(development(campaign, p) for p, _ in war.occupied_by_us)
+        held = f"you occupy {len(war.occupied_by_us)} provinces ({occupied:.0f} development)"
+        if score >= PEACE_SCORE:
+            found.append(
+                Recommendation(
+                    "make_peace",
+                    "now" if score >= PEACE_NOW else "soon",
+                    f"Ask {name} for peace: the war is won enough to take what you want",
+                    [
+                        source,
+                        held,
+                        "a separate peace with one of its allies has its own score "
+                        "(the game's peace screen)",
+                    ],
+                    leader,
+                    "get_wars",
+                )
+            )
+        elif score <= LOSING_SCORE:
+            found.append(
+                Recommendation(
+                    "make_peace",
+                    "now",
+                    f"Seek a peace with {name} before the war goes further against you",
+                    [source, f"they occupy {len(war.occupied_by_them)} of your provinces"],
+                    leader,
+                    "get_wars",
                 )
             )
     return found

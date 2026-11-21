@@ -1583,3 +1583,34 @@ Gotland and Naples on Poland's side), played from 1537.08 to 1537.11 with the mo
 Next: the live score into `get_wars`, the war check and the recommendations ("+88
 against Poland: enough to ask for peace"), from the mod's log when it runs, else the
 quarterly score.
+
+## D-063 — The live war score and the casus belli in the advice
+
+**Date:** 2026-11-21 · **Status:** Accepted (closes PR #50: D-044, D-051)
+
+With the war score checked against the game (D-044 follow-up), the probe mod's two
+readings go where they are useful.
+
+- **Reading** (`live.war_score`): the latest month's `direct` value and `ladder` (the log
+  reader now keeps only the latest month of them, as of the casus belli), trusted like
+  the casus belli when the log is the save's country's and within a year. The exact
+  `direct` value is used when the player is in one war (it does not say which war);
+  otherwise the ladder's value against that war's enemy leader, to the nearest 5 below.
+  Against a leader's ally nothing can be read (-100), so nothing is said.
+- **`get_wars`:** "War score: +88 against Polonia (exact, the probe mod on 1537.11.22)"
+  above the quarterly one; without the mod, the quarterly score says where the live one
+  is. "1 province" is now singular.
+- **Peace in the recommendations** (`make_peace`): a war score of +50 or more against
+  the enemy leader is "ask for peace" (now from +90, otherwise soon), with the score and
+  its source, the provinces occupied, and a note that a separate peace with an ally has
+  its own score; -50 or less is "seek a peace" (now). Guide's steps: a province of the
+  leader, its flag, its diplomacy, «Pedir la paz» (`PEACETITLE`).
+- **Casus belli in the recommendations:** the probe mod's check (D-051) now feeds the
+  war targets, so "War on Lieja: casus belli Conquista" or "get a casus belli" replace
+  "not checked"; without it, the reason the lookup gives says why.
+- **Prompts and `get_wars`' description** say the score is against the enemy leader,
+  monthly with the mod, quarterly without.
+
+On the user's 1537.12.17 save, with the game just restarted (no month in the new log
+yet): "Ask Polonia for peace", war score +87 at the quarterly check, 59 provinces
+occupied (581 development). With the previous session's log, the live +88.

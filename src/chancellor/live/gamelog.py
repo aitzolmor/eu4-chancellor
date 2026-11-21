@@ -80,6 +80,7 @@ def read_probe(path: Path) -> ProbeReport:
             # Keep only the latest month.
             report.cb_targets, report.casus_belli = {}, {}
             report.subjects, report.subject_cb, report.target_names = {}, {}, {}
+            report.ladder, report.direct = {}, None  # the war score too (D-063)
             subject = None
         elif kind == "cbtarget" and len(rest) >= 2:
             report.cb_targets[rest[0]] = rest[1]

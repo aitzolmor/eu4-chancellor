@@ -42,6 +42,7 @@ from chancellor.game.rules import GameRules
 from chancellor.game.trade_nodes import TradeGraph
 from chancellor.live.casus_belli import load_casus_belli
 from chancellor.live.war_score import load_war_score
+from chancellor.player.charts import CHARTS, render_chart, request_path, write_request
 from chancellor.player.context import (
     KINDS,
     PlayerContextError,
@@ -445,6 +446,39 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "show_chart",
+        "description": (
+            "Point the player at one chart of the Chancellor panel's Charts tab: the panel "
+            "opens the tab and marks the chart, and this returns the numbers the chart "
+            "draws so the answer can cite them. Use it when a trend matters to the answer "
+            "(the treasury over the last war, income against a rival, where the money "
+            "goes), after or instead of get_trends, and name the chart to the player. "
+            "Charts: treasury, income_expenses, regiments, manpower, development, "
+            "coalition_ae (countries at 50+ AE), income_by_source, recurring_expenses, "
+            "one_off_spending, and compare_development, compare_regiments, compare_income "
+            "(the player against rivals; `countries` picks up to three others instead, "
+            "and the panel keeps that choice)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "chart": {
+                    "type": "string",
+                    "enum": list(CHARTS),
+                    "description": "Which chart to show.",
+                },
+                "countries": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "maxItems": 3,
+                    "description": "For the compare_ charts: countries (names or tags).",
+                },
+            },
+            "required": ["chart"],
+            "additionalProperties": False,
+        },
+    },
+    {
         "name": "get_trade",
         "description": (
             "A country's trade, read from the save: its home trade node and its share of "
@@ -552,6 +586,7 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
     "get_player_context": {},
     "get_campaign_journal": {"saves": _Field(int)},
     "get_trends": {"countries": _Field(list)},
+    "show_chart": {"chart": _Field(str, required=True), "countries": _Field(list)},
     "get_trade": {"country": _Field(str)},
     "get_wars": {"country": _Field(str)},
     "get_peace_options": {},
@@ -1016,6 +1051,20 @@ class Toolbox:
         countries = [self._tag(c) for c in args.get("countries") or []][:3]
         data = self.trends(countries or None)
         return render_trends(data, self.campaign.label(self.campaign.player))
+
+    def _show_chart(self, args: dict[str, Any]) -> str:
+        chart = CHARTS.get(str(args["chart"]))
+        if chart is None:
+            raise ToolInputError(f"Unknown chart {args['chart']!r}; one of: {', '.join(CHARTS)}.")
+        countries = [str(c) for c in args.get("countries") or []][:3]
+        if countries and chart.kind == "compare":
+            self.set_compare(countries)  # the panel draws what the player was told
+        try:
+            write_request(request_path(self.context_file), chart.id)
+            shown = True
+        except OSError:
+            shown = False
+        return render_chart(self.trends(), chart, shown)
 
     def _get_campaign_journal(self, args: dict[str, Any]) -> str:
         saves = min(max(int(args.get("saves") or JOURNAL_STEPS), 1), 30)

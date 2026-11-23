@@ -153,6 +153,9 @@ main {
 .legend .swatch.dashed { height: 0; border-top: 2px dashed; background: none; }
 .charts { flex: 1; min-height: 0; overflow-y: auto; padding-top: 10px; }
 .chart { position: relative; margin: 0 0 14px; }
+/* The chart the Chancellor pointed to (show_chart, D-068), marked for a few seconds. */
+.chart { border-radius: 6px; transition: background-color 0.6s, box-shadow 0.6s; }
+.chart.chart-highlight { background: var(--accent-soft); box-shadow: 0 0 0 6px var(--accent-soft); }
 .chart figcaption { font-size: 12px; color: var(--text-secondary); margin-bottom: 2px; }
 .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
 .chart .grid { stroke: var(--grid); stroke-width: 1; }

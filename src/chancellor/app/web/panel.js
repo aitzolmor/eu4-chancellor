@@ -1,7 +1,7 @@
 // The Chancellor panel: asks Python for the campaign's key facts and lays them out.
 // Python side: chancellor.app.ui.PanelApi, reached through pywebview's js_api bridge.
 
-import { renderCharts } from "./charts.js";
+import { highlightChart, renderCharts } from "./charts.js";
 import { renderMarkdown } from "./markdown.js";
 
 const $ = (id) => document.getElementById(id);
@@ -288,6 +288,12 @@ $("dock").addEventListener("click", dock);
 $("undock").addEventListener("click", undock);
 $("close-overlay").addEventListener("click", closeOverlay);
 $("refresh").addEventListener("click", load);
+// PDX Tools reads the save in the browser; the panel opens it and shows the file (D-067).
+$("pdx-tools").addEventListener("click", async () => {
+  setMenu(false);
+  const result = await window.pywebview.api.open_pdx_tools();
+  status(result.ok ? "Drop the selected save on pdx.tools." : result.error, result.ok ? null : "negative");
+});
 $("retry").addEventListener("click", load);
 setInterval(() => lastStatus && renderMeta(lastStatus), 30_000);
 
@@ -449,6 +455,14 @@ function drawCharts() {
   renderCharts($("charts-body"), trends, picker);
 }
 
+// The Chancellor pointed to a chart (show_chart, D-068): open the tab, draw, then mark it.
+let pendingChart = null;
+window.addEventListener("show-chart", (event) => {
+  pendingChart = event.detail.chart;
+  if (currentTab === "charts") loadCharts();
+  else showTab("charts");
+});
+
 async function loadCharts() {
   $("charts-loading").hidden = false;
   try {
@@ -461,6 +475,10 @@ async function loadCharts() {
     compareOptions = result.compare;
     $("charts-loading").hidden = true;
     drawCharts();
+    if (pendingChart) {
+      highlightChart($("charts-body"), pendingChart);
+      pendingChart = null;
+    }
   } catch (error) {
     setText("charts-loading", `Charts unavailable: ${error}`);
   }

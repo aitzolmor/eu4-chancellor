@@ -101,10 +101,10 @@ def test_cli_backfill_lists_then_reads(tmp_path: Path, monkeypatch, capsys):
 def test_the_charts_tab_is_wired():
     script = (WEB_DIR / "panel.js").read_text(encoding="utf-8")
     charts = (WEB_DIR / "charts.js").read_text(encoding="utf-8")
-    assert 'import { renderCharts } from "./charts.js";' in script
+    assert 'import { highlightChart, renderCharts } from "./charts.js";' in script
     assert "window.pywebview.api.trends()" in script
     # One measure per chart (never two y-scales); income and expenses share a unit.
-    assert '{ title: "Income and expenses (a month)", keys: ["income", "expenses"] }' in charts
+    assert 'title: "Income and expenses (a month)", keys: ["income", "expenses"] }' in charts
 
 
 def test_snapshots_keep_the_rivals_and_great_powers_numbers():
@@ -161,7 +161,7 @@ def test_trends_compare_with_rivals_or_else_great_powers():
 def test_the_comparison_charts_use_three_hues_and_a_dashed_fourth():
     charts = (WEB_DIR / "charts.js").read_text(encoding="utf-8")
     css = (WEB_DIR / "panel.css").read_text(encoding="utf-8")
-    assert '{ title: "Development", key: "development" }' in charts
+    assert '{ id: "compare_development", title: "Development", key: "development" }' in charts
     assert '"var(--series-other)"' in charts and '"stroke-dasharray"' in charts
     assert "--series-other: #9aa3b5" in css
 
@@ -297,7 +297,8 @@ def test_the_budget_is_recorded_and_charted_by_category(tmp_path: Path):
 
 def test_the_budget_charts_are_drawn():
     charts = (WEB_DIR / "charts.js").read_text(encoding="utf-8")
-    assert '"Income by source (a month)", budgetSeries(budget.income)' in charts
-    assert '"Recurring expenses (a month)", budgetSeries(budget.expenses)' in charts
+    assert 'income: { id: "income_by_source", title: "Income by source (a month)" }' in charts
+    assert "lineChart(data, income.title, budgetSeries(budget.income)" in charts
+    assert "lineChart(data, expenses.title, budgetSeries(budget.expenses)" in charts
     assert "const index = name === OTHER ? DASHED : i;" in charts  # "Other" is the dashed line
     assert "budgetColumns(data)" in charts  # and in the table

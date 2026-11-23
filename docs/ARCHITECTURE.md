@@ -74,7 +74,8 @@ flowchart LR
 | `live.probe` / `live.gamelog` | Prototype: a mod that logs values the save lacks (war score, casus belli) to `logs/game.log`, and its reader (D-044) | 4 |
 | `player.journal` | Campaign journal: a snapshot of the player's country per save read, and the changes between consecutive ones (D-043); last month's budget by category (D-053) | 4 |
 | `player.backfill` | Older saves grouped by campaign id; the groups the player picks are read into the journal (D-045) | 4 |
-| `app/web/charts.js` | The panel's Charts tab: small-multiple SVG line charts of the journal's numbers, with events, hover and a table (D-045); the budget by category (D-053) | 5 |
+| `app/web/charts.js` | The panel's Charts tab: small-multiple SVG line charts of the journal's numbers, with events, hover and a table (D-045); the budget by category (D-053); each chart has an id the model can point to (D-068) | 5 |
+| `player.charts` | The charts the model can name (`show_chart`), the request file the panel watches, and the chart's numbers for the answer (D-068) | 5 |
 | `context.wars` | A country's wars: real start, goal, occupations both ways, losses, recorded battles, quarterly war score (D-050) | 4 |
 | `context.peace` | What a peace can demand in each war and its war score cost, as the 1.37 peace screen prices it (D-064) | 4 |
 | `context.ledger` | Income and expenses by category from the ledger: last month, this year, last year, since the start (D-052) | 4 |

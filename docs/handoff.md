@@ -93,8 +93,9 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
      in ROADMAP under *Ideas / later*; not scheduled);
    - an evaluation set of real questions;
    - Phase 5: done (charts, trends, PDX Tools linked D-067, `show_chart` D-068);
-   - Phase 6: the Act prototype is built (D-069); next, its first live run with Claude
-     Desktop's computer use (EU4 and Claude Desktop with the same administrator rights).
+   - Phase 6: the Act prototype is built (D-069; PR #68, held until a new campaign);
+     next, the autonomous mode designed in D-070 (goal, mode, guardrails, stop), first
+     tried in a new Portugal campaign with a peaceful goal.
 
 ## Decisions and why
 

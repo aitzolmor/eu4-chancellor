@@ -1667,8 +1667,9 @@ steering merchants in the world, 10 push away from their home node, about what t
 would do. Austria's merchant in Wien has no index, so it steers to Venice, where it
 collects.
 
-The report shows `steering → Venecia` and lists merchants steering away from home. Not
-checked against the game's trade screen yet: compare one merchant's arrow there.
+The report shows `steering → Venecia` and lists merchants steering away from home.
+Checked in the game on 2026-11-23: the user's merchant in Wien steers to Venice, as the
+save's absent index (0, the first link) says.
 
 ## D-066 — More conditions from the save, and scripted titles
 

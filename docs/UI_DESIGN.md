@@ -194,4 +194,8 @@ as a calm instrument panel, not compete with the map.
    stubbed bridge.
 7. Charts and history (Phase 5). **Charts done** (D-045, `charts.js`): six small
    line charts from the campaign journal, checked in the browser with 21 real
-   saves. A world view (PDX Tools) is still to evaluate.
+   saves. PDX Tools was evaluated (D-067): linked from the menu (*Open in PDX
+   Tools* opens the site and shows the latest save in Explorer to drop on it), not
+   embedded. The model points to a chart with `show_chart` (D-068): the panel comes up
+   on its Charts tab with that chart marked, checked in the browser with a stubbed
+   bridge and the user's journal, then live through Claude Desktop's MCP server.

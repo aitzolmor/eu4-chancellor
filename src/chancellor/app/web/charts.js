@@ -10,21 +10,28 @@ const SVG = "http://www.w3.org/2000/svg";
 const HEIGHT = 128;
 const PAD = { top: 10, right: 12, bottom: 20, left: 44 };
 
-// The player's own charts: a title and the journal keys of its series.
+// The player's own charts: an id, a title and the journal keys of its series. The ids are
+// the ones the show_chart tool names (chancellor.context.charts, D-068): keep them equal.
 export const CHARTS = [
-  { title: "Treasury (ducats)", keys: ["treasury"] },
-  { title: "Income and expenses (a month)", keys: ["income", "expenses"] },
-  { title: "Regiments", keys: ["regiments"] },
-  { title: "Manpower (thousands)", keys: ["manpower"] },
-  { title: "Development", keys: ["development"] },
-  { title: "Countries at 50+ AE", keys: ["at_coalition_ae"] },
+  { id: "treasury", title: "Treasury (ducats)", keys: ["treasury"] },
+  { id: "income_expenses", title: "Income and expenses (a month)", keys: ["income", "expenses"] },
+  { id: "regiments", title: "Regiments", keys: ["regiments"] },
+  { id: "manpower", title: "Manpower (thousands)", keys: ["manpower"] },
+  { id: "development", title: "Development", keys: ["development"] },
+  { id: "coalition_ae", title: "Countries at 50+ AE", keys: ["at_coalition_ae"] },
 ];
 // The comparison charts (D-048): the player against up to three rivals.
 export const COMPARE_CHARTS = [
-  { title: "Development", key: "development" },
-  { title: "Regiments", key: "regiments" },
-  { title: "Monthly income", key: "income" },
+  { id: "compare_development", title: "Development", key: "development" },
+  { id: "compare_regiments", title: "Regiments", key: "regiments" },
+  { id: "compare_income", title: "Monthly income", key: "income" },
 ];
+// The budget charts (D-053).
+export const BUDGET_CHARTS = {
+  income: { id: "income_by_source", title: "Income by source (a month)" },
+  expenses: { id: "recurring_expenses", title: "Recurring expenses (a month)" },
+  oneOff: { id: "one_off_spending", title: "One-off spending (a month)" },
+};
 // The dataviz reference palette's dark steps, validated on the panel's surface for every
 // pair (lines cross). Only three hues pass that; a fourth country is a dashed neutral line,
 // so it never relies on colour alone.
@@ -78,10 +85,11 @@ function niceScale(min, max) {
 
 // series: [{ label, values } | null], drawn in SERIES order; a null keeps its colour slot
 // empty. A legend shows for two or more.
-function lineChart(data, title, series, width) {
+function lineChart(data, title, series, width, id = null) {
   const drawn = series.filter(Boolean);
   const figure = document.createElement("figure");
   figure.className = "chart";
+  if (id) figure.dataset.chart = id;
   const caption = document.createElement("figcaption");
   caption.textContent = title;
   figure.append(caption);
@@ -290,6 +298,16 @@ function comparePicker(picker, data) {
   return row;
 }
 
+// Bring one chart into view and mark it for a few seconds (the show_chart tool, D-068).
+export function highlightChart(container, id) {
+  const figure = container.querySelector(`[data-chart="${CSS.escape(id)}"]`);
+  if (!figure) return false;
+  figure.scrollIntoView({ block: "center", behavior: "smooth" });
+  figure.classList.add("chart-highlight");
+  setTimeout(() => figure.classList.remove("chart-highlight"), 4000);
+  return true;
+}
+
 export function renderCharts(container, data, picker = null) {
   container.replaceChildren();
   const width = Math.max(container.clientWidth || 320, 240);
@@ -310,17 +328,17 @@ export function renderCharts(container, data, picker = null) {
   container.append(intro);
   for (const chart of CHARTS) {
     const series = chart.keys.map((key) => ({ label: LEGEND[key] ?? key, values: data.series[key] }));
-    container.append(lineChart(data, chart.title, series, width));
+    container.append(lineChart(data, chart.title, series, width, chart.id));
   }
 
   const budget = data.budget;
   if (budget && budget.one_off?.some((v) => v !== null && v !== undefined)) {
     container.append(heading("Where the money comes from and goes"));
-    container.append(lineChart(data, "Income by source (a month)", budgetSeries(budget.income), width));
-    container.append(lineChart(data, "Recurring expenses (a month)", budgetSeries(budget.expenses), width));
-    container.append(
-      lineChart(data, "One-off spending (a month)", [{ label: "one-off", values: budget.one_off, bridge: true }], width),
-    );
+    const { income, expenses, oneOff } = BUDGET_CHARTS;
+    container.append(lineChart(data, income.title, budgetSeries(budget.income), width, income.id));
+    container.append(lineChart(data, expenses.title, budgetSeries(budget.expenses), width, expenses.id));
+    const spent = [{ label: "one-off", values: budget.one_off, bridge: true }];
+    container.append(lineChart(data, oneOff.title, spent, width, oneOff.id));
   }
 
   const compare = data.compare ?? [];
@@ -336,7 +354,7 @@ export function renderCharts(container, data, picker = null) {
           tag ? { label: data.names[tag] ?? tag, values: data.others[tag][chart.key], bridge: true } : null,
         ),
       ];
-      container.append(lineChart(data, chart.title, series, width));
+      container.append(lineChart(data, chart.title, series, width, chart.id));
     }
   }
   container.append(table(data));

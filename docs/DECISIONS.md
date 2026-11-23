@@ -1698,3 +1698,52 @@ loaded with the localisation and resolved by the condition evaluator, with the r
 dynasty and the country's name filled in ("Extiende los von Habsburgs", "Gloria a von
 Habsburg!"). Without an evaluator only the choices that do not depend on the country are
 resolved. 564 of 565 scripted decision and mission titles resolve for Austria.
+
+## D-067 — PDX Tools: link to it, do not embed or reuse it
+
+**Date:** 2026-11-23 · **Status:** Accepted
+
+The vision named PDX Tools (pdx.tools) as the reference for save analysis and asked
+whether to link it, embed it in a tab, or reuse its parsing libraries. What it is
+(its README and site, 2026-11-23): an AGPL-3.0 web app that parses a save in the browser
+(WASM) and uploads it only when the player chooses to share it, for EU4 1.29 onwards
+(a 1.37 asset bundle exists), with a map, budget and mana graphs, the ledger, insights
+and timelapses. A save is opened only by the file picker or a drop: no URL parameter,
+no documented API, no embedding support.
+
+- **Not embedded.** A tab with the site would need the internet, a drop the panel cannot
+  make for the player, and a narrow window the site is not built for.
+- **Not reused.** Its parser is Rust; linking AGPL code into this project would put the
+  whole project under the AGPL, and our Python parser already reads what the tools need
+  (the ledger indices were taken from the `eu4save` crate's mapping, D-052, as facts,
+  not code).
+- **Linked.** *Open in PDX Tools* in the panel's menu opens the site in the browser and
+  shows the newest save selected in Explorer, ready to drop. The two complement each
+  other: PDX Tools has the map and one save in depth; the Chancellor has the campaign
+  across saves, the player's goals and the chat.
+
+## D-068 — The model points the player to a chart
+
+**Date:** 2026-11-23 · **Status:** Accepted
+
+`get_trends` gave the model the numbers, but the player saw them as a table in the chat
+while the same trend was drawn in the panel. The model now names a chart and the panel
+shows it.
+
+- **`show_chart`** (MCP and the API chat): one of twelve charts by id (the six of the
+  player's numbers, the three budget charts, the three comparisons; `countries` sets the
+  comparison, kept in the panel as if the player picked it, D-049). It writes
+  `chart_request.json` beside the player's context and returns the chart's numbers (up
+  to twelve dates and its events) with a line telling the model to name the chart.
+- **The panel** checks the file every second; a request newer than the panel's start
+  brings it up (the overlay opens on one screen, the window shows on two), opens the
+  Charts tab, scrolls to the chart and marks it for four seconds. A file is the channel
+  because Claude Desktop runs the MCP server in another process.
+- **One list of ids**: `player.charts.CHARTS` and the ids in `charts.js`; a test keeps
+  them equal.
+
+Checked live on 2026-11-23: through the restarted MCP server, `show_chart` for the
+treasury brought the running panel to its Charts tab with "Treasury (ducats)" marked.
+
+Not covered: Claude Desktop cannot draw the chart inside the chat; the panel is where
+the player sees it.

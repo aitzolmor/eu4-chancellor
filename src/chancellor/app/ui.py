@@ -23,8 +23,11 @@ from __future__ import annotations
 
 import contextlib
 import json
+import subprocess
+import sys
 import threading
 import time
+import webbrowser
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -47,6 +50,9 @@ from chancellor.context.alerts import campaign_alerts
 from chancellor.context.campaign import Campaign, CountryLookupError
 from chancellor.context.status import campaign_status
 from chancellor.game.imperial_reforms import ImperialReformLibrary
+from chancellor.player.charts import read_request, request_path
+from chancellor.player.context import context_path
+from chancellor.save.loader import find_current_save
 from chancellor.watcher import SaveWatcher
 
 WEB_DIR = Path(__file__).parent / "web"
@@ -58,6 +64,8 @@ MIN_SIZE = (320, 300)  # small enough for the overlay's top 40% on a 1400 px scr
 ICON_SIZE = 64
 SIDES = ("left", "right")  # where the overlay can open on one screen
 SCREEN_CHECK_SECONDS = 2.0  # how often the app looks for screens appearing or dropping
+PDX_TOOLS_URL = "https://pdx.tools/"
+CHART_CHECK_SECONDS = 1.0  # how often the app looks for a show_chart request (D-068)
 BACKGROUND = "#0f1726"  # matches the page, so the window does not flash white
 
 
@@ -463,6 +471,56 @@ class PanelApi:
             return {"ok": False, "error": "The API chat is not set up."}
         return self._chat.ask(question, self._emit)
 
+    def open_pdx_tools(self) -> dict[str, Any]:
+        """Open PDX Tools in the browser and show the latest save in Explorer (D-067).
+
+        PDX Tools reads a save only from a file picker or a drop, so the player drags the
+        selected file onto the page; the save stays in their browser unless they share it.
+
+        Returns:
+            ``{"ok": True, "save": "<file name>"}`` or ``{"ok": False, "error": "<message>"}``.
+        """
+        save_dir = self._provider.settings.save_dir
+        if save_dir is None:
+            return {"ok": False, "error": "The save folder is not set (chancellor setup)."}
+        try:
+            save = find_current_save(save_dir)
+        except FileNotFoundError as exc:
+            return {"ok": False, "error": str(exc)}
+        webbrowser.open(PDX_TOOLS_URL)
+        if sys.platform == "win32":
+            subprocess.Popen(["explorer", f"/select,{save}"])  # noqa: S603, S607
+        return {"ok": True, "save": save.name}
+
+    def show_requested_chart(self, request: dict[str, Any]) -> None:
+        """Bring the panel up on the chart the Chancellor pointed to (D-068).
+
+        On one screen the overlay opens if it was closed; otherwise the panel window is
+        shown. The page then opens its Charts tab and marks the chart.
+        """
+        panel = self._windows.get("panel")
+        if panel is None:
+            return
+        if self._mode == "overlay":
+            if not self._overlay_open:
+                self.toggle_overlay()
+        else:
+            panel.show()
+            panel.restore()
+        self._emit("show-chart", {"chart": request["chart"]})
+
+    def _watch_chart_requests(self, path: Path, interval: float = CHART_CHECK_SECONDS) -> None:
+        """Follow ``show_chart`` requests until the app quits; older ones are ignored."""
+        last = (read_request(path) or {}).get("at")
+        while not self._stop_icon.wait(interval):
+            request = read_request(path)
+            if request is not None and request.get("at") != last:
+                last = request.get("at")
+                try:
+                    self.show_requested_chart(request)
+                except Exception:  # noqa: BLE001 - a window error must not stop the watch
+                    continue
+
     def _emit(self, name: str, detail: dict[str, Any]) -> None:
         """Send an event to the page (from any thread)."""
         panel = self._windows.get("panel")
@@ -546,6 +604,10 @@ def run_panel(settings: Settings, load: Callable[[Path], Campaign]) -> None:
             api._windows["icon"].start(show=one_screen)
             threading.Thread(target=api._keep_icon_in_view, name="icon-view", daemon=True).start()
             threading.Thread(target=api._watch_screens, name="screens", daemon=True).start()
+        requests = request_path(context_path(settings.save_dir))
+        threading.Thread(
+            target=api._watch_chart_requests, args=(requests,), name="charts", daemon=True
+        ).start()
 
     webview.start(started)
 

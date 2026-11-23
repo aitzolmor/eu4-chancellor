@@ -249,7 +249,9 @@ findings, most harmful first:
 
 Goal: visual analysis of the campaign inside the workspace.
 
-- [ ] Evaluate PDX Tools: link, embed in a tab, or reuse its open-source parsing libraries
+- [x] Evaluate PDX Tools (D-067): linked, not embedded or reused (AGPL-3.0, opens saves
+  only by file picker or drop); *Open in PDX Tools* in the panel's menu opens the site
+  and shows the latest save in Explorer
 - [x] Charts tab (D-045): treasury, income and expenses, regiments, manpower,
   development and countries at 50+ AE over the campaign, from the journal's records,
   with its main events marked on the time axis; plain SVG, offline, hover tooltips and
@@ -285,7 +287,8 @@ Goal: visual analysis of the campaign inside the workspace.
   `get_trends` adds how each category moved
 - [x] Peace terms (D-064): `get_peace_options` prices each demand as the 1.37 peace
   screen does (a province 0.8 × development; releasing a subject at most 100)
-- [ ] Let the model reference charts in its answers
+- [x] Let the model reference charts in its answers (D-068): `show_chart` opens the
+  panel's Charts tab on one of twelve charts, marks it, and returns its numbers to cite
 
 ## Phase 6 — Claude plays (experimental)
 

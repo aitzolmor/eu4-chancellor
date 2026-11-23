@@ -4,6 +4,7 @@ from chancellor.game.localisation import (
     DEFAULT_LANGUAGE,
     Localisation,
     detect_language,
+    parse_defined_texts,
     parse_localisation,
 )
 
@@ -56,3 +57,32 @@ def test_detect_language(tmp_path: Path):
 
 def test_detect_language_default(tmp_path: Path):
     assert detect_language(tmp_path) == DEFAULT_LANGUAGE
+
+
+DEFINED = """
+defined_text = {
+    name = GetUnionTitle
+    text = { localisation_key = union_title trigger = { always = yes } }
+}
+defined_text = {
+    name = GetDynastyTitle
+    text = { localisation_key = dynasty_title trigger = { government = monarchy } }
+    text = { localisation_key = no_dynasty_title trigger = { NOT = { government = monarchy } } }
+}
+"""
+
+
+def test_parse_defined_texts():
+    texts = parse_defined_texts(DEFINED)
+    assert texts["GetUnionTitle"] == [("union_title", {"always": True})]
+    assert [key for key, _ in texts["GetDynastyTitle"]] == ["dynasty_title", "no_dynasty_title"]
+
+
+def test_load_reads_defined_texts(tmp_path: Path):
+    folder = tmp_path / "customizable_localization"
+    folder.mkdir()
+    (folder / "00_custom.txt").write_bytes(DEFINED.encode("cp1252"))
+    assert set(Localisation.parse_game(tmp_path).defined_texts) == {
+        "GetUnionTitle",
+        "GetDynastyTitle",
+    }

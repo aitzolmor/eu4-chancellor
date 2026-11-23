@@ -89,17 +89,20 @@ class GameRules:
 
 
 def _reform_attributes(document: dict[str, Any]) -> dict[str, dict[str, bool]]:
-    """``{reform: {custom_attributes: {...}, conditional: {...}}}`` → attributes."""
+    """``{reform: {heir = yes, custom_attributes: {...}, conditional: {...}}}`` → attributes."""
     result: dict[str, dict[str, bool]] = {}
     for reform, block in document.items():
         if not isinstance(block, dict):
             continue
-        attributes: dict[str, bool] = {}
+        # Built-in attributes are set at the top of the reform (`monarchy_mechanic` has
+        # `heir = yes`), custom ones in `custom_attributes`.
+        attributes: dict[str, bool] = {k: True for k, v in block.items() if v is True}
         for name in _attributes(block.get("custom_attributes")):
             attributes[name] = True
         for conditional in as_values(block.get("conditional")):
             if isinstance(conditional, dict):
-                for name in _attributes(conditional.get("custom_attributes")):
+                built_in = [k for k, v in conditional.items() if v is True]
+                for name in built_in + _attributes(conditional.get("custom_attributes")):
                     attributes.setdefault(name, False)
         if attributes:
             result[reform] = attributes

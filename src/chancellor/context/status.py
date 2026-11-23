@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from chancellor.context.campaign import Campaign, as_list, count_regiments
-from chancellor.save.parser import LazyBlock, get_all
+from chancellor.save.parser import get_all
 
 
 @dataclass(frozen=True)
@@ -118,13 +118,4 @@ def _powers(value: Any) -> tuple[int, int, int] | None:
 
 
 def _great_power_rank(campaign: Campaign, tag: str) -> int | None:
-    block = campaign.gamestate.get("great_powers")
-    if isinstance(block, LazyBlock):
-        block = block.parse()
-    if not isinstance(block, dict):
-        return None
-    for entry in get_all(block, "original"):
-        if isinstance(entry, dict) and entry.get("country") == tag:
-            rank = entry.get("rank")
-            return int(rank) if isinstance(rank, int) else None
-    return None
+    return campaign.great_power_rank(tag)

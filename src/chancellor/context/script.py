@@ -20,12 +20,16 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from chancellor.context.campaign import DYNAMIC_TAG, Campaign
+from chancellor.context.power import _RULER_KEYS, _person
 from chancellor.game.localisation import Localisation
 from chancellor.game.modifiers import ModifierLibrary, format_effect
 from chancellor.save.parser import Repeated, parse
+
+if TYPE_CHECKING:
+    from chancellor.context.conditions import Evaluator
 
 _SKIPPED_KEYS = {
     "hidden_effect",
@@ -41,6 +45,9 @@ _GEOGRAPHY = re.compile(r"_(area|region|superregion|continent)$")
 _FORMATTING = re.compile(r"§.|£\w+£?")
 _GET_NAME = re.compile(r"\[(\w{3})\.Get\w*Name\w*\]")
 _OTHER_PLACEHOLDERS = re.compile(r"\[[^\]]*\]")
+_ROOT_DYNASTY = re.compile(r"\[(?:Root|ROOT)\.Monarch\.Dynasty\.GetName\]")
+_ROOT_NAME = re.compile(r"\[(?:Root|ROOT)\.GetName\]")
+_DEFINED_TEXT = re.compile(r"\[(?:Root|ROOT)\.(Get\w+)\]")
 _TRIGGERED_MODIFIER_EFFECTS = {"add_province_triggered_modifier", "add_triggered_modifier"}
 _MODIFIER_EFFECTS = {
     "add_country_modifier",
@@ -172,8 +179,21 @@ def describe(
     return lines
 
 
-def clean_text(text: str, campaign: Campaign | _Ctx) -> str:
-    """Strip colour codes and resolve ``[TAG.GetName]`` in localised text."""
+def clean_text(text: str, campaign: Campaign | _Ctx, evaluator: Evaluator | None = None) -> str:
+    """Strip colour codes and resolve ``[TAG.GetName]`` in localised text.
+
+    Scripted texts (``[Root.GetActsOfUnionDecisionTitle]``) are resolved too: with an
+    evaluator for the country, the first alternative whose trigger holds; without one,
+    only when the choice does not depend on the country.
+    """
+    for _ in range(3):  # a chosen text can hold another scripted text
+        resolved = _DEFINED_TEXT.sub(lambda m: _defined_text(m, campaign, evaluator), text)
+        if resolved == text:
+            break
+        text = resolved
+    if evaluator is not None:
+        text = _ROOT_NAME.sub(lambda _: campaign.name(evaluator.root), text)
+        text = _ROOT_DYNASTY.sub(lambda m: _dynasty(campaign, evaluator.root) or m.group(0), text)
     text = _GET_NAME.sub(lambda m: campaign.name(m.group(1)), text)
     text = _OTHER_PLACEHOLDERS.sub("", text)
     text = _FORMATTING.sub("", text).replace("§!", "")
@@ -182,6 +202,38 @@ def clean_text(text: str, campaign: Campaign | _Ctx) -> str:
 
 
 # --- internals -------------------------------------------------------------------------
+
+
+def _dynasty(campaign: Campaign | _Ctx, tag: str) -> str | None:
+    """The dynasty of the country's ruler, from its history."""
+    country = (
+        campaign.campaign.country(tag) if isinstance(campaign, _Ctx) else campaign.country(tag)
+    )
+    ruler = _person(country, country.get("monarch"), _RULER_KEYS) if country else None
+    dynasty = (ruler or {}).get("dynasty")
+    return str(dynasty) if dynasty else None
+
+
+def _defined_text(
+    match: re.Match[str], campaign: Campaign | _Ctx, evaluator: Evaluator | None
+) -> str:
+    """The text a ``defined_text`` picks for ``ROOT``, or the placeholder if unsure."""
+    options = campaign.loc.defined_texts.get(match.group(1))
+    if not options:
+        return match.group(0)
+    if len({key for key, _ in options}) == 1:
+        return campaign.loc.get(options[0][0], "")
+    for key, trigger in options:
+        if trigger is None or trigger == {"always": True}:
+            return campaign.loc.get(key, "")
+        if evaluator is None:
+            return match.group(0)
+        result = evaluator.country(trigger)
+        if result is None:
+            return match.group(0)  # cannot tell which alternative the game shows
+        if result:
+            return campaign.loc.get(key, "")
+    return match.group(0)
 
 
 @dataclass

@@ -28,6 +28,7 @@ from collections.abc import Callable, Iterable
 from typing import Any
 
 from chancellor.context.campaign import DYNAMIC_TAG, Campaign, as_list
+from chancellor.context.power import _RULER_KEYS, _history_records, _id, _person
 from chancellor.game.missions import MissionLibrary
 from chancellor.game.rules import GameRules
 from chancellor.save.parser import Repeated, get_all
@@ -56,6 +57,7 @@ _COUNTRY_NUMBERS = {
     "religious_unity": ("religious_unity",),
     "num_of_ports": ("num_of_ports",),
     "monthly_income": ("ledger", "lastmonthincome"),
+    "innovativeness": ("innovativeness",),
 }
 # Game rules and setup assumed at their defaults.
 _DEFAULT_RULES = {
@@ -63,6 +65,29 @@ _DEFAULT_RULES = {
     "is_random_new_world": False,
     "is_playing_custom_nation": False,
     "end_game_tags_blocked": False,
+}
+_IDEAS_PER_GROUP = 7
+# Advisor types (common/advisortypes, 1.37): `artist = 2` asks for an artist of skill 2+.
+_ADVISOR_TYPES = frozenset(
+    {
+        "philosopher", "natural_scientist", "artist", "treasurer", "theologian",
+        "master_of_mint", "inquisitor", "statesman", "naval_reformer", "trader",
+        "spymaster", "colonial_governor", "diplomat", "navigator", "army_reformer",
+        "army_organiser", "commandant", "quartermaster", "recruitmaster",
+        "fortification_expert", "grand_captain",
+    }
+)  # fmt: skip
+# Country scopes that iterate: the trigger's name -> the country field listing the tags.
+_COUNTRY_SCOPES = {
+    f"{mode}_{name}": field
+    for mode in ("any", "all")
+    for name, field in (
+        ("subject_country", "subjects"),
+        ("ally", "allies"),
+        ("neighbor_country", "neighbours"),
+        ("rival_country", "rival"),
+        ("country", "country"),
+    )
 }
 _NON_SOVEREIGN = {
     "tributary_state",
@@ -122,6 +147,8 @@ class Evaluator:
         self.root = root
         self.missions = missions
         self._depth = 0
+        self._advisor_cache: dict[str, tuple[list[tuple[str, Any]], bool]] = {}
+        self._area_of: dict[int, str] | None = None
 
     # --- public API ---------------------------------------------------------------------
 
@@ -439,7 +466,146 @@ class Evaluator:
             return self._geography_scope(key, value)
         if key in self.rules.scripted_triggers and isinstance(value, bool):
             return self._scripted(key, value, self._country_fn(this))
+        if key in _COUNTRY_SCOPES and isinstance(value, dict):
+            return self._country_scope(key, value, c)
+        return self._country_detail(key, value, c, this)
+
+    def _country_detail(self, key: str, value: Any, c: dict[str, Any], this: str) -> Truth:  # noqa: C901
+        """Estates, ruler, advisors, ideas, the Empire, opinions and other save values."""
+        if key == "always":
+            return value if isinstance(value, bool) else None
+        if key in ("adm_power", "dip_power", "mil_power"):
+            powers = as_list(c.get("powers"))
+            index = ("adm_power", "dip_power", "mil_power").index(key)
+            return _at_least(powers[index] if len(powers) == 3 else None, value)
+        if key == "estate_loyalty" and isinstance(value, dict):
+            estates = [e for e in get_all(c, "estate") if isinstance(e, dict)]
+            if not estates:
+                return None
+            estate = next((e for e in estates if e.get("type") == value.get("estate")), None)
+            if estate is None:
+                return False
+            return _at_least(estate.get("loyalty"), value.get("loyalty"))
+        if key == "crown_land_share":
+            estates = [e for e in get_all(c, "estate") if isinstance(e, dict)]
+            if not estates:
+                return None
+            crown = 100.0 - sum(float(e.get("territory") or 0.0) for e in estates)
+            return _at_least(crown, value)
+        if key in ("adm", "dip", "mil"):
+            ruler = _person(c, c.get("monarch"), _RULER_KEYS) if c.get("monarch") else None
+            return None if ruler is None else _at_least(ruler.get(key.upper()), value)
+        if key == "has_female_heir":
+            if not c.get("heir"):
+                return _is(False, value)
+            heir = _person(c, c.get("heir"), _RULER_KEYS)
+            return None if heir is None else _is(heir.get("female") is True, value)
+        if key == "advisor" or key in _ADVISOR_TYPES:
+            advisors, complete = self._advisors(this, c)
+            if key == "advisor":
+                hit = any(kind == value for kind, _ in advisors)
+            else:
+                hit = any(kind == key and _at_least(skill, value) for kind, skill in advisors)
+            # An advisor not found (hired in a province since lost) leaves a miss open.
+            return True if hit else (False if complete else None)
+        if key in ("full_idea_group", "has_idea_group"):
+            groups = c.get("active_idea_groups") or {}
+            if key == "has_idea_group":
+                return value in groups
+            taken = groups.get(value)
+            return isinstance(taken, int) and taken >= _IDEAS_PER_GROUP
+        if key == "great_power_rank":
+            rank = self.campaign.great_power_rank(this)
+            if rank is None:
+                return False if "great_powers" in self.campaign.gamestate else None
+            return isinstance(value, int | float) and rank <= value
+        if key == "is_great_power":
+            return _is(c.get("is_great_power") is True, value)
+        if key == "is_in_deficit":
+            ledger = c.get("ledger") or {}
+            income = ledger.get("last_months_recurring_income")
+            expenses = ledger.get("last_months_recurring_expenses")
+            if not isinstance(income, int | float) or not isinstance(expenses, int | float):
+                return None
+            return _is(expenses > income, value)
+        if key == "had_global_flag" and isinstance(value, dict):
+            since = self.campaign.global_flags.get(value.get("flag"))
+            if since is None:
+                return False
+            return _days_between(str(since), self.campaign.date) >= int(value.get("days", 0))
+        if key == "hre_size":
+            if not self.campaign.emperor:
+                return _at_least(0, value)
+            members = sum(
+                1
+                for t in self.campaign.country_blocks
+                if self.campaign.exists(t) and self.campaign.in_hre(t)
+            )
+            return _at_least(members, value)
+        if key == "hre_reform_passed":
+            return value in as_list(self.campaign.empire.get("passed_reform"))
+        if key == "is_elector":
+            return _is(this in self.campaign.electors, value)
+        if key == "imperial_influence":
+            return _at_least(self.campaign.empire.get("imperial_influence"), value)
+        if key == "has_opinion" and isinstance(value, dict):
+            who = self._tag(value.get("who"), this)
+            opinion = self.campaign.opinion(this, who) if who else None
+            return _at_least(opinion, value.get("value"))
+        if key == "years_of_income":
+            income = c.get("estimated_monthly_income")
+            if not isinstance(income, int | float) or not isinstance(value, int | float):
+                return None
+            return _at_least(c.get("treasury"), value * 12 * income)
+        if key == "num_of_cavalry":
+            counts = as_list(c.get("total_count"))
+            return _at_least(counts[1] if len(counts) > 1 else None, value)
+        if key == "num_of_rebel_controlled_provinces":
+            provinces = [p for p in as_list(c.get("owned_provinces")) if isinstance(p, int)]
+            held = sum(
+                1 for p in provinces if (self.campaign.province(p) or {}).get("controller") == "REB"
+            )
+            return _at_least(held, value)
         return None
+
+    def _country_scope(self, key: str, block: dict[str, Any], c: dict[str, Any]) -> Truth:
+        """``any_<kind>`` / ``all_<kind>`` over the country's subjects, allies, rivals..."""
+        kind = _COUNTRY_SCOPES[key]
+        if kind == "country":
+            tags = [t for t in self.campaign.country_blocks if self.campaign.exists(t)]
+        elif kind == "rival":
+            tags = [r.get("country") for r in get_all(c, "rival") if isinstance(r, dict)]
+        else:
+            tags = as_list(c.get(kind))
+        conditions = {k: v for k, v in block.items() if k != "limit"}
+        results = []
+        for tag in (str(t) for t in tags if t):
+            applies = self.country(block["limit"], tag) if "limit" in block else True
+            if applies is False:
+                continue
+            result = self.country(conditions, tag)
+            results.append(result if applies else (None if result is not False else False))
+        return any_of(results) if key.startswith("any_") else all_of(results)
+
+    def _advisors(self, tag: str, c: dict[str, Any]) -> tuple[list[tuple[str, Any]], bool]:
+        """The country's advisors as ``(type, skill)``, and whether all of them were found.
+
+        Advisors are recorded in the history of the province they were hired in, so the
+        country's provinces are searched, capital first (as ``context.power`` does).
+        """
+        if tag not in self._advisor_cache:
+            wanted = {_id(ref) for ref in as_list(c.get("advisor"))} - {None}
+            found: dict[Any, dict[str, Any]] = {}
+            for province_id in [c.get("capital"), *as_list(c.get("owned_provinces"))]:
+                if not wanted - set(found):
+                    break
+                if isinstance(province_id, int):
+                    province = self.campaign.province(province_id) or {}
+                    for record in _history_records(province, "advisor", wanted):
+                        found[_id(record.get("id"))] = record
+            advisors = [(str(r.get("type")), r.get("skill")) for r in found.values()]
+            self._advisor_cache[tag] = (advisors, len(found) == len(wanted))
+        return self._advisor_cache[tag]
 
     def _tag(self, value: Any, this: str) -> str | None:
         text = str(value)
@@ -588,7 +754,33 @@ class Evaluator:
         if key in self.rules.scripted_triggers and isinstance(value, bool):
             entry = lambda k, v: self._province_entry(k, v, province_id)  # noqa: E731
             return self._scripted(key, value, entry)
+        if key == "culture_group":
+            group = self.rules.culture_groups.get(str(p.get("culture")))
+            return None if group is None else group == value
+        if key == "num_of_buildings_in_province":
+            return _at_least(len(p.get("buildings") or {}), value)
+        if key == "has_owner_religion":
+            owner_data = self.campaign.country(owner) if isinstance(owner, str) else None
+            if owner_data is None:
+                return _is(False, value)
+            return _is(p.get("religion") == owner_data.get("religion"), value)
+        if key == "is_state":
+            area = self._area(province_id)
+            if area is None or not isinstance(owner, str):
+                return None if area is None else _is(False, value)
+            return _is(owner in self.campaign.states.get(area, set()), value)
         return None
+
+    def _area(self, province_id: int) -> str | None:
+        """The area a province belongs to, from the game's geography."""
+        if self._area_of is None:
+            self._area_of = {
+                member: name
+                for name, members in self.rules.geography.items()
+                if name.endswith("_area")
+                for member in members
+            }
+        return self._area_of.get(province_id)
 
 
 # --- helpers ---------------------------------------------------------------------------

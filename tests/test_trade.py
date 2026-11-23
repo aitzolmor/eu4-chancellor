@@ -77,6 +77,8 @@ def test_the_report_orders_home_then_its_feeders(campaign, graph):
     assert (home.home, home.merchant, home.light_ships, home.money) == (True, "collecting", 6, 8.6)
     assert home.share == pytest.approx(108 / 240) and home.value == pytest.approx(13.9)
     assert (wien.merchant, wien.steps_to_home, wien.value) == ("steering", 1, 20.0)
+    # No `steer_power`: the first outgoing link, Venice, which is home.
+    assert (wien.steers_to, wien.steers_home) == ("venice", True)
     assert saxony.steps_to_home is None
     assert report.home_is_end is True
     assert report.upstream_without_power == [("pest", 10.0, 2), ("ragusa", 8.0, 1)]
@@ -86,14 +88,27 @@ def test_the_report_orders_home_then_its_feeders(campaign, graph):
 def test_render(campaign, graph):
     text = render_trade(campaign, trade_report(campaign, graph))
     assert "- Home node: **Venecia** (an end node: its trade goes nowhere else): 45%" in text
-    assert "- Merchants placed: 2: Venecia (collecting), Viena (steering)." in text
+    assert "- Merchants placed: 2: Venecia (collecting), Viena (steering → Venecia)." in text
+    assert "Steering away from home" not in text
     assert "- Light ships protecting trade: 6 in Venecia." in text
     assert "- Embargoed by: Francia" in text
-    assert "| Viena | 20.0 | 200 | 20% | 74 / 0 | steering | yes, 1 step |" in text
+    assert "| Viena | 20.0 | 200 | 20% | 74 / 0 | steering → Venecia | yes, 1 step |" in text
     assert "| Sajonia | 15.2 | 40 | 10% | 29 / 0 | - | no |" in text
     assert "Pest (value 10.0, 2 steps), Ragusa (value 8.0, 1 step)" in text
     line = trade_line(trade_report(campaign, graph))
     assert line.startswith("Trade: home node Venecia, 45% of its power, collecting 8.60")
+
+
+def test_a_merchant_steering_away_from_home(graph):
+    # `steer_power = 1`: the second outgoing link of Wien, Saxony, which never reaches
+    # Venice (D-065).
+    save = SAVE.replace("has_trader=yes type=1 }", "has_trader=yes type=1 steer_power=1 }")
+    campaign = Campaign({"player": "HAB"}, parse(save), Localisation(NAMES))
+    report = trade_report(campaign, graph)
+    wien = next(s for s in report.nodes if s.node == "wien")
+    assert (wien.steers_to, wien.steers_home) == ("saxony", False)
+    text = render_trade(campaign, report)
+    assert "- Steering away from home: Viena → Sajonia (that trade does not reach Venecia)." in text
 
 
 def test_a_country_without_trade(graph):

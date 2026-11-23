@@ -276,7 +276,7 @@ Goal: visual analysis of the campaign inside the workspace.
   asked again with `get_trade`, it answered from the save
 - [x] Trade: which way a steering merchant pushes is the save's `steer_power` index into
   the node's outgoing links (D-065); `get_trade` flags merchants steering away from home.
-  Still to compare with the game's trade screen
+  Checked in the game: the merchant in Wien steers to Venice
 - [x] Wars in progress (D-050): `get_wars` gives the real start (the first history
   entry, not `action`), occupations both ways, losses from the participants, some
   recorded battles and the quarterly war score; the briefing has a line per war

@@ -198,4 +198,4 @@ as a calm instrument panel, not compete with the map.
    Tools* opens the site and shows the latest save in Explorer to drop on it), not
    embedded. The model points to a chart with `show_chart` (D-068): the panel comes up
    on its Charts tab with that chart marked, checked in the browser with a stubbed
-   bridge and the user's journal.
+   bridge and the user's journal, then live through Claude Desktop's MCP server.

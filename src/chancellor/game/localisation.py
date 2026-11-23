@@ -8,14 +8,25 @@ extension, the files are not standard YAML. Each line looks like::
      PROV219:0 "Toledo"
 
 Files are UTF-8 with a BOM. Later files override earlier ones, mirroring the game.
+
+Some texts are chosen by script: ``[Root.GetActsOfUnionDecisionTitle]`` names a
+``defined_text`` in ``<game_dir>/customizable_localization``, whose ``text`` entries each
+give a localisation key and the trigger that selects it. They are kept in
+:attr:`Localisation.defined_texts` for :func:`chancellor.context.script.clean_text` to
+resolve.
 """
 
 from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Any
 
 from chancellor.game.cache import cached
+from chancellor.save.parser import get_all, parse
+
+# A defined text's alternatives, in order: (localisation key, selecting trigger or None).
+DefinedText = list[tuple[str, dict[str, Any] | None]]
 
 DEFAULT_LANGUAGE = "english"
 
@@ -26,20 +37,26 @@ _LANGUAGE_SETTING = re.compile(r'^language="l_(\w+)"', re.MULTILINE)
 class Localisation:
     """Lookup table from localisation keys to display text."""
 
-    def __init__(self, entries: dict[str, str] | None = None) -> None:
+    def __init__(
+        self,
+        entries: dict[str, str] | None = None,
+        defined_texts: dict[str, DefinedText] | None = None,
+    ) -> None:
         """Create a table from already loaded entries.
 
         Args:
             entries: Mapping of localisation keys to text.
+            defined_texts: Scripted texts by name (``GetActsOfUnionDecisionTitle``).
         """
         self._entries = entries or {}
+        self.defined_texts = defined_texts or {}
 
     @classmethod
     def load(cls, game_dir: Path, language: str = DEFAULT_LANGUAGE) -> Localisation:
         """Load a language from the game installation, reusing the on-disk cache."""
         return cached(
             f"localisation-{language}",
-            [game_dir / "localisation"],
+            [game_dir / "localisation", game_dir / "customizable_localization"],
             lambda: cls.parse_game(game_dir, language),
         )
 
@@ -59,7 +76,12 @@ class Localisation:
         if folder.is_dir():
             for path in sorted(folder.rglob(f"*_l_{language}.yml")):
                 entries.update(parse_localisation(path.read_text(encoding="utf-8-sig")))
-        return cls(entries)
+        defined: dict[str, DefinedText] = {}
+        folder = game_dir / "customizable_localization"
+        if folder.is_dir():
+            for path in sorted(folder.glob("*.txt")):
+                defined.update(parse_defined_texts(_decode(path.read_bytes())))
+        return cls(entries, defined)
 
     def __len__(self) -> int:
         return len(self._entries)
@@ -93,6 +115,33 @@ def parse_localisation(text: str) -> dict[str, str]:
         if match:
             entries[match.group(1)] = match.group(2)
     return entries
+
+
+def parse_defined_texts(text: str) -> dict[str, DefinedText]:
+    """Parse the ``defined_text`` blocks of one ``customizable_localization`` file."""
+    result: dict[str, DefinedText] = {}
+    for block in get_all(parse(text), "defined_text"):
+        if not isinstance(block, dict) or not isinstance(block.get("name"), str):
+            continue
+        options: DefinedText = []
+        for option in get_all(block, "text"):
+            if isinstance(option, dict) and "localisation_key" in option:
+                trigger = option.get("trigger")
+                options.append(
+                    (
+                        str(option["localisation_key"]),
+                        trigger if isinstance(trigger, dict) else None,
+                    )
+                )
+        result[block["name"]] = options
+    return result
+
+
+def _decode(data: bytes) -> str:
+    try:
+        return data.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return data.decode("cp1252", errors="replace")
 
 
 def detect_language(user_dir: Path) -> str:

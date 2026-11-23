@@ -27,8 +27,9 @@ T = TypeVar("T")
 
 # Bump when the shape of cached objects changes in a way the version would not catch.
 # 2: area colours; 3: AE difficulty (D-034); 4: idea slots, efficiency (D-037);
-# 5: scripted effects in the game rules (D-057)
-CACHE_FORMAT = 5
+# 5: scripted effects in the game rules (D-057); 6: defined texts in the localisation;
+# 7: built-in government attributes (`heir = yes`)
+CACHE_FORMAT = 7
 _SUFFIX = ".pickle"
 
 

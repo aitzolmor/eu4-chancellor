@@ -113,7 +113,7 @@ def check_decisions(
             )
             for met, key, value in evaluator.explain(decision.allow)
         ]
-        title = clean_text(campaign.loc.get(f"{decision.name}_title", ""), campaign)
+        title = clean_text(campaign.loc.get(f"{decision.name}_title", ""), campaign, evaluator)
         checks.append(
             DecisionCheck(
                 decision=decision,

@@ -20,8 +20,19 @@ countries={
         flags={ hab_flag=1450.1.1 } modifier={ modifier="hab_mod" date=1460.1.1 }
         completed_missions={ hab_first }
         country_missions={ mission_slot={ hab_series } }
-        estate={ type="estate_nobles" granted_privileges={ { "estate_nobles_x" 1450.1.1 } } }
-        ledger={ lastmonthincome=26.2 }
+        estate={ type="estate_nobles" loyalty=55.5 territory=20.0
+                 granted_privileges={ { "estate_nobles_x" 1450.1.1 } } }
+        estate={ type="estate_church" loyalty=30.0 territory=15.0 }
+        ledger={ lastmonthincome=26.2 last_months_recurring_income=26.2
+                 last_months_recurring_expenses=30.0 }
+        estimated_monthly_income=3.0 powers={ 120 80 40 } innovativeness=12.5
+        active_idea_groups={ HAB_ideas=3 humanist_ideas=7 trade_ideas=2 }
+        total_count={ 10 4 2 0 0 0 0 } is_great_power=yes
+        rival={ country="POL" date="1450.1.1" } neighbours={ POL BOH }
+        active_relations={ POL={ cached_sum=-40 } CAS={ cached_sum=120 } }
+        monarch={ id=1 type=48 } heir={ id=2 type=48 } advisor={ id=7 type=51 }
+        history={ 1450.1.1={ monarch={ id={ id=1 type=48 } ADM=4 DIP=2 MIL=5 } }
+                  1460.1.1={ heir={ id={ id=2 type=48 } ADM=1 DIP=1 MIL=1 female=yes } } }
     }
     BOH={ owned_provinces={ 266 } overlord=HAB primary_culture=czech religion=catholic }
     HUN={ owned_provinces={ 153 } overlord=HAB primary_culture=hungarian religion=catholic }
@@ -32,8 +43,11 @@ countries={
 provinces={
     -134={ owner="HAB" controller="HAB" cores={ "HAB" } culture=austrian religion=catholic
            hre=yes base_tax=5.000 base_production=6.000 base_manpower=4.000 trade_goods=wine
-           discovered_by={ HAB BOH } modifier={ modifier="capital_mod" } }
-    -133={ owner="HAB" controller="HAB" cores={ "BOH" } culture=austrian hre=yes }
+           discovered_by={ HAB BOH } modifier={ modifier="capital_mod" }
+           buildings={ temple=yes marketplace=yes }
+           history={ 1455.1.1={ advisor={ id={ id=7 type=51 } type=artist skill=2 } } } }
+    -133={ owner="HAB" controller="REB" cores={ "BOH" } culture=austrian hre=yes
+           religion=protestant }
     -266={ owner="BOH" controller="BOH" cores={ "BOH" } culture=czech hre=yes }
     -153={ owner="HUN" cores={ "HUN" } culture=hungarian }
     -262={ owner="POL" cores={ "POL" } }
@@ -43,7 +57,9 @@ diplomacy={
     dependency={ first="HAB" second="BOH" subject_type="personal_union" }
     dependency={ first="HAB" second="HUN" subject_type="tributary_state" }
 }
-empire={ emperor=HAB }
+empire={ emperor=HAB electors={ BOH } imperial_influence=42.0 passed_reform=reichsreform }
+great_powers={ original={ country="HAB" rank=3 } original={ country="CAS" rank=5 } }
+map_area_data={ austria_area={ state={ area=austria_area country_state={ country="HAB" } } } }
 flags={ global_flag=1444.1.1 }
 current_age=age_of_discovery
 active_war={ name="War" attackers={ "POL" } defenders={ "CAS" } }
@@ -54,7 +70,7 @@ active_war={ name="War" attackers={ "POL" } defenders={ "CAS" } }
 def rules() -> GameRules:
     return GameRules(
         culture_groups={"austrian": "germanic", "czech": "west_slavic", "polish": "west_slavic"},
-        religion_groups={"catholic": "christian"},
+        religion_groups={"catholic": "christian", "protestant": "christian"},
         geography={
             "austria_area": frozenset({134, 133}),
             "bohemia_area": frozenset({266}),
@@ -137,6 +153,44 @@ def test_three_valued_logic():
         ("normal_or_historical_nations = yes", True),
         ("end_game_tags_blocked = no", True),
         ("map_setup = map_setup_random", False),
+        ("always = yes", True),
+        ("always = no", False),
+        ("estate_loyalty = { estate = estate_nobles loyalty = 50 }", True),
+        ("estate_loyalty = { estate = estate_church loyalty = 50 }", False),
+        ("estate_loyalty = { estate = estate_burghers loyalty = 10 }", False),  # no such estate
+        ("crown_land_share = 65", True),  # 100 - 20 - 15
+        ("crown_land_share = 66", False),
+        ("adm = 4", True),
+        ("dip = 3", False),
+        ("has_female_heir = yes", True),
+        ("artist = 2", True),
+        ("artist = 3", False),
+        ("advisor = artist", True),
+        ("advisor = theologian", False),
+        ("full_idea_group = humanist_ideas", True),
+        ("full_idea_group = trade_ideas", False),
+        ("has_idea_group = trade_ideas", True),
+        ("great_power_rank = 3", True),
+        ("great_power_rank = 2", False),
+        ("is_great_power = yes", True),
+        ("is_elector = no", True),
+        ("imperial_influence = 40", True),
+        ("hre_reform_passed = reichsreform", True),
+        ("hre_reform_passed = erbkaisertum", False),
+        ("has_opinion = { who = CAS value = 100 }", True),
+        ("has_opinion = { who = POL value = 0 }", False),
+        ("years_of_income = 1", True),  # 36 ducats against 3 a month
+        ("years_of_income = 2", False),
+        ("is_in_deficit = yes", True),
+        ("num_of_cavalry = 4", True),
+        ("num_of_cavalry = 5", False),
+        ("num_of_rebel_controlled_provinces = 1", True),
+        ("adm_power = 100", True),
+        ("mil_power = 50", False),
+        ("innovativeness = 10", True),
+        ("had_global_flag = { flag = global_flag days = 3650 }", True),
+        ("hre_size = 1", True),  # only HAB has a capital (Wien, in the Empire)
+        ("hre_size = 2", False),
         ("some_unsupported_condition = yes", None),
     ],
 )
@@ -254,3 +308,23 @@ def test_government_attributes(rules: GameRules, evaluator: Evaluator):
     assert evaluator.country({"has_government_attribute": "is_elective"}) is True
     assert evaluator.country({"has_government_attribute": "maybe_attribute"}) is None
     assert evaluator.country({"has_government_attribute": "english_parliament"}) is False
+
+
+def test_country_scopes(evaluator: Evaluator):
+    assert check(evaluator, "any_subject_country = { tag = HUN }") is True
+    assert check(evaluator, "all_subject_country = { religion = catholic }") is True
+    assert check(evaluator, "any_ally = { tag = CAS }") is True
+    assert check(evaluator, "any_rival_country = { tag = POL }") is True
+    assert check(evaluator, "any_neighbor_country = { tag = HUN }") is False
+    assert check(evaluator, "any_country = { tag = POL }") is True
+    assert check(evaluator, "any_country = { tag = DED }") is False  # does not exist
+    assert check(evaluator, "any_subject_country = { unsupported = yes }") is None
+    script = "any_subject_country = { limit = { tag = BOH } is_subject_of_type = tributary_state }"
+    assert check(evaluator, script) is False
+
+
+def test_more_province_conditions(evaluator: Evaluator):
+    assert check(evaluator, "134 = { is_state = yes has_owner_religion = yes }") is True
+    assert check(evaluator, "133 = { has_owner_religion = no }") is True
+    assert check(evaluator, "134 = { culture_group = germanic num_of_buildings_in_province = 2 }")
+    assert check(evaluator, "266 = { is_state = no }") is True  # area held by nobody

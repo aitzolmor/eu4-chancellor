@@ -115,7 +115,9 @@ proper three-valued logic, so a missing core province is still reported with cer
 Checklists mark unknown requirements `[?]` for the player to verify in game.
 
 Measured on the local saves, 6% of formable-nation requirements end up unknown, and
-37% across all decisions (mostly estate and parliament conditions).
+37% across all decisions (mostly estate and parliament conditions). Re-measured on the
+1539 save after D-066: 0% for formables, 23% for major decisions, 40% for the others
+(mostly estate influence), and 21 of 83 requirements of the player's missions.
 
 ## D-013 — Cache parsed game data on disk; keep the save uncached
 
@@ -1650,3 +1652,49 @@ Not covered: modifiers the user's game did not show (great projects, autonomy, i
 lower war score costs), the AE a deal adds (the war check estimates a conquest's), and
 the score of a separate peace with one of the leader's allies, which only the peace
 screen shows.
+
+## D-065 — A steering merchant's direction is the save's `steer_power` index
+
+**Date:** 2026-11-23 · **Status:** Accepted
+
+`get_trade` said which nodes feed the home node but not where a steering merchant pushes,
+so a merchant steering the wrong way could not be spotted. The direction is in the save
+after all: a country's block in a node has `steer_power=N`, the index of the outgoing
+link it steers along, in the order of `common/tradenodes` (absent: the first link).
+Evidence on the 1539 save: every value is below the node's number of links; the node's
+own `steer_power` list splits the steering power by link in that same order; and of 422
+steering merchants in the world, 10 push away from their home node, about what the AI
+would do. Austria's merchant in Wien has no index, so it steers to Venice, where it
+collects.
+
+The report shows `steering → Venecia` and lists merchants steering away from home.
+Checked in the game on 2026-11-23: the user's merchant in Wien steers to Venice, as the
+save's absent index (0, the first link) says.
+
+## D-066 — More conditions from the save, and scripted titles
+
+**Date:** 2026-11-23 · **Status:** Accepted
+
+A measurement on the 1539 save found 58% of major and 62% of other decision requirements
+unknown, and 41 of 83 mission requirements. Most came from conditions whose answer is in
+the save: estate loyalty (`estate.loyalty`), crown land (100 minus the estates'
+`territory`), the ruler's skills and heir (history records), advisors and their skill
+(province history), idea groups (`active_idea_groups`, 7 = full), great power rank, HRE
+reforms, electors, imperial authority and size, opinion (`active_relations.cached_sum`),
+years of income, cavalry (`total_count`), rebel-held provinces, monarch power, deficit,
+states (`map_area_data`), the owner's religion, buildings, `always`, and the
+`any_`/`all_` scopes over subjects, allies, neighbours, rivals and countries. A built-in
+government attribute (`heir = yes` at the top of `monarchy_mechanic`) was read as absent,
+so `has_government_attribute = heir` was false for every monarchy; it now counts.
+
+Left unknown on purpose: estate influence (base, privileges, land share, modifiers and
+scripted conditions; computing it without checking against the game would guess; the
+probe mod could log it with an `estate_influence` ladder), `army_size` (the unit is not
+certain), revolutions, disasters, wars won.
+
+Titles written as `[Root.GetActsOfUnionDecisionTitle]` name a `defined_text` in
+`customizable_localization`: a list of localisation keys, each with a trigger. They are
+loaded with the localisation and resolved by the condition evaluator, with the ruler's
+dynasty and the country's name filled in ("Extiende los von Habsburgs", "Gloria a von
+Habsburg!"). Without an evaluator only the choices that do not depend on the country are
+resolved. 564 of 565 scripted decision and mission titles resolve for Austria.

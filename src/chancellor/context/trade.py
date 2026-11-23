@@ -6,13 +6,15 @@ per country present in it. From a country's entries:
 * ``val``: its trade power there (``province_power`` from provinces, ``ship_power`` from
   light ships protecting trade, ``light_ship`` how many);
 * ``has_trader``: a merchant of it is there, steering when ``type=1``, else collecting;
+* ``steer_power``: which outgoing link a steering merchant pushes trade along, as an
+  index into the node's ``outgoing`` links in the game files (absent: the first);
 * ``has_capital``: it is the country's home node (where its trade capital is);
 * ``money``: what it collects there a month.
 
 A node's value is what stays in it (``current``) plus what flows on (``outgoing``); its
 ``total`` is everyone's trade power. Which nodes feed the home node comes from the game
-files (:class:`TradeGraph`); the direction a steering merchant pushes is not in the
-save, so the report says whether a node lies upstream of home.
+files (:class:`TradeGraph`), and so does the node a steering merchant's index points to
+(D-065). The report says whether each steering merchant pushes towards home.
 """
 
 from __future__ import annotations
@@ -39,6 +41,8 @@ class NodeShare:
         ship_power: The part from light ships protecting trade.
         light_ships: Light ships it has protecting trade there.
         merchant: ``collecting``, ``steering`` or ``None``.
+        steers_to: For a steering merchant, the node it pushes trade towards.
+        steers_home: Whether that node is the home node or feeds it (``None``: no home).
         money: What it collects there a month.
         home: Whether it is the country's home node.
         steps_to_home: How many links downstream to the home node (``None``: not upstream).
@@ -53,6 +57,8 @@ class NodeShare:
     ship_power: float = 0.0
     light_ships: int = 0
     merchant: str | None = None
+    steers_to: str | None = None
+    steers_home: bool | None = None
     money: float = 0.0
     home: bool = False
     steps_to_home: int | None = None
@@ -108,8 +114,14 @@ def trade_report(campaign: Campaign, graph: TradeGraph, tag: str | None = None) 
         if not isinstance(entry, dict) or _float(entry.get("val")) <= 0:
             continue
         merchant = None
+        steers_to = None
         if entry.get("has_trader") is True:
             merchant = "steering" if entry.get("type") == 1 else "collecting"
+        if merchant == "steering":
+            links = graph.outgoing.get(key, [])
+            index = entry.get("steer_power", 0)
+            if isinstance(index, int) and 0 <= index < len(links):
+                steers_to = links[index]
         shares.append(
             NodeShare(
                 node=key,
@@ -121,6 +133,7 @@ def trade_report(campaign: Campaign, graph: TradeGraph, tag: str | None = None) 
                 ship_power=_float(entry.get("ship_power")),
                 light_ships=int(_float(entry.get("light_ship"))),
                 merchant=merchant,
+                steers_to=steers_to,
                 money=_float(entry.get("money")),
                 home=entry.get("has_capital") is True,
             )
@@ -129,6 +142,8 @@ def trade_report(campaign: Campaign, graph: TradeGraph, tag: str | None = None) 
     upstream = graph.upstream(home.node) if home else {}
     for share in shares:
         share.steps_to_home = upstream.get(share.node)
+        if share.steers_to and home:
+            share.steers_home = share.steers_to == home.node or share.steers_to in upstream
     held = {s.node for s in shares}
     missing = sorted(
         ((n, values.get(n, 0.0), steps) for n, steps in upstream.items() if n not in held),
@@ -155,6 +170,7 @@ def render_trade(campaign: Campaign, report: TradeReport, shown: int = 12) -> st
         lines.append("No home trade node found: the country has no trade power recorded.")
         return "\n".join(lines) + "\n"
     merchants = [s for s in report.nodes if s.merchant]
+    away = [s for s in merchants if s.steers_home is False]
     lines += [
         f"- Home node: **{home.name}**"
         + (" (an end node: its trade goes nowhere else)" if report.home_is_end else "")
@@ -162,7 +178,7 @@ def render_trade(campaign: Campaign, report: TradeReport, shown: int = 12) -> st
         f"{home.total_power:.0f}), value {home.value:.1f} a month, collecting "
         f"{home.money:.2f} a month there.",
         f"- Merchants placed: {len(merchants)}: "
-        + (", ".join(f"{s.name} ({s.merchant})" for s in merchants) or "none")
+        + (", ".join(f"{s.name} ({_merchant(campaign, s)})" for s in merchants) or "none")
         + ".",
         "- Light ships protecting trade: "
         + (
@@ -171,6 +187,12 @@ def render_trade(campaign: Campaign, report: TradeReport, shown: int = 12) -> st
         )
         + ".",
     ]
+    if away:
+        lines.append(
+            "- Steering away from home: "
+            + ", ".join(f"{s.name} → {campaign.text(s.steers_to or '')}" for s in away)
+            + f" (that trade does not reach {home.name})."
+        )
     if report.embargoed_by:
         names = ", ".join(campaign.name(t) for t in report.embargoed_by)
         lines.append(f"- Embargoed by: {names} (lowers its trade power where they meet).")
@@ -192,7 +214,7 @@ def render_trade(campaign: Campaign, report: TradeReport, shown: int = 12) -> st
         lines.append(
             f"| {share.name} | {share.value:.1f} | {share.power:.0f} | {_pct(share.share)} "
             f"| {share.province_power:.0f} / {share.ship_power:.0f} "
-            f"| {share.merchant or '-'} | {feeds} |"
+            f"| {_merchant(campaign, share) if share.merchant else '-'} | {feeds} |"
         )
     if len(report.nodes) > shown:
         lines.append(f"\n{len(report.nodes) - shown} smaller nodes left out.")
@@ -208,10 +230,10 @@ def render_trade(campaign: Campaign, report: TradeReport, shown: int = 12) -> st
         ]
     lines += [
         "",
-        "_From the save's trade nodes and the game's node map. The save does not record "
-        "which way a steering merchant pushes; 'Feeds home' says whether the node's trade "
-        "can reach the home node at all. For how trade works and strategy, search_wiki "
-        "('trade', 'trade steering')._",
+        "_From the save's trade nodes and the game's node map; a steering merchant's "
+        "direction is the link the save records for it. 'Feeds home' says whether the "
+        "node's trade can reach the home node at all. For how trade works and strategy, "
+        "search_wiki ('trade', 'trade steering')._",
     ]
     return "\n".join(lines) + "\n"
 
@@ -227,6 +249,13 @@ def trade_line(report: TradeReport) -> str | None:
         f"{home.money:.2f} a month; {len(merchants)} merchants placed. Node by node, with "
         "what feeds the home node: get_trade."
     )
+
+
+def _merchant(campaign: Campaign, share: NodeShare) -> str:
+    """``collecting``, or ``steering → Venecia``."""
+    if share.merchant == "steering" and share.steers_to:
+        return f"steering → {campaign.text(share.steers_to)}"
+    return share.merchant or ""
 
 
 def _pct(value: float) -> str:

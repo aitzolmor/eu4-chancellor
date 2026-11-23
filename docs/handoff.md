@@ -1,9 +1,8 @@
 # Handoff — project state
 
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
-updated on **2026-11-18** after checking AE and coring against the game and the
-wiki's retrieval (PRs #1–#53 merged; 559 tests passing, CI green on Ubuntu and
-Windows with Python 3.11 and 3.12).
+updated on **2026-11-23** after reading more conditions, scripted titles and the
+steering direction from the save (D-065, D-066; 672 tests passing locally).
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
 [ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-064),
@@ -70,10 +69,13 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
 2. **First live run of `chancellor chat`** with the real API key, to tune the system
    prompt and effort. It spends money, so ask the user before running it.
 3. **Data gaps that limit advice:**
-   - available casus belli (not found in the save yet);
-   - income and expense breakdown (ledger category indices not mapped);
-   - estate and parliament conditions in the checklists (about 37% `[?]` outside the
-     formables, about 6% for the formables).
+   - casus belli: from the probe mod (D-051); income breakdown: done (D-052);
+   - conditions in the checklists (D-066, 2026-11-23): unknown requirements fell to 0%
+     for formables, 23% for major decisions and 40% for the others, mostly estate
+     influence, which is not in the save (next: log it from the probe mod with an
+     `estate_influence` ladder, as the war score is);
+   - scripted decision and mission titles resolve (D-066), and a steering merchant's
+     direction is read from the save (D-065, checked in the game: Wien → Venice).
 4. **Usability:**
    - run from any folder: done (D-047, `chancellor setup` writes
      `~/.eu4-chancellor/config.env`; run on the user's machine 2026-11-17);

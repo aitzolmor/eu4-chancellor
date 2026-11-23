@@ -268,7 +268,7 @@ def _state(
     tag: str | None = None,
     effects: dict[str, dict] | None = None,
 ) -> MissionState:
-    title = clean_text(campaign.loc.get(f"{mission.name}_title", ""), campaign)
+    title = clean_text(campaign.loc.get(f"{mission.name}_title", ""), campaign, evaluator)
     if mission.name in completed:
         status: Status = "completed"
         missing: list[str] = []

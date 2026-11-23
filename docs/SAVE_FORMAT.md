@@ -236,8 +236,12 @@ flowing on; the node's value is `current + outgoing`), `local_value`, `retention
 `val` (its trade power), `max_pow`, `province_power` and `ship_power` (base, before
 modifiers), `light_ship` (ships protecting trade), `has_trader=yes` (a merchant;
 `type=1` steers, no `type` collects), `has_capital=yes` (its home node), `money` (what
-it collects there a month), `trading_policy`. The direction a steering merchant pushes
-was not found. The links between nodes are in the game files
+it collects there a month), `trading_policy`, and `steer_power=N`: the outgoing link a
+steering merchant pushes along, as an index into the node's `outgoing` links in the game
+files, in their order (absent: 0, the first; D-065). Every value on the 1539 save is below
+the node's number of links, and the node's own `steer_power={ 0.418 0.412 0.169 }` lists
+the share of steering power sent down each link, in the same order (Wien: Venice,
+Rheinland, Saxony). The field stays after a merchant leaves. The links between nodes are in the game files
 (`common/tradenodes/00_tradenodes.txt`, `outgoing = { name = "..." }`). The country
 block has `trade_embargoed_by={ ... }` and `merchants={ envoy={ ... } }`.
 

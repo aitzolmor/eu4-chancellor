@@ -249,6 +249,31 @@ def test_clean_text(campaign: Campaign):
     )
 
 
+def test_clean_text_resolves_defined_texts():
+    from chancellor.context.conditions import Evaluator
+    from chancellor.game.localisation import parse_defined_texts
+    from chancellor.game.rules import GameRules
+
+    defined = parse_defined_texts(
+        "defined_text = { name = GetUnionTitle text = { localisation_key = union_t "
+        "trigger = { always = yes } } } "
+        "defined_text = { name = GetDynastyTitle "
+        "text = { localisation_key = dyn_t trigger = { government = monarchy } } "
+        "text = { localisation_key = nodyn_t trigger = { NOT = { government = monarchy } } } }"
+    )
+    loc = Localisation(
+        {"union_t": "Acts of Union", "dyn_t": "Spread the [Root.GetName] dynasty", "nodyn_t": "X"},
+        defined,
+    )
+    world = "countries={ HAB={ government={ government=monarchy } } }"
+    campaign = Campaign({"player": "HAB"}, parse(world), loc)
+    evaluator = Evaluator(campaign, GameRules(), "HAB")
+    assert clean_text("[Root.GetUnionTitle]", campaign) == "Acts of Union"
+    # Which alternative applies depends on the country: only with an evaluator.
+    assert clean_text("[Root.GetDynastyTitle]", campaign) == ""
+    assert clean_text("[Root.GetDynastyTitle]", campaign, evaluator) == "Spread the HAB dynasty"
+
+
 def test_common_triggers_are_written_in_words(campaign: Campaign):
     script = """
     adm_tech = 15

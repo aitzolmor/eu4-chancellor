@@ -449,6 +449,33 @@ class Campaign:
         result = block.parse() if isinstance(block, LazyBlock) else block
         return result if isinstance(result, dict) else {}
 
+    def great_power_rank(self, tag: str) -> int | None:
+        """The country's rank among the great powers (1 = first), or ``None``."""
+        block = self.gamestate.get("great_powers")
+        if isinstance(block, LazyBlock):
+            block = block.parse()
+        if not isinstance(block, dict):
+            return None
+        for entry in get_all(block, "original"):
+            if isinstance(entry, dict) and entry.get("country") == tag:
+                rank = entry.get("rank")
+                return int(rank) if isinstance(rank, int) else None
+        return None
+
+    @cached_property
+    def states(self) -> dict[str, set[str]]:
+        """For each area, the countries that hold it as a state (``map_area_data``)."""
+        block = self.gamestate.get("map_area_data", {})
+        data = block.parse() if isinstance(block, LazyBlock) else block
+        result: dict[str, set[str]] = {}
+        for area, value in (data if isinstance(data, dict) else {}).items():
+            state = value.get("state") if isinstance(value, dict) else None
+            holders = state.get("country_state") if isinstance(state, dict) else None
+            result[str(area)] = {
+                str(h.get("country")) for h in as_list(holders) if isinstance(h, dict)
+            }
+        return result
+
     @property
     def celestial_empire(self) -> dict[str, Any]:
         """The Empire of China block: emperor, mandate, reforms, decree (D-060)."""

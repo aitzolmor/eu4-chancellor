@@ -213,9 +213,8 @@ own context with the Phase 2–3 tools. See [VISION.md](VISION.md) for the comfo
   whether it is one of several ways to complete it
 - [x] Checklists: describe the common trigger keys in words (`junior_union_with: ROOT`,
   `NOT: num_of_cities: 40`) (D-019)
-- [ ] Decision titles built by scripted localisation (`[Root.GetActsOfUnionDecisionTitle]`)
-  still fall back to the key ("force british union debate"); the heading's "forms …"
-  says what it does
+- [x] Decision titles built by scripted localisation (`[Root.GetActsOfUnionDecisionTitle]`)
+  resolve from `customizable_localization` (D-066), mission titles too
 
 ### Play-test findings (2026-11-14, Austria 1483 save, through the MCP tools)
 
@@ -273,8 +272,9 @@ Goal: visual analysis of the campaign inside the workspace.
   feeds home, the feeders where the country has no power, and embargoes; the briefing
   points to it. A trade question in Claude Desktop (2026-11-17) had to ask the player;
   asked again with `get_trade`, it answered from the save
-- [ ] Trade: which way a steering merchant pushes is not in the save; check whether a
-  later save field or the country block records it
+- [x] Trade: which way a steering merchant pushes is the save's `steer_power` index into
+  the node's outgoing links (D-065); `get_trade` flags merchants steering away from home.
+  Checked in the game: the merchant in Wien steers to Venice
 - [x] Wars in progress (D-050): `get_wars` gives the real start (the first history
   entry, not `action`), occupations both ways, losses from the participants, some
   recorded battles and the quarterly war score; the briefing has a line per war

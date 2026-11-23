@@ -75,7 +75,7 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
      influence, which is not in the save (next: log it from the probe mod with an
      `estate_influence` ladder, as the war score is);
    - scripted decision and mission titles resolve (D-066), and a steering merchant's
-     direction is read from the save (D-065); compare one with the game's trade screen.
+     direction is read from the save (D-065, checked in the game: Wien → Venice).
 4. **Usability:**
    - run from any folder: done (D-047, `chancellor setup` writes
      `~/.eu4-chancellor/config.env`; run on the user's machine 2026-11-17);

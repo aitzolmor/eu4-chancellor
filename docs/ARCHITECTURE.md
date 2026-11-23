@@ -75,6 +75,7 @@ flowchart LR
 | `player.journal` | Campaign journal: a snapshot of the player's country per save read, and the changes between consecutive ones (D-043); last month's budget by category (D-053) | 4 |
 | `player.backfill` | Older saves grouped by campaign id; the groups the player picks are read into the journal (D-045) | 4 |
 | `app/web/charts.js` | The panel's Charts tab: small-multiple SVG line charts of the journal's numbers, with events, hover and a table (D-045); the budget by category (D-053); each chart has an id the model can point to (D-068) | 5 |
+| `context.act` | Act (D-069): an action checked against the save, its steps and rules for computer use, recorded in `actions.json`, and verified on a later save | 6 |
 | `player.charts` | The charts the model can name (`show_chart`), the request file the panel watches, and the chart's numbers for the answer (D-068) | 5 |
 | `context.wars` | A country's wars: real start, goal, occupations both ways, losses, recorded battles, quarterly war score (D-050) | 4 |
 | `context.peace` | What a peace can demand in each war and its war score cost, as the 1.37 peace screen prices it (D-064) | 4 |

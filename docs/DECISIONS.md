@@ -1747,3 +1747,88 @@ treasury brought the running panel to its Charts tab with "Treasury (ducats)" ma
 
 Not covered: Claude Desktop cannot draw the chart inside the chat; the panel is where
 the player sees it.
+
+## D-069 — Act: Claude Desktop clicks, the Chancellor checks before and after
+
+**Date:** 2026-11-23 · **Status:** Accepted (third rung of "Claude plays", VISION)
+
+The last rung is acting in the game. The user chose the free path: Claude Desktop's own
+computer use does the screenshots and clicks, so nothing is billed to the API (5 EUR
+budget), and the Chancellor adds what screenshots cannot.
+
+- **`prepare_action(kind, target)`** (`context.act`), for the recommendation kinds that
+  are one click sequence and that the save can confirm: `complete_mission`,
+  `form_nation`, `buy_technology`, `buy_idea`, `raise_stability`, `repay_loan`,
+  `core_province`, `declare_war`. It checks the action against the save (the mission is
+  open and its requirements met, points or ducats enough at the computed cost, the
+  province not a core, no truce or war already), and when anything fails it says so and
+  records nothing. Otherwise it returns numbered steps from Guide (D-059) in the game's
+  own words, preceded by pausing the game, with the last step (the one that spends,
+  claims or declares) marked CONFIRM, and the rules: act only on the player's request
+  and one action at a time; a screenshot before each click; stay inside the game's
+  window; stop and describe when the screen differs; ask the player to save afterwards.
+  The action and the values to compare are kept in `actions.json` beside the player's
+  context (the last 20).
+- **`verify_action(id)`** reads the newest save: not later than the one prepared against
+  means "save first"; otherwise the mission is in `completed_missions`, the technology
+  level or idea count or stability went up, a loan went, a war with the target exists,
+  the player's tag is the formed nation's; coring takes months, so a core or the adm
+  power spent (90% of the cost) counts as started.
+- **Administrator rights:** the user runs EU4 as administrator, and Windows drops
+  synthetic input from a process with lower rights (UIPI). Claude Desktop must run with
+  the same rights, or EU4 without them; the rules tell the model to say so when clicks
+  have no effect.
+- **The prompts** tell the model to call `prepare_action` before acting and
+  `verify_action` after the player saves; the API chat gets the same lines but has no
+  computer use, so it only prepares.
+
+On the 1539 save every kind tried was correctly ruled out: a technology at 478 points with
+293, stability already +3, a truce with Naples, no loans. Not yet run live: it needs a
+game session with Claude Desktop's computer use.
+
+## D-070 — Autonomous mode: a goal, an urgency mode, guardrails in code
+
+**Date:** 2026-11-23 · **Status:** Proposed (design agreed with the user; not built)
+
+The user wants to start a new campaign and let Claude play on its own towards a goal
+they set, with how hard it pushes chosen by them. Agreed in discussion:
+
+- **How it runs.** Claude Desktop's computer use acts only while a conversation runs,
+  so the autonomous mode is one long conversation looping: pause the game and read the
+  state; choose the next action for the goal within the mode; check it with
+  `prepare_action` and carry it out; unpause for some weeks or months; again. It is
+  slow (screenshots for every click; an hour may cover months of game time, not
+  decades) and uses the user's plan limits; the conversation will be compacted on long
+  runs. Fresh state without the player saving comes from the probe mod (D-044), extended
+  to log the goal's measures every month, plus a monthly autosave during runs.
+- **A measurable goal.** Set with the measures `track_goal` already knows (D-061):
+  missions, provinces, countries, numbers. When the save or the probe shows it met,
+  autonomy switches itself off. Other stops: an in-game time limit, a serious setback
+  (a lost war, bankruptcy), or the player stopping it.
+- **Three modes, enforced by code, not by the prompt.** The model chooses; the checks in
+  `prepare_action` refuse what the mode does not allow:
+  - *Prudent* (the default): nothing that leaves the country worse off unless it pays
+    back later: no loans, stability at +1 or more, no overextension, aggressive
+    expansion kept clear of coalitions, no wars at poor odds.
+  - *Urgent*: accepts temporary costs: loans, mercenaries, stability hits, AE up to
+    the edge of a coalition.
+  - *Desperate*: only the goal counts.
+- **Red lines ask the player in every mode:** declaring war on a stronger country,
+  bankruptcy, ceding provinces or releasing subjects, changing religion or culture,
+  breaking alliances or personal unions, anything that can end the campaign.
+- **The player is warned, not locked out.** Blocking input (`BlockInput`) needs
+  administrator rights, can block Claude's own clicks, and a failure would leave the
+  player without control of the computer. Instead, while autonomy runs the panel
+  changes colour with a banner (goal, mode), a coloured frame surrounds the game's
+  window, and *Stop* (panel, floating icon, global hotkey) writes a stop request that
+  Claude reads before every action, as `show_chart` requests are passed (D-068). After
+  stopping, the game is the player's again.
+- **More actions are needed to play for real:** peace treaties (no war ends without
+  one), buildings, diplomacy (alliances, royal marriages), and the hardest, moving
+  armies: EU4 has no AI for the player's armies, and clicking them across the map is
+  slow and error-prone. So the first runs use peaceful goals and war comes later.
+- **Test countries.** First Portugal: a safe start, few dangerous neighbours, a simple
+  government, Western technology; peaceful goals (a mission, a technology level,
+  development, savings) test the loop and the modes. Later Castile, once peace and
+  armies are supported: Granada is an easy war and forming Spain a clear goal. Austria
+  and the Empire have too many special mechanics for tests.

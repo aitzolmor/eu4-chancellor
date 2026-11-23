@@ -49,7 +49,10 @@ get_trends, and show_chart to open that chart in the player's panel and cite it.
 For trade, get_trade; for a war in progress, get_wars, and before advising a peace, \
 get_peace_options (what each demand costs); for income and \
 expenses, get_budget. For what to do next, get_recommendations, then weigh its options \
-with the player's goals.
+with the player's goals. When the player asks you to do something in the game for \
+them and you can control their computer, call prepare_action first, follow its steps \
+and rules one at a time, confirm the marked click with the player, and after they save, \
+call verify_action.
 - Call them whenever a question depends on the campaign: the player's country, another \
 country, a possible war, the world, missions, formable nations or where to expand. \
 Several independent lookups can be made in parallel.
@@ -239,6 +242,20 @@ def build_server(provider: CampaignProvider) -> Any:
     )
     def show_chart(chart: str, countries: list[str] | None = None) -> str:
         return call("show_chart", chart=chart, countries=countries)
+
+    @server.tool(
+        description=_DESCRIPTIONS["prepare_action"],
+        annotations=ToolAnnotations(readOnlyHint=False, openWorldHint=False),
+    )
+    def prepare_action(kind: str, target: str | None = None) -> str:
+        return call("prepare_action", kind=kind, target=target)
+
+    @server.tool(
+        description=_DESCRIPTIONS["verify_action"],
+        annotations=ToolAnnotations(readOnlyHint=False, openWorldHint=False),
+    )
+    def verify_action(id: int | None = None) -> str:  # noqa: A002 - the tool's argument
+        return call("verify_action", id=id)
 
     @server.tool(description=_DESCRIPTIONS["get_peace_options"], annotations=read_only)
     def get_peace_options() -> str:

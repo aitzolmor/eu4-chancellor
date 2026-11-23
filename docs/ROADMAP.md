@@ -301,7 +301,34 @@ Goal: explore how far the assistant can act, not just advise.
 - [x] Advise: the probe mod's casus belli feed the war targets (D-063)
 - [x] Guide: exact UI steps for each recommendation (D-059): a *How* line per
   recommendation, naming the game's screens and buttons in the player's language
-- [ ] Act: computer-use prototype that performs approved actions while the game is paused
+- [x] Act, prototype (D-069): Claude Desktop's computer use does the clicking; the
+  Chancellor's `prepare_action` checks the action against the save, gives the steps in
+  the game's words, marks the click to confirm and the rules, and `verify_action` reads
+  the next save to say whether it happened. Eight kinds (missions, formables,
+  technology, ideas, stability, loans, cores, war)
+- [ ] Act, first live run: EU4 and Claude Desktop at the same privilege level (both as
+  administrator, or neither), the game paused, one cheap action (a loan, stability),
+  then verify_action on the next save
+
+### Autonomous mode (designed, D-070)
+
+Claude plays alone towards a goal the player sets, in a mode the player picks.
+
+- [ ] Goal and mode: start autonomy with a measurable goal (`track_goal` measures) and a
+  mode (prudent, urgent, desperate); it switches itself off when the goal is met, a time
+  limit passes or something serious happens
+- [ ] Guardrails per mode in `prepare_action` (loans, stability, overextension, AE, war
+  odds), and red lines that ask the player in every mode
+- [ ] Stop: a *Stop* button (panel, icon, hotkey) writing a stop request Claude reads
+  before each action; the panel's colour, a banner and a frame round the game's window
+  while autonomy runs (warn, do not lock input)
+- [ ] Fresh state without saving: the probe mod logs the goal's measures monthly; a
+  monthly autosave during runs
+- [ ] The loop's instructions for Claude Desktop: pause, read, choose, prepare, act,
+  unpause, repeat; one action at a time; verify on the next record
+- [ ] First run: a new Portugal campaign with a peaceful goal
+- [ ] More actions for real play: peace treaties, buildings, diplomacy, then armies;
+  then a Castile run (Granada, Spain)
 
 ## Real-time data (prototype, D-044)
 

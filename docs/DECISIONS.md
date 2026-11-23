@@ -1742,6 +1742,9 @@ shows it.
 - **One list of ids**: `player.charts.CHARTS` and the ids in `charts.js`; a test keeps
   them equal.
 
+Checked live on 2026-11-23: through the restarted MCP server, `show_chart` for the
+treasury brought the running panel to its Charts tab with "Treasury (ducats)" marked.
+
 Not covered: Claude Desktop cannot draw the chart inside the chat; the panel is where
 the player sees it.
 

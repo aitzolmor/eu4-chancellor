@@ -301,7 +301,14 @@ Goal: explore how far the assistant can act, not just advise.
 - [x] Advise: the probe mod's casus belli feed the war targets (D-063)
 - [x] Guide: exact UI steps for each recommendation (D-059): a *How* line per
   recommendation, naming the game's screens and buttons in the player's language
-- [ ] Act: computer-use prototype that performs approved actions while the game is paused
+- [x] Act, prototype (D-069): Claude Desktop's computer use does the clicking; the
+  Chancellor's `prepare_action` checks the action against the save, gives the steps in
+  the game's words, marks the click to confirm and the rules, and `verify_action` reads
+  the next save to say whether it happened. Eight kinds (missions, formables,
+  technology, ideas, stability, loans, cores, war)
+- [ ] Act, first live run: EU4 and Claude Desktop at the same privilege level (both as
+  administrator, or neither), the game paused, one cheap action (a loan, stability),
+  then verify_action on the next save
 
 ## Real-time data (prototype, D-044)
 

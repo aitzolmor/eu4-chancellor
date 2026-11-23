@@ -3,7 +3,9 @@
 Snapshot for picking the work up in a new session. Written on **2026-11-13**, last
 updated on **2026-11-23** after reading more conditions, scripted titles and the
 steering direction from the save (D-065, D-066), then Phase 5's last items: PDX Tools
-linked from the panel (D-067) and `show_chart` (D-068); 679 tests passing locally.
+linked from the panel (D-067) and `show_chart` (D-068), and Phase 6's Act prototype
+(D-069, `prepare_action` / `verify_action` for Claude Desktop's computer use); 696 tests
+passing locally.
 
 Read [CLAUDE.md](../CLAUDE.md) first for the conventions, then this file. For depth:
 [ROADMAP](ROADMAP.md) (task list), [DECISIONS](DECISIONS.md) (D-001 to D-064),
@@ -91,7 +93,8 @@ In priority order. The full list is in [ROADMAP](ROADMAP.md).
      in ROADMAP under *Ideas / later*; not scheduled);
    - an evaluation set of real questions;
    - Phase 5: done (charts, trends, PDX Tools linked D-067, `show_chart` D-068);
-   - Phase 6: Claude acting in-game through computer use.
+   - Phase 6: the Act prototype is built (D-069); next, its first live run with Claude
+     Desktop's computer use (EU4 and Claude Desktop with the same administrator rights).
 
 ## Decisions and why
 

@@ -87,6 +87,10 @@ Far-future idea, kept on the map because it is worth trying. A gradual ladder:
 Game mods cannot talk to the outside world, so screen-level control is the only channel for
 acting. It is expected to be slow and costly; the value is in the experiment itself.
 
+Status (2026-11-23): Advise (D-056), Guide (D-059) and an Act prototype (D-069) are built.
+Acting uses Claude Desktop's own computer use, so it costs nothing beyond the player's
+plan; the Chancellor checks each action against the save before and after.
+
 ## Non-goals (for now)
 
 - Ironman save support.

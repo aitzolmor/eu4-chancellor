@@ -14,6 +14,16 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any
 
+from chancellor.context.act import SUPPORTED as ACT_KINDS
+from chancellor.context.act import (
+    ActionError,
+    ActionStore,
+    actions_path,
+    render_prepared,
+    render_verified,
+)
+from chancellor.context.act import prepare as prepare_action
+from chancellor.context.act import verify as verify_action
 from chancellor.context.advice import Goal, goals_from, recommend, render_recommendations
 from chancellor.context.ae import render_ae_section
 from chancellor.context.alerts import ReadyNow, ready_now
@@ -479,6 +489,46 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "prepare_action",
+        "description": (
+            "Before carrying out an action in the game for the player with computer use "
+            "(only when they asked you to do it): checks it against the save (is the "
+            "mission still open and complete, is there power or money enough), gives the "
+            "numbered steps with the game's own button names, marks the click to confirm "
+            "with the player, and the rules for acting. Kinds, as get_recommendations "
+            "names them: complete_mission (target: mission key), form_nation (decision "
+            "key), buy_technology (adm, dip or mil), buy_idea, raise_stability, repay_loan, "
+            "core_province (province id), declare_war (country). Afterwards, once the "
+            "player saved, call verify_action."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "kind": {"type": "string", "enum": list(ACT_KINDS)},
+                "target": {
+                    "type": "string",
+                    "description": "Mission or decision key, adm/dip/mil, province id or country.",
+                },
+            },
+            "required": ["kind"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "verify_action",
+        "description": (
+            "After an action prepared with prepare_action was carried out and the player "
+            "saved: reads the newest save and says whether it is done (the mission "
+            "completed, the technology bought, the war declared...). Without `id`, the "
+            "latest prepared action."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"id": {"type": "integer", "description": "The action's id."}},
+            "additionalProperties": False,
+        },
+    },
+    {
         "name": "get_trade",
         "description": (
             "A country's trade, read from the save: its home trade node and its share of "
@@ -587,6 +637,8 @@ _SCHEMAS: dict[str, dict[str, _Field]] = {
     "get_campaign_journal": {"saves": _Field(int)},
     "get_trends": {"countries": _Field(list)},
     "show_chart": {"chart": _Field(str, required=True), "countries": _Field(list)},
+    "prepare_action": {"kind": _Field(str, required=True), "target": _Field(str)},
+    "verify_action": {"id": _Field(int)},
     "get_trade": {"country": _Field(str)},
     "get_wars": {"country": _Field(str)},
     "get_peace_options": {},
@@ -1065,6 +1117,54 @@ class Toolbox:
         except OSError:
             shown = False
         return render_chart(self.trends(), chart, shown)
+
+    def _prepare_action(self, args: dict[str, Any]) -> str:
+        kind, target = str(args["kind"]), args.get("target")
+        if kind == "declare_war" and target:
+            target = self._tag(str(target))
+        extra: dict[str, Any] = {}
+        tag = self.campaign.player
+        if self.game_dir is not None and kind in ("complete_mission", "form_nation"):
+            ready = self.ready()
+            extra["ready_missions"] = ready.missions if ready else None
+            extra["ready_formables"] = ready.formables if ready else None
+            decision = self._decisions.get(str(target)) if kind == "form_nation" else None
+            extra["forms"] = decision.forms if decision else None
+        if self._power_rules and kind in ("buy_technology", "buy_idea", "raise_stability"):
+            power = power_report(self.campaign, self._power_rules, tag)
+            tech = power.techs.get(str(target)) if kind == "buy_technology" else None
+            extra |= {
+                "tech_cost": tech.cost if tech else None,
+                "idea_cost": power.idea_cost if kind == "buy_idea" else None,
+                "stability_cost": power.stability_cost if kind == "raise_stability" else None,
+            }
+        if self.game_dir is not None and kind == "core_province" and target:
+            costs = coring_costs(self.campaign, self._coring_rules, self._rules, tag)
+            extra["core_cost"] = next((c.cost for c in costs if str(c.province) == target), None)
+        try:
+            prepared = prepare_action(self.campaign, kind, target, **extra)
+        except ActionError as exc:
+            raise ToolInputError(str(exc)) from exc
+        if prepared.possible:
+            ActionStore(actions_path(self.context_file)).add(prepared.action)
+        return render_prepared(self.campaign, prepared)
+
+    def _verify_action(self, args: dict[str, Any]) -> str:
+        store = ActionStore(actions_path(self.context_file))
+        actions = store.all()
+        wanted = args.get("id")
+        action = next((a for a in reversed(actions) if wanted is None or a.id == wanted), None)
+        if action is None:
+            raise ToolInputError(
+                "No prepared action"
+                + (f" with id {wanted}." if wanted else "; use prepare_action.")
+            )
+        result = verify_action(self.campaign, action)
+        if result[0] is not None:
+            action.status = "done" if result[0] else "not_done"
+            action.checked_on = self.campaign.date
+            store.update(action)
+        return render_verified(self.campaign, action, result)
 
     def _get_campaign_journal(self, args: dict[str, Any]) -> str:
         saves = min(max(int(args.get("saves") or JOURNAL_STEPS), 1), 30)

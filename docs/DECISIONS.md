@@ -1743,3 +1743,41 @@ shows it.
 
 Not covered: Claude Desktop cannot draw the chart inside the chat; the panel is where
 the player sees it.
+
+## D-069 — Act: Claude Desktop clicks, the Chancellor checks before and after
+
+**Date:** 2026-11-23 · **Status:** Accepted (third rung of "Claude plays", VISION)
+
+The last rung is acting in the game. The user chose the free path: Claude Desktop's own
+computer use does the screenshots and clicks, so nothing is billed to the API (5 EUR
+budget), and the Chancellor adds what screenshots cannot.
+
+- **`prepare_action(kind, target)`** (`context.act`), for the recommendation kinds that
+  are one click sequence and that the save can confirm: `complete_mission`,
+  `form_nation`, `buy_technology`, `buy_idea`, `raise_stability`, `repay_loan`,
+  `core_province`, `declare_war`. It checks the action against the save (the mission is
+  open and its requirements met, points or ducats enough at the computed cost, the
+  province not a core, no truce or war already), and when anything fails it says so and
+  records nothing. Otherwise it returns numbered steps from Guide (D-059) in the game's
+  own words, preceded by pausing the game, with the last step (the one that spends,
+  claims or declares) marked CONFIRM, and the rules: act only on the player's request
+  and one action at a time; a screenshot before each click; stay inside the game's
+  window; stop and describe when the screen differs; ask the player to save afterwards.
+  The action and the values to compare are kept in `actions.json` beside the player's
+  context (the last 20).
+- **`verify_action(id)`** reads the newest save: not later than the one prepared against
+  means "save first"; otherwise the mission is in `completed_missions`, the technology
+  level or idea count or stability went up, a loan went, a war with the target exists,
+  the player's tag is the formed nation's; coring takes months, so a core or the adm
+  power spent (90% of the cost) counts as started.
+- **Administrator rights:** the user runs EU4 as administrator, and Windows drops
+  synthetic input from a process with lower rights (UIPI). Claude Desktop must run with
+  the same rights, or EU4 without them; the rules tell the model to say so when clicks
+  have no effect.
+- **The prompts** tell the model to call `prepare_action` before acting and
+  `verify_action` after the player saves; the API chat gets the same lines but has no
+  computer use, so it only prepares.
+
+On the 1539 save every kind tried was correctly ruled out: a technology at 478 points with
+293, stability already +3, a truce with Naples, no loans. Not yet run live: it needs a
+game session with Claude Desktop's computer use.
